@@ -5,7 +5,7 @@ import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation'; // Ajusta la ruta si es necesario
 import { PANTONE_134C, PANTONE_295C } from '../theme/colors';
 import { TERMS_URL, PRIVACY_URL } from '../constants/urls';
-import { login } from '../utils/auth';
+import { useAuthStore, AuthState } from '../store/authStore'; // Importa el tipo AuthState
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const LOGO_SIZE = Math.round(SCREEN_WIDTH * 0.45);
@@ -16,10 +16,13 @@ export default function LoginScreen() {
     const [password, setPassword] = React.useState('');
     const [usernameError, setUsernameError] = React.useState('');
     const [passwordError, setPasswordError] = React.useState('');
-    const [loading, setLoading] = React.useState(false);
     const [usernameTouched, setUsernameTouched] = React.useState(false);
     const [passwordTouched, setPasswordTouched] = React.useState(false);
     const [submitAttempted, setSubmitAttempted] = React.useState(false);
+
+    // Zustand store con tipado explícito para evitar el error de TS
+    const login = useAuthStore((state: AuthState) => state.login);
+    const loading = useAuthStore((state: AuthState) => state.loading);
 
     const validate = () => {
         let valid = true;
@@ -43,16 +46,10 @@ export default function LoginScreen() {
         setUsernameTouched(true);
         setPasswordTouched(true);
         if (!validate()) return;
-        setLoading(true);
         try {
             await login(username, password);
-            setLoading(false);
-            navigation.reset({
-                index: 0,
-                routes: [{ name: 'Dashboard' }],
-            });
+            // La navegación se actualizará automáticamente gracias al estado global.
         } catch (error) {
-            setLoading(false);
             const errorMessage = (error instanceof Error && error.message) ? error.message : 'Error al iniciar sesión';
             Alert.alert('Error', errorMessage);
         }
