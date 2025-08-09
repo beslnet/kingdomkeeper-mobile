@@ -1,0 +1,19 @@
+{
+  "recommendations": [
+    "msjsdiag.vscode-react-native",
+    "dsznajder.es7-react-js-snippets",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "eamodio.gitlens",
+    "coenraads.bracket-pair-colorizer-2",
+    "christian-kohler.path-intellisense",
+    "vscode-icons-team.vscode-icons",
+    "wix.vscode-import-cost",
+    "naumovs.color-highlight",
+    "github.copilot",
+    "humao.rest-client",
+    "bradlc.vscode-tailwindcss",
+    "mikestead.dotenv",
+    "rangav.vscode-thunder-client"
+  ]
+}

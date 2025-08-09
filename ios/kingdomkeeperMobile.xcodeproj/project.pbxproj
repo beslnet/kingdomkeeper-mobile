@@ -60,6 +60,13 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		75D91C242E46851100510BA8 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
@@ -70,6 +77,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				75D91C242E46851100510BA8 /* Fonts */,
 				13B07FAE1A68108700A75B9A /* kingdomkeeperMobile */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
