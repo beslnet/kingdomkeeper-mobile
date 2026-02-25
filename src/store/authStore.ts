@@ -1,11 +1,18 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LOGIN_URL } from '../constants/api';
+import { loginApi, getMe, getMisIglesias } from '../api/auth';
+
+export type Iglesia = {
+  id: number;
+  nombre: string;
+  [key: string]: any;
+};
 
 export type AuthState = {
   isLoggedIn: boolean | null;
   user: any | null;
+  iglesias: Iglesia[];
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -17,23 +24,17 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       isLoggedIn: null,
       user: null,
+      iglesias: [],
       loading: false,
 
       login: async (username: string, password: string) => {
         set({ loading: true });
         try {
-          const response = await fetch(LOGIN_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password }),
-          });
-          if (!response.ok) {
-            throw new Error('Credenciales inválidas');
-          }
-          const data = await response.json();
-          await AsyncStorage.setItem('access_token', data.access);
-          await AsyncStorage.setItem('refresh_token', data.refresh);
-          set({ isLoggedIn: true, loading: false, user: data.user ?? null });
+          const tokens = await loginApi(username, password);
+          await AsyncStorage.setItem('access_token', tokens.access);
+          await AsyncStorage.setItem('refresh_token', tokens.refresh);
+          const [user, iglesias] = await Promise.all([getMe(), getMisIglesias()]);
+          set({ isLoggedIn: true, loading: false, user, iglesias: iglesias ?? [] });
         } catch (error) {
           set({ loading: false });
           throw error;
@@ -43,17 +44,28 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         await AsyncStorage.removeItem('access_token');
         await AsyncStorage.removeItem('refresh_token');
-        set({ isLoggedIn: false, user: null });
+        const { useIglesiaStore } = await import('./iglesiaStore');
+        useIglesiaStore.getState().resetIglesia();
+        set({ isLoggedIn: false, user: null, iglesias: [] });
       },
 
       checkAuth: async () => {
         const token = await AsyncStorage.getItem('access_token');
-        set({ isLoggedIn: !!token });
+        if (token) {
+          try {
+            const [user, iglesias] = await Promise.all([getMe(), getMisIglesias()]);
+            set({ isLoggedIn: true, user, iglesias: iglesias ?? [] });
+          } catch {
+            set({ isLoggedIn: false, user: null, iglesias: [] });
+          }
+        } else {
+          set({ isLoggedIn: false });
+        }
       },
     }),
     {
       name: 'auth-store',
-      storage: createJSONStorage(() => AsyncStorage), // <--- ADAPTADOR CORRECTO
+      storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({ isLoggedIn: state.isLoggedIn, user: state.user }),
     }
   )
