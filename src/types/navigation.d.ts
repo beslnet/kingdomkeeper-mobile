@@ -3,5 +3,5 @@ export type RootStackParamList = {
   Register: undefined;
   ForgotPassword: undefined;
   Dashboard: undefined;
-  // Agrega aquí más rutas según tus navegadores y pantallas
+  ChurchSelector: undefined;
 };
