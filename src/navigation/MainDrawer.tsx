@@ -1,65 +1,87 @@
 import React from 'react';
-import { Alert, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Alert, View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking } from 'react-native';
 import { createDrawerNavigator, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { Icon } from 'react-native-paper';
 import { useAuthStore } from '../store/authStore';
+import { usePermissionsStore } from '../store/permissionsStore';
+import { PANTONE_295C } from '../theme/colors';
+import { EXTERNAL_URLS } from '../constants/api';
 
 // Pantallas principales
 import MainTabs from './MainTabs';
 import Finanzas from '../screens/Finanzas';
-import Cursos from '../screens/Cursos';
 import Comunicaciones from '../screens/Comunicaciones';
 import Seguimiento from '../screens/Seguimiento';
-import Reportes from '../screens/Reportes';
-import Branding from '../screens/Branding';
 import Suscripciones from '../screens/Suscripciones';
-import Integraciones from '../screens/Integraciones';
-import Soporte from '../screens/Soporte';
 import Config from '../screens/Config';
+import Miembros from '../screens/Miembros';
+import GruposCelulas from '../screens/GruposCelulas';
+import Inventario from '../screens/Inventario';
 
 const Drawer = createDrawerNavigator();
 
-// Mock de usuario
-const userMock = {
-  name: 'Juan Pérez',
-  email: 'juan.perez@email.com',
+type MenuItem = {
+  label: string;
+  icon: string;
+  screen: string;
+  permission?: { module: string; action: string };
+  roles?: string[];
+  alwaysVisible?: boolean;
+  onPress?: () => void;
 };
 
-const MENU_ITEMS = [
-  { label: 'Inicio', icon: 'home-outline', screen: 'Inicio' },
-  { label: 'Finanzas', icon: 'cash-multiple', screen: 'Finanzas' },
-  { label: 'Cursos y Discipulado', icon: 'book-outline', screen: 'Cursos y Discipulado' },
-  { label: 'Comunicaciones', icon: 'message-outline', screen: 'Comunicaciones' },
-  { label: 'Seguimiento Pastoral', icon: 'account-heart-outline', screen: 'Seguimiento Pastoral' },
-  { label: 'Reportes y Analytics', icon: 'chart-bar', screen: 'Reportes y Analytics' },
-  { label: 'Personalización', icon: 'palette-outline', screen: 'Personalización' },
-  { label: 'Suscripciones', icon: 'credit-card-outline', screen: 'Suscripciones' },
-  { label: 'Integraciones', icon: 'puzzle-outline', screen: 'Integraciones' },
-  { label: 'Soporte', icon: 'lifebuoy', screen: 'Soporte' },
-  { label: 'Configuración', icon: 'cog-outline', screen: 'Configuración' },
+const MENU_ITEMS: MenuItem[] = [
+  { label: 'Inicio', icon: 'home-outline', screen: 'Inicio', alwaysVisible: true },
+  { label: 'Membresía', icon: 'account-group-outline', screen: 'Membresía', permission: { module: 'membresia', action: 'ver' } },
+  { label: 'Grupos y Células', icon: 'account-multiple-outline', screen: 'Grupos y Células', permission: { module: 'grupos', action: 'ver' } },
+  { label: 'Inventario', icon: 'package-variant-closed', screen: 'Inventario', permission: { module: 'inventario', action: 'ver' } },
+  { label: 'Finanzas', icon: 'cash-multiple', screen: 'Finanzas', permission: { module: 'finanzas', action: 'ver' } },
+  { label: 'Comunicaciones', icon: 'message-outline', screen: 'Comunicaciones', roles: ['church_admin', 'pastor', 'leader', 'treasurer'] },
+  { label: 'Bandeja de Entrada', icon: 'inbox-outline', screen: 'Bandeja de Entrada', alwaysVisible: true },
+  { label: 'Casos Pastorales', icon: 'account-heart-outline', screen: 'Casos Pastorales', permission: { module: 'pastoral', action: 'ver' } },
+  { label: 'Suscripciones', icon: 'credit-card-outline', screen: 'Suscripciones', roles: ['church_admin', 'super_admin'] },
+  { label: 'Configuración', icon: 'cog-outline', screen: 'Configuración', alwaysVisible: true },
 ];
 
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((state) => state.user);
+  const { canAccess, hasAnyRole, isSuperAdmin } = usePermissionsStore();
   const { navigation, state } = props;
   const activeRoute = state?.routeNames[state?.index];
 
+  const displayName = user
+    ? `${user.first_name} ${user.last_name}`.trim() || user.username
+    : '';
+
+  const isItemVisible = (item: MenuItem): boolean => {
+    if (item.alwaysVisible) return true;
+    if (isSuperAdmin) return true;
+    if (item.permission) return canAccess(item.permission.module);
+    if (item.roles) return hasAnyRole(item.roles);
+    return false;
+  };
+
   const handleLogout = async () => {
     Alert.alert(
-      "Cerrar sesión",
-      "¿Seguro que quieres salir de tu cuenta?",
+      'Cerrar sesión',
+      '¿Seguro que quieres salir de tu cuenta?',
       [
-        { text: "Cancelar", style: "cancel" },
+        { text: 'Cancelar', style: 'cancel' },
         {
-          text: "Cerrar sesión",
-          style: "destructive",
-          onPress: async () => {
-            await logout();
-          }
-        }
-      ]
+          text: 'Cerrar sesión',
+          style: 'destructive',
+          onPress: async () => { await logout(); },
+        },
+      ],
     );
   };
+
+  const handleSoporte = () => {
+    Linking.openURL(EXTERNAL_URLS.whatsappSupport);
+  };
+
+  const visibleItems = MENU_ITEMS.filter(isItemVisible);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFF' }}>
@@ -68,14 +90,14 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         <View style={drawerStyles.avatarCircle}>
           <Icon source="account-circle" size={54} color="#B0B0B0" />
         </View>
-        <Text style={drawerStyles.userName}>{userMock.name}</Text>
-        <Text style={drawerStyles.userEmail}>{userMock.email}</Text>
+        <Text style={drawerStyles.userName}>{displayName}</Text>
+        <Text style={drawerStyles.userEmail}>{user?.email ?? ''}</Text>
       </View>
 
       {/* MENÚ */}
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View style={drawerStyles.menuList}>
-          {MENU_ITEMS.map((item) => (
+          {visibleItems.map((item) => (
             <TouchableOpacity
               key={item.label}
               style={[
@@ -89,7 +111,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
                 <Icon
                   source={item.icon}
                   size={24}
-                  color={activeRoute === item.screen ? "#2B72FF" : "#555"}
+                  color={activeRoute === item.screen ? PANTONE_295C : '#555'}
                 />
               </View>
               <Text
@@ -102,6 +124,17 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
               </Text>
             </TouchableOpacity>
           ))}
+          {/* Soporte siempre visible */}
+          <TouchableOpacity
+            style={drawerStyles.menuItem}
+            onPress={handleSoporte}
+            activeOpacity={0.7}
+          >
+            <View style={drawerStyles.menuIconWrapper}>
+              <Icon source="lifebuoy" size={24} color="#555" />
+            </View>
+            <Text style={drawerStyles.menuLabel}>Soporte</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -113,10 +146,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
           </View>
           <Text style={drawerStyles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
-        <Text style={drawerStyles.footerText}>
-          Hecho con <Icon source="heart" size={13} color="#F44" /> por tu equipo
-        </Text>
-        <Text style={drawerStyles.versionText}>v0.1.0 (Prueba)</Text>
+        <Text style={drawerStyles.versionText}>v0.1.0</Text>
       </View>
     </View>
   );
@@ -129,6 +159,7 @@ const drawerStyles = StyleSheet.create({
     borderBottomColor: '#EEE',
     borderBottomWidth: 1,
     marginBottom: 6,
+    backgroundColor: PANTONE_295C,
   },
   avatarCircle: {
     backgroundColor: '#E0E0E0',
@@ -139,8 +170,8 @@ const drawerStyles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  userName: { fontWeight: '600', fontSize: 16, color: '#222' },
-  userEmail: { fontSize: 13, color: '#666', marginBottom: 2 },
+  userName: { fontWeight: '600', fontSize: 16, color: '#fff' },
+  userEmail: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 2 },
   menuList: { paddingVertical: 12 },
   menuItem: {
     flexDirection: 'row',
@@ -154,7 +185,7 @@ const drawerStyles = StyleSheet.create({
     backgroundColor: '#EAF2FF',
   },
   menuLabel: { fontSize: 15, color: '#444', flex: 1 },
-  menuLabelActive: { color: '#2B72FF', fontWeight: '600' },
+  menuLabelActive: { color: PANTONE_295C, fontWeight: '600' },
   menuIconWrapper: { marginRight: 15 },
   footer: {
     paddingBottom: 24,
@@ -173,7 +204,6 @@ const drawerStyles = StyleSheet.create({
     marginLeft: 12,
   },
   logoutText: { color: '#888', fontSize: 15, marginLeft: 6 },
-  footerText: { fontSize: 13, color: '#999', marginTop: 4, marginBottom: 2 },
   versionText: { fontSize: 11, color: '#BBB' },
 });
 
@@ -185,15 +215,14 @@ export default function MainDrawer() {
       screenOptions={{ headerShown: true }}
     >
       <Drawer.Screen name="Inicio" component={MainTabs} />
+      <Drawer.Screen name="Membresía" component={Miembros} />
+      <Drawer.Screen name="Grupos y Células" component={GruposCelulas} />
+      <Drawer.Screen name="Inventario" component={Inventario} />
       <Drawer.Screen name="Finanzas" component={Finanzas} />
-      <Drawer.Screen name="Cursos y Discipulado" component={Cursos} />
       <Drawer.Screen name="Comunicaciones" component={Comunicaciones} />
-      <Drawer.Screen name="Seguimiento Pastoral" component={Seguimiento} />
-      <Drawer.Screen name="Reportes y Analytics" component={Reportes} />
-      <Drawer.Screen name="Personalización" component={Branding} />
+      <Drawer.Screen name="Bandeja de Entrada" component={Comunicaciones} />
+      <Drawer.Screen name="Casos Pastorales" component={Seguimiento} />
       <Drawer.Screen name="Suscripciones" component={Suscripciones} />
-      <Drawer.Screen name="Integraciones" component={Integraciones} />
-      <Drawer.Screen name="Soporte" component={Soporte} />
       <Drawer.Screen name="Configuración" component={Config} />
     </Drawer.Navigator>
   );

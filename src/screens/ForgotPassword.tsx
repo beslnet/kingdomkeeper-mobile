@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Platform, KeyboardAvoidingView, Dimensions, Text, Alert } from 'react-native';
+import { View, StyleSheet, Platform, KeyboardAvoidingView, Text, Alert } from 'react-native';
 import { TextInput, Button, HelperText } from 'react-native-paper';
 import { PANTONE_134C, PANTONE_295C } from '../theme/colors';
+import { solicitarRestablecerPassword } from '../api/auth';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-export default function ForgotPasswordScreen({ navigation }) {
+export default function ForgotPasswordScreen({ navigation }: { navigation: any }) {
     const [email, setEmail] = useState('');
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState('');
 
-    // Debes implementar el endpoint real para recuperar contraseña en tu backend
     const handleSend = async () => {
         if (!email || !email.includes('@')) {
             setError('Ingresa un correo válido');
@@ -19,10 +17,7 @@ export default function ForgotPasswordScreen({ navigation }) {
         setError('');
         setSubmitted(true);
         try {
-            // TODO: llamar a tu endpoint de recuperación de contraseña con fetch/axios
-            // Por ejemplo:
-            // await fetch(`${API_BASE_URL}/api/send-reset-password/`, { method: 'POST', ... })
-
+            await solicitarRestablecerPassword(email);
             Alert.alert('Listo', 'Si el correo existe, recibirás pronto las instrucciones para restablecer tu contraseña.');
             setTimeout(() => {
                 setSubmitted(false);
@@ -30,7 +25,7 @@ export default function ForgotPasswordScreen({ navigation }) {
             }, 2000);
         } catch (e) {
             setSubmitted(false);
-            Alert.alert('Error', e.message || 'No se pudo enviar el correo');
+            Alert.alert('Error', (e instanceof Error ? e.message : null) || 'No se pudo enviar el correo');
         }
     };
 

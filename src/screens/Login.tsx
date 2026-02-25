@@ -2,16 +2,18 @@ import * as React from 'react';
 import { StyleSheet, Platform, Dimensions, Linking, Alert, View, KeyboardAvoidingView, Image, TouchableOpacity } from 'react-native';
 import { TextInput, Button, HelperText, Text } from 'react-native-paper';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { RootStackParamList } from '../types/navigation'; // Ajusta la ruta si es necesario
+import { AuthStackParamList } from '../types/navigation';
 import { PANTONE_134C, PANTONE_295C } from '../theme/colors';
-import { TERMS_URL, PRIVACY_URL } from '../constants/urls';
-import { useAuthStore, AuthState } from '../store/authStore'; // Importa el tipo AuthState
+import { EXTERNAL_URLS } from '../constants/api';
+import { useAuthStore } from '../store/authStore';
+import { useIglesiaStore } from '../store/iglesiaStore';
+import { usePermissionsStore } from '../store/permissionsStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const LOGO_SIZE = Math.round(SCREEN_WIDTH * 0.45);
 
 export default function LoginScreen() {
-    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+    const navigation = useNavigation<NavigationProp<AuthStackParamList>>();
     const [username, setUsername] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [usernameError, setUsernameError] = React.useState('');
@@ -20,9 +22,10 @@ export default function LoginScreen() {
     const [passwordTouched, setPasswordTouched] = React.useState(false);
     const [submitAttempted, setSubmitAttempted] = React.useState(false);
 
-    // Zustand store con tipado explícito para evitar el error de TS
-    const login = useAuthStore((state: AuthState) => state.login);
-    const loading = useAuthStore((state: AuthState) => state.loading);
+    const login = useAuthStore((state) => state.login);
+    const loading = useAuthStore((state) => state.loading);
+    const setIglesia = useIglesiaStore((state) => state.setIglesia);
+    const fetchPermissions = usePermissionsStore((state) => state.fetchPermissions);
 
     const validate = () => {
         let valid = true;
@@ -47,8 +50,17 @@ export default function LoginScreen() {
         setPasswordTouched(true);
         if (!validate()) return;
         try {
-            await login(username, password);
-            // La navegación se actualizará automáticamente gracias al estado global.
+            const { user, iglesias } = await login(username, password);
+            if (user.is_superuser || iglesias.length === 1) {
+                const ig = iglesias[0];
+                if (ig) setIglesia(ig.id, ig.nombre);
+                await fetchPermissions();
+                // Navigation handled by App.tsx auth state change
+            } else if (iglesias.length > 1) {
+                navigation.navigate('ChurchSelector');
+            } else {
+                Alert.alert('Sin iglesias', 'No tienes iglesias asignadas. Contacta al administrador.');
+            }
         } catch (error) {
             const errorMessage = (error instanceof Error && error.message) ? error.message : 'Error al iniciar sesión';
             Alert.alert('Error', errorMessage);
@@ -59,17 +71,14 @@ export default function LoginScreen() {
     const showPasswordError = (passwordTouched || submitAttempted) && !!passwordError;
 
     const openWhatsApp = () => {
-        const phoneNumber = '56912345678'; // Cambia por tu número real
-        const message = 'Hola, necesito ayuda con Kingdom Keeper';
-        const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-        Linking.openURL(url);
+        Linking.openURL(EXTERNAL_URLS.whatsappSupport);
     };
 
     const openTerms = () => {
-        Linking.openURL(TERMS_URL);
+        Linking.openURL(EXTERNAL_URLS.terms);
     };
     const openPrivacy = () => {
-        Linking.openURL(PRIVACY_URL);
+        Linking.openURL(EXTERNAL_URLS.privacy);
     };
     const goToForgotPassword = () => {
         navigation.navigate('ForgotPassword');
