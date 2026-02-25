@@ -6,7 +6,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import DashboardScreen from '../screens/Dashboard';
 import GruposScreen from '../screens/Grupos';
 import ComunicacionesScreen from '../screens/Comunicaciones';
-import ProfileScreen from '../screens/Profile';
+import ProfileStack from './ProfileStack';
 
 const Tab = createBottomTabNavigator();
 
@@ -35,7 +35,7 @@ export default function MainTabs() {
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Grupos" component={GruposScreen} />
       <Tab.Screen name="Bandeja" component={ComunicacionesScreen} />
-      <Tab.Screen name="Perfil" component={ProfileScreen} />
+      <Tab.Screen name="Perfil" component={ProfileStack} options={{ headerShown: false }} />
     </Tab.Navigator>
   );
 }
