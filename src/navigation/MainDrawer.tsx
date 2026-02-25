@@ -3,6 +3,7 @@ import { Alert, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'rea
 import { createDrawerNavigator, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { Icon } from 'react-native-paper';
 import { useAuthStore } from '../store/authStore';
+import { useIglesiaStore } from '../store/iglesiaStore';
 import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 
 // Pantallas principales
@@ -23,6 +24,9 @@ const MENU_ITEMS = [
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
+  const iglesias = useAuthStore((state) => state.iglesias);
+  const iglesiaNombre = useIglesiaStore((state) => state.iglesiaNombre);
+  const resetIglesia = useIglesiaStore((state) => state.resetIglesia);
   const { navigation, state } = props;
   const activeRoute = state?.routeNames[state?.index];
 
@@ -57,6 +61,13 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         </View>
         <Text style={drawerStyles.userName}>{displayName}</Text>
         <Text style={drawerStyles.userEmail}>{user?.email ?? '—'}</Text>
+        {iglesias.length > 1 && (
+          <TouchableOpacity style={drawerStyles.changeChurchBtn} onPress={resetIglesia} activeOpacity={0.8}>
+            <Icon source="swap-horizontal" size={15} color={PANTONE_295C} />
+            <Text style={drawerStyles.changeChurchText}>{iglesiaNombre ?? 'Cambiar iglesia'}</Text>
+            <Icon source="chevron-down" size={15} color={PANTONE_295C} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* MENÚ */}
@@ -130,6 +141,17 @@ const drawerStyles = StyleSheet.create({
   },
   userName: { fontWeight: '600', fontSize: 16, color: '#fff' },
   userEmail: { fontSize: 13, color: PANTONE_134C, marginBottom: 2 },
+  changeChurchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PANTONE_134C,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginTop: 10,
+    gap: 5,
+  },
+  changeChurchText: { fontSize: 13, color: PANTONE_295C, fontWeight: '600', flexShrink: 1 },
   menuList: { paddingVertical: 12 },
   menuItem: {
     flexDirection: 'row',
