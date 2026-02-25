@@ -2,10 +2,11 @@ import * as React from 'react';
 import { StyleSheet, Platform, Dimensions, Linking, Alert, View, KeyboardAvoidingView, Image, TouchableOpacity } from 'react-native';
 import { TextInput, Button, HelperText, Text } from 'react-native-paper';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { RootStackParamList } from '../types/navigation'; // Ajusta la ruta si es necesario
+import { RootStackParamList } from '../types/navigation';
 import { PANTONE_134C, PANTONE_295C } from '../theme/colors';
 import { TERMS_URL, PRIVACY_URL } from '../constants/urls';
-import { useAuthStore, AuthState } from '../store/authStore'; // Importa el tipo AuthState
+import { useAuthStore, AuthState } from '../store/authStore';
+import { useIglesiaStore } from '../store/iglesiaStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const LOGO_SIZE = Math.round(SCREEN_WIDTH * 0.45);
@@ -23,6 +24,7 @@ export default function LoginScreen() {
     // Zustand store con tipado explícito para evitar el error de TS
     const login = useAuthStore((state: AuthState) => state.login);
     const loading = useAuthStore((state: AuthState) => state.loading);
+    const setIglesia = useIglesiaStore((state) => state.setIglesia);
 
     const validate = () => {
         let valid = true;
@@ -48,7 +50,15 @@ export default function LoginScreen() {
         if (!validate()) return;
         try {
             await login(username, password);
-            // La navegación se actualizará automáticamente gracias al estado global.
+            const { iglesias } = useAuthStore.getState();
+            if (iglesias.length === 0) {
+                Alert.alert('Sin iglesias', 'No tienes iglesias asignadas. Contacta a un administrador.');
+                await useAuthStore.getState().logout();
+            } else if (iglesias.length === 1) {
+                setIglesia(iglesias[0].id, iglesias[0].nombre);
+                // App.tsx will re-render to MainDrawer automatically
+            }
+            // If >1 churches, App.tsx will show ChurchSelector automatically
         } catch (error) {
             const errorMessage = (error instanceof Error && error.message) ? error.message : 'Error al iniciar sesión';
             Alert.alert('Error', errorMessage);

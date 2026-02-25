@@ -4,9 +4,9 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 // Pantallas principales
 import DashboardScreen from '../screens/Dashboard';
-import MiembrosScreen from '../screens/Miembros';
 import GruposScreen from '../screens/Grupos';
-import EventosScreen from '../screens/Eventos';
+import ComunicacionesScreen from '../screens/Comunicaciones';
+import ProfileScreen from '../screens/Profile';
 
 const Tab = createBottomTabNavigator();
 
@@ -16,12 +16,12 @@ const getScreenOptions = (route: { name: string }) => ({
     let iconName: string = '';
     if (route.name === 'Dashboard') {
       iconName = 'view-dashboard-outline';
-    } else if (route.name === 'Miembros') {
-      iconName = 'account-group-outline';
     } else if (route.name === 'Grupos') {
       iconName = 'account-multiple-outline';
-    } else if (route.name === 'Eventos') {
-      iconName = 'calendar-outline';
+    } else if (route.name === 'Bandeja') {
+      iconName = 'message-outline';
+    } else if (route.name === 'Perfil') {
+      iconName = 'account-circle-outline';
     }
     return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
   },
@@ -33,9 +33,9 @@ export default function MainTabs() {
       screenOptions={({ route }) => getScreenOptions(route)}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Miembros" component={MiembrosScreen} />
       <Tab.Screen name="Grupos" component={GruposScreen} />
-      <Tab.Screen name="Eventos" component={EventosScreen} />
+      <Tab.Screen name="Bandeja" component={ComunicacionesScreen} />
+      <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
