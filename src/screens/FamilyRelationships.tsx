@@ -13,6 +13,7 @@ import {
   Switch,
   Image,
   ScrollView,
+  SafeAreaView,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import {
@@ -271,7 +272,7 @@ export default function FamilyRelationshipsScreen() {
 
       {/* Add Relation Modal */}
       <Modal visible={showModal} animationType="slide" onRequestClose={() => setShowModal(false)}>
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Agregar familiar</Text>
             <TouchableOpacity onPress={() => setShowModal(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -332,7 +333,8 @@ export default function FamilyRelationshipsScreen() {
             )}
 
             {/* Tipo de relación */}
-            <Text style={styles.fieldLabel}>Tipo de relación</Text>
+            <View style={styles.sectionDivider} />
+            <Text style={[styles.fieldLabel, { marginTop: 24 }]}>Tipo de relación</Text>
             <View style={styles.tipoGrid}>
               {TIPO_RELACION_OPTIONS.map((opt) => (
                 <TouchableOpacity
@@ -380,8 +382,15 @@ export default function FamilyRelationshipsScreen() {
                 <Text style={styles.saveButtonText}>Guardar</Text>
               )}
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
           </ScrollView>
-        </View>
+        </SafeAreaView>
       </Modal>
     </>
   );
@@ -451,7 +460,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   // Modal
-  modalContainer: { flex: 1, backgroundColor: '#F5F7FA', paddingTop: 16 },
+  modalContainer: { flex: 1, backgroundColor: '#F5F7FA' },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -482,7 +491,7 @@ const styles = StyleSheet.create({
     color: '#222',
     marginHorizontal: 16,
   },
-  memberList: { marginHorizontal: 16, marginTop: 8, maxHeight: 220 },
+  memberList: { marginHorizontal: 16, marginTop: 8, maxHeight: 220, marginBottom: 16 },
   moreResultsHint: { fontSize: 12, color: '#AAA', textAlign: 'center', paddingVertical: 6 },
   memberItem: {
     flexDirection: 'row',
@@ -544,4 +553,26 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   saveButtonText: { color: PANTONE_134C, fontWeight: 'bold', fontSize: 16 },
+  cancelButton: {
+    borderWidth: 1.5,
+    borderColor: '#CCC',
+    borderRadius: 25,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 16,
+    backgroundColor: '#fff',
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  sectionDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#DDD',
+    marginHorizontal: 16,
+    marginTop: 8,
+  },
 });
