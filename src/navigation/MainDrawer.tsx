@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Alert, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { createDrawerNavigator, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { Icon } from 'react-native-paper';
 import { useAuthStore } from '../store/authStore';
 import { useIglesiaStore } from '../store/iglesiaStore';
+import { usePermissionsStore } from '../store/permissionsStore';
 import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 
 // Pantallas principales
@@ -14,9 +15,23 @@ import Config from '../screens/Config';
 
 const Drawer = createDrawerNavigator();
 
-const MENU_ITEMS = [
+type MenuItem = {
+  label: string;
+  icon: string;
+  screen: string;
+  permission?: { module: string; action: string };
+  roles?: string[];
+};
+
+const MENU_ITEMS: MenuItem[] = [
   { label: 'Inicio', icon: 'home-outline', screen: 'Inicio' },
+  { label: 'Membresía', icon: 'account-group-outline', screen: 'Inicio', permission: { module: 'membresia', action: 'ver' } },
+  { label: 'Grupos y Células', icon: 'account-multiple-outline', screen: 'Inicio', permission: { module: 'grupos', action: 'ver' } },
+  { label: 'Finanzas', icon: 'cash-multiple', screen: 'Inicio', permission: { module: 'finanzas', action: 'ver' } },
+  { label: 'Comunicaciones', icon: 'forum-outline', screen: 'Bandeja de Entrada', roles: ['church_admin', 'pastor', 'leader', 'treasurer'] },
   { label: 'Bandeja de Entrada', icon: 'message-outline', screen: 'Bandeja de Entrada' },
+  { label: 'Casos Pastorales', icon: 'heart-outline', screen: 'Inicio', permission: { module: 'pastoral', action: 'ver' } },
+  { label: 'Inventario', icon: 'package-variant', screen: 'Inicio', permission: { module: 'inventario', action: 'ver' } },
   { label: 'Configuración', icon: 'cog-outline', screen: 'Configuración' },
   { label: 'Soporte', icon: 'lifebuoy', screen: 'Soporte' },
 ];
@@ -26,9 +41,29 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const user = useAuthStore((state) => state.user);
   const iglesias = useAuthStore((state) => state.iglesias);
   const iglesiaNombre = useIglesiaStore((state) => state.iglesiaNombre);
+  const iglesiaId = useIglesiaStore((state) => state.iglesiaId);
   const resetIglesia = useIglesiaStore((state) => state.resetIglesia);
+  const isSuperAdmin = usePermissionsStore((s) => s.isSuperAdmin);
+  const isLoading = usePermissionsStore((s) => s.isLoading);
+  const hasPermission = usePermissionsStore((s) => s.hasPermission);
+  const hasAnyRole = usePermissionsStore((s) => s.hasAnyRole);
+  const fetchPermissions = usePermissionsStore((s) => s.fetchPermissions);
   const { navigation, state } = props;
   const activeRoute = state?.routeNames[state?.index];
+
+  useEffect(() => {
+    if (iglesiaId) {
+      fetchPermissions();
+    }
+  }, [iglesiaId, fetchPermissions]);
+
+  const canSeeItem = (item: MenuItem): boolean => {
+    if (isSuperAdmin) return true;
+    if (isLoading) return !item.permission && !item.roles;
+    if (item.roles && item.roles.length > 0 && !hasAnyRole(item.roles)) return false;
+    if (item.permission && !hasPermission(item.permission.module, item.permission.action)) return false;
+    return true;
+  };
 
   const displayName =
     user?.nombre && user?.apellidos
@@ -73,7 +108,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       {/* MENÚ */}
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View style={drawerStyles.menuList}>
-          {MENU_ITEMS.map((item) => (
+          {MENU_ITEMS.filter(canSeeItem).map((item) => (
             <TouchableOpacity
               key={item.label}
               style={[
