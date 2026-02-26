@@ -13,6 +13,7 @@ import {
   Switch,
   Image,
   ScrollView,
+  SafeAreaView,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import {
@@ -56,6 +57,20 @@ const TIPO_RELACION_OPTIONS = [
   { value: 'cunada', label: 'Cuñada' },
   { value: 'otro', label: 'Otro' },
 ];
+
+const TIPOS_MASCULINO = ['esposo', 'padre', 'hijo', 'hermano', 'abuelo', 'nieto', 'tio', 'sobrino', 'primo', 'suegro', 'yerno', 'cunado'];
+const TIPOS_FEMENINO = ['esposa', 'madre', 'hija', 'hermana', 'abuela', 'nieta', 'tia', 'sobrina', 'prima', 'suegra', 'nuera', 'cunada'];
+
+function filtrarRelacionesPorGenero(genero: string | null): typeof TIPO_RELACION_OPTIONS {
+  if (!genero) return TIPO_RELACION_OPTIONS;
+  if (genero === 'M') {
+    return TIPO_RELACION_OPTIONS.filter(opt => TIPOS_MASCULINO.includes(opt.value) || opt.value === 'otro');
+  }
+  if (genero === 'F') {
+    return TIPO_RELACION_OPTIONS.filter(opt => TIPOS_FEMENINO.includes(opt.value) || opt.value === 'otro');
+  }
+  return TIPO_RELACION_OPTIONS;
+}
 
 function getInitials(nombre: string): string {
   return nombre
@@ -225,6 +240,8 @@ export default function FamilyRelationshipsScreen() {
     return fullName.includes(searchQuery.toLowerCase());
   });
 
+  const filteredTipoOptions = filtrarRelacionesPorGenero(selectedMiembro?.genero ?? null);
+
   const totalRelaciones = sections.reduce((acc, s) => acc + s.data.length, 0);
 
   if (loading) {
@@ -271,7 +288,7 @@ export default function FamilyRelationshipsScreen() {
 
       {/* Add Relation Modal */}
       <Modal visible={showModal} animationType="slide" onRequestClose={() => setShowModal(false)}>
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Agregar familiar</Text>
             <TouchableOpacity onPress={() => setShowModal(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -300,7 +317,13 @@ export default function FamilyRelationshipsScreen() {
                       styles.memberItem,
                       selectedMiembro?.id === m.id && styles.memberItemSelected,
                     ]}
-                    onPress={() => setSelectedMiembro(m)}
+                    onPress={() => {
+                      setSelectedMiembro(m);
+                      const newFilteredOptions = filtrarRelacionesPorGenero(m.genero ?? null);
+                      if (tipoRelacion && !newFilteredOptions.some(opt => opt.value === tipoRelacion)) {
+                        setTipoRelacion('');
+                      }
+                    }}
                     activeOpacity={0.75}
                   >
                     <View style={styles.memberAvatar}>
@@ -332,9 +355,13 @@ export default function FamilyRelationshipsScreen() {
             )}
 
             {/* Tipo de relación */}
-            <Text style={styles.fieldLabel}>Tipo de relación</Text>
+            <View style={styles.sectionDivider} />
+            <Text style={[styles.fieldLabel, { marginTop: 24 }]}>Tipo de relación</Text>
+            {!selectedMiembro && (
+              <Text style={styles.hintText}>Selecciona un miembro para ver las opciones de relación disponibles.</Text>
+            )}
             <View style={styles.tipoGrid}>
-              {TIPO_RELACION_OPTIONS.map((opt) => (
+              {filteredTipoOptions.map((opt) => (
                 <TouchableOpacity
                   key={opt.value}
                   style={[
@@ -380,8 +407,15 @@ export default function FamilyRelationshipsScreen() {
                 <Text style={styles.saveButtonText}>Guardar</Text>
               )}
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowModal(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
           </ScrollView>
-        </View>
+        </SafeAreaView>
       </Modal>
     </>
   );
@@ -451,7 +485,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   // Modal
-  modalContainer: { flex: 1, backgroundColor: '#F5F7FA', paddingTop: 16 },
+  modalContainer: { flex: 1, backgroundColor: '#F5F7FA' },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -482,7 +516,7 @@ const styles = StyleSheet.create({
     color: '#222',
     marginHorizontal: 16,
   },
-  memberList: { marginHorizontal: 16, marginTop: 8, maxHeight: 220 },
+  memberList: { marginHorizontal: 16, marginTop: 8, marginBottom: 16 },
   moreResultsHint: { fontSize: 12, color: '#AAA', textAlign: 'center', paddingVertical: 6 },
   memberItem: {
     flexDirection: 'row',
@@ -544,4 +578,33 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   saveButtonText: { color: PANTONE_134C, fontWeight: 'bold', fontSize: 16 },
+  cancelButton: {
+    borderWidth: 1.5,
+    borderColor: '#CCC',
+    borderRadius: 25,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 16,
+    backgroundColor: '#fff',
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  sectionDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#DDD',
+    marginHorizontal: 16,
+    marginTop: 8,
+  },
+  hintText: {
+    color: '#999',
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
 });
