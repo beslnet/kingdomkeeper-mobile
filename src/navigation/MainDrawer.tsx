@@ -9,6 +9,7 @@ import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 
 // Pantallas principales
 import MainTabs from './MainTabs';
+import GruposStack from './GruposStack';
 import Comunicaciones from '../screens/Comunicaciones';
 import Soporte from '../screens/Soporte';
 import Config from '../screens/Config';
@@ -16,6 +17,7 @@ import MembresiaScreen from '../screens/Membresia';
 import FinanzasScreen from '../screens/Finanzas';
 import CasosPastoralesScreen from '../screens/CasosPastorales';
 import InventarioScreen from '../screens/Inventario';
+import InboxScreen from '../screens/Inbox';
 
 const Drawer = createDrawerNavigator();
 
@@ -30,9 +32,9 @@ type MenuItem = {
 const MENU_ITEMS: MenuItem[] = [
   { label: 'Inicio', icon: 'home-outline', screen: 'Inicio' },
   { label: 'Membresía', icon: 'account-group-outline', screen: 'Membresía', permission: { module: 'membresia', action: 'ver' } },
-  { label: 'Grupos y Células', icon: 'account-multiple-outline', screen: 'Inicio', permission: { module: 'grupos', action: 'ver' } },
+  { label: 'Grupos y Células', icon: 'account-multiple-outline', screen: 'GruposCelulas', permission: { module: 'grupos', action: 'ver' } },
   { label: 'Finanzas', icon: 'cash-multiple', screen: 'Finanzas', permission: { module: 'finanzas', action: 'ver' } },
-  { label: 'Comunicaciones', icon: 'forum-outline', screen: 'Bandeja de Entrada', roles: ['church_admin', 'pastor', 'leader', 'treasurer'] },
+  { label: 'Comunicaciones', icon: 'forum-outline', screen: 'Comunicaciones', roles: ['church_admin', 'pastor', 'leader', 'treasurer'] },
   { label: 'Bandeja de Entrada', icon: 'message-outline', screen: 'Bandeja de Entrada' },
   { label: 'Casos Pastorales', icon: 'heart-outline', screen: 'Casos Pastorales', permission: { module: 'pastoral', action: 'ver' } },
   { label: 'Inventario', icon: 'package-variant', screen: 'Inventario', permission: { module: 'inventario', action: 'ver' } },
@@ -235,9 +237,11 @@ export default function MainDrawer() {
       screenOptions={{ headerShown: true }}
     >
       <Drawer.Screen name="Inicio" component={MainTabs} />
+      <Drawer.Screen name="GruposCelulas" component={GruposStack} />
       <Drawer.Screen name="Membresía" component={MembresiaScreen} />
       <Drawer.Screen name="Finanzas" component={FinanzasScreen} />
-      <Drawer.Screen name="Bandeja de Entrada" component={Comunicaciones} />
+      <Drawer.Screen name="Comunicaciones" component={Comunicaciones} />
+      <Drawer.Screen name="Bandeja de Entrada" component={InboxScreen} />
       <Drawer.Screen name="Casos Pastorales" component={CasosPastoralesScreen} />
       <Drawer.Screen name="Inventario" component={InventarioScreen} />
       <Drawer.Screen name="Soporte" component={Soporte} />

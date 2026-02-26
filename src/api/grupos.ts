@@ -59,3 +59,8 @@ export const listarMiembrosIglesia = async (search?: string) => {
   const { data } = await api.get('/api/miembros/', { params: { search, page_size: 50 } });
   return data;
 };
+
+export const listarLideresIglesia = async (search?: string) => {
+  const { data } = await api.get('/api/miembros/', { params: { search, rol: 'leader', page_size: 100 } });
+  return data;
+};
