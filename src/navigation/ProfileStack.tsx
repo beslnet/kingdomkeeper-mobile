@@ -2,6 +2,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import ProfileScreen from '../screens/Profile';
 import ChangePasswordScreen from '../screens/ChangePassword';
+import FamilyRelationshipsScreen from '../screens/FamilyRelationships';
 import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 
 const Stack = createStackNavigator();
@@ -24,6 +25,11 @@ export default function ProfileStack() {
         name="ChangePassword"
         component={ChangePasswordScreen}
         options={{ title: 'Cambiar Contraseña' }}
+      />
+      <Stack.Screen
+        name="FamilyRelationships"
+        component={FamilyRelationshipsScreen}
+        options={{ title: 'Relaciones Familiares' }}
       />
     </Stack.Navigator>
   );
