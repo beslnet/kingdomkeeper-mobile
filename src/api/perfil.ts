@@ -21,6 +21,13 @@ export const updateMyMemberData = async (data: {
   documento_identidad?: string;
   fecha_nacimiento?: string;
   genero?: string;
+  direccion_formateada?: string;
+  pais?: string;
+  ciudad?: string;
+  region?: string;
+  codigo_postal?: string;
+  latitud?: string;
+  longitud?: string;
 }) => {
   const res = await api.patch('/api/perfil/mis-datos/', data);
   return res.data;

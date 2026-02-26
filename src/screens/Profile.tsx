@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,10 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  Modal,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { Icon, Divider } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
@@ -24,6 +27,7 @@ import {
   uploadProfilePhoto,
 } from '../api/perfil';
 import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
+import { GOOGLE_MAPS_API_KEY } from '../config/maps';
 
 const TIPOS_DOCUMENTO = [
   { value: 'rut', label: 'RUT (Chile)' },
@@ -58,10 +62,21 @@ export default function ProfileScreen() {
   const [genero, setGenero] = useState('');
   const [hasMemberData, setHasMemberData] = useState(false);
 
+  // Form state — address
+  const [direccionFormateada, setDireccionFormateada] = useState('');
+  const [pais, setPais] = useState('');
+  const [ciudad, setCiudad] = useState('');
+  const [region, setRegion] = useState('');
+  const [codigoPostal, setCodigoPostal] = useState('');
+  const [latitud, setLatitud] = useState('');
+  const [longitud, setLongitud] = useState('');
+  const placesRef = useRef<any>(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -89,6 +104,13 @@ export default function ProfileScreen() {
         setDocumentoIdentidad(m.documento_identidad ?? '');
         setFechaNacimiento(m.fecha_nacimiento ?? '');
         setGenero(m.genero ?? '');
+        setDireccionFormateada(m.direccion_formateada ?? '');
+        setPais(m.pais ?? '');
+        setCiudad(m.ciudad ?? '');
+        setRegion(m.region ?? '');
+        setCodigoPostal(m.codigo_postal ?? '');
+        setLatitud(m.latitud ?? '');
+        setLongitud(m.longitud ?? '');
         if (m.foto_perfil_url) setFotoUrl(m.foto_perfil_url);
       } else {
         // 404 or other error — no member data
@@ -178,6 +200,13 @@ export default function ProfileScreen() {
             documento_identidad: documentoIdentidad,
             fecha_nacimiento: fechaNacimiento,
             genero,
+            direccion_formateada: direccionFormateada,
+            pais,
+            ciudad,
+            region,
+            codigo_postal: codigoPostal,
+            latitud: latitud || undefined,
+            longitud: longitud || undefined,
           })
         );
       }
@@ -186,8 +215,21 @@ export default function ProfileScreen() {
     } catch (err: any) {
       const data = err?.response?.data;
       if (data && typeof data === 'object') {
-        const messages = Object.values(data).flat().join('\n');
-        Alert.alert('Error al guardar', messages || 'Verifica los datos e intenta de nuevo.');
+        // Traducir mensajes técnicos del backend a mensajes amigables
+        const friendlyMessages = Object.entries(data).flatMap(([field, msgs]) => {
+          const rawMsgs = (Array.isArray(msgs) ? msgs : [msgs]) as string[];
+          return rawMsgs.map((msg) => {
+            if (
+              field === 'documento_identidad' &&
+              tipoDocumento === 'rut' &&
+              /rut|dígito verificador|verificador/i.test(msg)
+            ) {
+              return 'El RUT ingresado no es válido. Revisa que los números ingresados sean correctos.';
+            }
+            return msg;
+          });
+        });
+        Alert.alert('Error al guardar', friendlyMessages.join('\n') || 'Verifica los datos e intenta de nuevo.');
       } else {
         Alert.alert('Error', 'No se pudo guardar el perfil. Verifica tu conexión e intenta de nuevo.');
       }
@@ -307,6 +349,67 @@ export default function ProfileScreen() {
             placeholderTextColor="#aaa"
           />
 
+          <Text style={styles.fieldLabel}>Fecha de Nacimiento</Text>
+          <TouchableOpacity
+            style={styles.datePickerButton}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={fechaNacimiento ? styles.datePickerText : styles.datePickerPlaceholder}>
+              {fechaNacimiento
+                ? (() => {
+                    const [y, m, d] = fechaNacimiento.split('-');
+                    return `${d}/${m}/${y}`;
+                  })()
+                : 'Selecciona tu fecha de nacimiento'}
+            </Text>
+          </TouchableOpacity>
+          {showDatePicker && (
+            Platform.OS === 'ios' ? (
+              <Modal transparent animationType="slide" visible={showDatePicker}>
+                <View style={styles.dateModalOverlay}>
+                  <View style={styles.dateModalContent}>
+                    <View style={styles.dateModalHeader}>
+                      <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                        <Text style={styles.dateModalDone}>Listo</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={fechaNacimiento ? new Date(fechaNacimiento) : new Date(1990, 0, 1)}
+                      mode="date"
+                      display="spinner"
+                      maximumDate={new Date()}
+                      locale="es-CL"
+                      onChange={(_event, date) => {
+                        if (date) {
+                          const y = date.getFullYear();
+                          const m = String(date.getMonth() + 1).padStart(2, '0');
+                          const d = String(date.getDate()).padStart(2, '0');
+                          setFechaNacimiento(`${y}-${m}-${d}`);
+                        }
+                      }}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            ) : (
+              <DateTimePicker
+                value={fechaNacimiento ? new Date(fechaNacimiento) : new Date(1990, 0, 1)}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                onChange={(_event, date) => {
+                  setShowDatePicker(false);
+                  if (date) {
+                    const y = date.getFullYear();
+                    const m = String(date.getMonth() + 1).padStart(2, '0');
+                    const d = String(date.getDate()).padStart(2, '0');
+                    setFechaNacimiento(`${y}-${m}-${d}`);
+                  }
+                }}
+              />
+            )
+          )}
+
           <Text style={styles.fieldLabel}>Tipo de Documento</Text>
           <View style={styles.pickerContainer}>
             {TIPOS_DOCUMENTO.map((tipo) => (
@@ -338,16 +441,9 @@ export default function ProfileScreen() {
             placeholder="Número de documento"
             placeholderTextColor="#aaa"
           />
-
-          <Text style={styles.fieldLabel}>Fecha de Nacimiento (AAAA-MM-DD)</Text>
-          <TextInput
-            style={styles.textInput}
-            value={fechaNacimiento}
-            onChangeText={setFechaNacimiento}
-            placeholder="Ej: 1990-01-15"
-            placeholderTextColor="#aaa"
-            keyboardType="numbers-and-punctuation"
-          />
+          {tipoDocumento === 'rut' && (
+            <Text style={styles.fieldHint}>Formato: 12.345.678-9 (con o sin puntos, con guión y dígito verificador)</Text>
+          )}
 
           <Text style={styles.fieldLabel}>Sexo</Text>
           <View style={styles.pickerContainer}>
@@ -371,6 +467,81 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+      )}
+
+      {/* Sección 4: Dirección */}
+      {hasMemberData && (
+        <View style={[styles.section, { zIndex: 10 }]}>
+          <Text style={styles.sectionTitle}>DIRECCIÓN</Text>
+          <Divider style={styles.divider} />
+
+          {direccionFormateada ? (
+            <View style={styles.addressDisplay}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addressText}>{direccionFormateada}</Text>
+                {pais ? <Text style={styles.addressMeta}>{[ciudad, region, pais].filter(Boolean).join(', ')}</Text> : null}
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setDireccionFormateada('');
+                  setPais(''); setCiudad(''); setRegion('');
+                  setCodigoPostal(''); setLatitud(''); setLongitud('');
+                  setTimeout(() => placesRef.current?.focus(), 100);
+                }}
+              >
+                <Text style={styles.addressChangeLink}>Cambiar</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {!direccionFormateada && (
+            <>
+              <Text style={styles.fieldLabel}>Buscar dirección</Text>
+              <GooglePlacesAutocomplete
+                ref={placesRef}
+                placeholder="Escribe tu dirección..."
+                onPress={(data, details = null) => {
+                  const components = details?.address_components ?? [];
+                  const get = (type: string) =>
+                    components.find((c: any) => c.types.includes(type))?.long_name ?? '';
+                  setDireccionFormateada(data.description);
+                  setPais(get('country'));
+                  setCiudad(get('locality') || get('administrative_area_level_2'));
+                  setRegion(get('administrative_area_level_1'));
+                  setCodigoPostal(get('postal_code'));
+                  if (details?.geometry?.location) {
+                    setLatitud(parseFloat(details.geometry.location.lat.toFixed(6)).toString());
+                    setLongitud(parseFloat(details.geometry.location.lng.toFixed(6)).toString());
+                  }
+                }}
+                query={{ key: GOOGLE_MAPS_API_KEY, language: 'es' }}
+                fetchDetails={true}
+                enablePoweredByContainer={false}
+                styles={{
+                  textInput: {
+                    backgroundColor: '#F5F7FA',
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: '#DDD',
+                    paddingHorizontal: 12,
+                    fontSize: 15,
+                    color: '#222',
+                    height: 44,
+                  },
+                  row: { backgroundColor: '#fff', paddingVertical: 10, paddingHorizontal: 12 },
+                  description: { fontSize: 14, color: '#333' },
+                  listView: {
+                    borderWidth: 1,
+                    borderColor: '#DDD',
+                    borderRadius: 8,
+                    marginTop: 2,
+                  },
+                }}
+                textInputProps={{ placeholderTextColor: '#aaa' }}
+              />
+            </>
+          )}
         </View>
       )}
 
@@ -492,6 +663,48 @@ const styles = StyleSheet.create({
     color: '#222',
   },
   textInputDisabled: { color: '#999', backgroundColor: '#EFEFEF' },
+  datePickerButton: {
+    backgroundColor: '#F5F7FA',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDD',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  datePickerText: { fontSize: 15, color: '#222' },
+  datePickerPlaceholder: { fontSize: 15, color: '#aaa' },
+  dateModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  dateModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 24,
+  },
+  dateModalHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    alignItems: 'flex-end',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  dateModalDone: { color: PANTONE_295C, fontWeight: '700', fontSize: 16 },
+  addressDisplay: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#F5F7FA',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDD',
+    padding: 12,
+    gap: 8,
+  },
+  addressText: { fontSize: 14, color: '#222', flexShrink: 1 },
+  addressMeta: { fontSize: 12, color: '#888', marginTop: 2 },
+  addressChangeLink: { color: PANTONE_295C, fontWeight: '600', fontSize: 13, paddingTop: 2 },
   pickerContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   pickerOption: {
     borderWidth: 1,
