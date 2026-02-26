@@ -241,6 +241,7 @@ export default function FamilyRelationshipsScreen() {
         sections={sections}
         keyExtractor={(item, index) => String(item.id ?? index)}
         style={styles.list}
+        nestedScrollEnabled={true}
         contentContainerStyle={totalRelaciones === 0 ? styles.emptyContainer : { paddingBottom: 80 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[PANTONE_295C]} />
