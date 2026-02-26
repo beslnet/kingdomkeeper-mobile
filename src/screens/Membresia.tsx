@@ -4,15 +4,15 @@ import { Icon } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 
-export default function FinanzasScreen() {
+export default function MembresiaScreen() {
   const navigation = useNavigation<any>();
   return (
     <View style={styles.container}>
-      <Icon source="cash-multiple" size={72} color={PANTONE_295C} />
-      <Text style={styles.title}>Módulo de Finanzas</Text>
+      <Icon source="account-group-outline" size={72} color={PANTONE_295C} />
+      <Text style={styles.title}>Módulo de Membresía</Text>
       <Text style={styles.subtitle}>Próximamente en tu app móvil</Text>
       <Text style={styles.description}>
-        Gestión financiera de tu iglesia. Controla ingresos, egresos, presupuestos y rendiciones de cuentas.
+        Gestión de miembros, perfiles y seguimiento. Accede a la información completa de cada miembro de tu iglesia.
       </Text>
       <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Inicio')}>
         <Text style={styles.buttonText}>Ir al Dashboard</Text>
