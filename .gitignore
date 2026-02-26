@@ -73,3 +73,6 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Google Maps config (contains API key - never commit)
+src/config/maps.ts
