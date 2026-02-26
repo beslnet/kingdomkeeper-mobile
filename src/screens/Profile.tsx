@@ -562,6 +562,15 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.changePasswordLink}
+          onPress={() => navigation.navigate('FamilyRelationships')}
+          activeOpacity={0.7}
+        >
+          <Icon source="account-group-outline" size={18} color={PANTONE_295C} />
+          <Text style={styles.changePasswordText}>Relaciones Familiares</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.changePasswordLink}
           onPress={() => navigation.navigate('ChangePassword')}
           activeOpacity={0.7}
         >
