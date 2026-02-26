@@ -46,6 +46,8 @@ export const useAuthStore = create<AuthState>()(
         await AsyncStorage.removeItem('refresh_token');
         const { useIglesiaStore } = await import('./iglesiaStore');
         useIglesiaStore.getState().resetIglesia();
+        const { usePermissionsStore } = await import('./permissionsStore');
+        usePermissionsStore.getState().reset();
         set({ isLoggedIn: false, user: null, iglesias: [] });
       },
 

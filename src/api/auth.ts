@@ -16,7 +16,7 @@ export const getMisIglesias = async () => {
 };
 
 export const getMisPermisos = async () => {
-  const res = await api.get('/api/core/usuarios/mis-permisos/');
+  const res = await api.get('/api/auth/mis-permisos/');
   return res.data;
 };
 
