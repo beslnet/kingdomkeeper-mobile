@@ -57,6 +57,17 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { navigation, state } = props;
   const activeRoute = state?.routeNames[state?.index];
 
+  // Para items con nestedTab (ej: Inicio→Dashboard, Inicio→Bandeja),
+  // necesitamos saber cuál tab está activo dentro de MainTabs
+  const inicioRoute = state?.routes?.find(r => r.name === 'Inicio');
+  const activeNestedTab = inicioRoute?.state?.routes?.[inicioRoute?.state?.index ?? 0]?.name;
+
+  const isItemActive = (item: MenuItem): boolean => {
+    if (item.nestedTab) {
+      return activeRoute === item.screen && activeNestedTab === item.nestedTab;
+    }
+    return activeRoute === item.screen;
+  };
   useEffect(() => {
     if (iglesiaId) {
       fetchPermissions();
@@ -119,7 +130,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
               key={item.label}
               style={[
                 drawerStyles.menuItem,
-                activeRoute === item.screen && drawerStyles.menuItemActive,
+                isItemActive(item) && drawerStyles.menuItemActive,
               ]}
               onPress={() => {
                 if (item.nestedTab) {
@@ -134,13 +145,13 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
                 <Icon
                   source={item.icon}
                   size={24}
-                  color={activeRoute === item.screen ? PANTONE_295C : '#555'}
+                  color={isItemActive(item) ? PANTONE_295C : '#555'}
                 />
               </View>
               <Text
                 style={[
                   drawerStyles.menuLabel,
-                  activeRoute === item.screen && drawerStyles.menuLabelActive,
+                  isItemActive(item) && drawerStyles.menuLabelActive,
                 ]}
               >
                 {item.label}
