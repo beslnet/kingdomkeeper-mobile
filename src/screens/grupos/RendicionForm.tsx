@@ -174,7 +174,7 @@ export default function RendicionForm() {
 
           {/* Fecha */}
           <Text style={styles.label}>Fecha *</Text>
-          <TouchableOpacity style={styles.input} onPress={() => setShowFechaPicker(true)}>
+          <TouchableOpacity style={styles.input} onPress={() => setShowFechaPicker(prev => !prev)}>
             <Text style={styles.inputText}>{fecha.toLocaleDateString('es-CL')}</Text>
             <Icon source="calendar" size={18} color={PANTONE_295C} />
           </TouchableOpacity>
@@ -182,8 +182,11 @@ export default function RendicionForm() {
             <DateTimePicker
               value={fecha}
               mode="date"
-              display="default"
-              onChange={(_, d) => { setShowFechaPicker(false); if (d) setFecha(d); }}
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              onChange={(_, d) => {
+                setShowFechaPicker(Platform.OS === 'ios');
+                if (d) setFecha(d);
+              }}
             />
           )}
 

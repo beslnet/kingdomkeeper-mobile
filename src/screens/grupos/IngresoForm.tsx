@@ -40,8 +40,7 @@ export default function IngresoForm() {
   const [showFechaPicker, setShowFechaPicker] = useState(false);
   const [monto, setMonto] = useState<string>('');
   const [medio, setMedio] = useState<string>('efectivo');
-  const [descripcion, setDescripcion] = useState<string>('');
-  const [notas, setNotas] = useState<string>('');
+  const [observaciones, setObservaciones] = useState<string>('');
   const [archivo, setArchivo] = useState<{ uri: string; type: string; name: string } | null>(null);
 
   const [saving, setSaving] = useState(false);
@@ -103,7 +102,7 @@ export default function IngresoForm() {
     if (!categoriaId) { Alert.alert('Error', 'Selecciona una categoría.'); return; }
     const montoNum = parseFloat(monto.replace(',', '.'));
     if (!monto || isNaN(montoNum) || montoNum <= 0) { Alert.alert('Error', 'Ingresa un monto válido.'); return; }
-    if (!descripcion.trim()) { Alert.alert('Error', 'Ingresa una descripción.'); return; }
+    if (!observaciones.trim()) { Alert.alert('Error', 'Ingresa una descripción / observaciones.'); return; }
 
     try {
       setSaving(true);
@@ -113,8 +112,7 @@ export default function IngresoForm() {
         fecha: fecha.toISOString().split('T')[0],
         monto: montoNum,
         medio,
-        descripcion: descripcion.trim(),
-        notas: notas.trim() || undefined,
+        observaciones: observaciones.trim(),
         grupo_id: grupoId,
         _file: archivo,
       });
@@ -125,7 +123,7 @@ export default function IngresoForm() {
     } finally {
       setSaving(false);
     }
-  }, [categoriaId, fecha, monto, medio, descripcion, notas, archivo, grupoId, navigation]);
+  }, [categoriaId, fecha, monto, medio, observaciones, archivo, grupoId, navigation]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -152,7 +150,7 @@ export default function IngresoForm() {
 
           {/* Fecha */}
           <Text style={styles.label}>Fecha *</Text>
-          <TouchableOpacity style={styles.input} onPress={() => setShowFechaPicker(true)}>
+          <TouchableOpacity style={styles.input} onPress={() => setShowFechaPicker(prev => !prev)}>
             <Text style={styles.inputText}>{fecha.toLocaleDateString('es-CL')}</Text>
             <Icon source="calendar" size={18} color={PANTONE_295C} />
           </TouchableOpacity>
@@ -160,8 +158,11 @@ export default function IngresoForm() {
             <DateTimePicker
               value={fecha}
               mode="date"
-              display="default"
-              onChange={(_, d) => { setShowFechaPicker(false); if (d) setFecha(d); }}
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              onChange={(_, d) => {
+                setShowFechaPicker(Platform.OS === 'ios');
+                if (d) setFecha(d);
+              }}
             />
           )}
 
@@ -189,22 +190,13 @@ export default function IngresoForm() {
             ))}
           </View>
 
-          {/* Descripción */}
-          <Text style={styles.label}>Descripción *</Text>
-          <TextInput
-            style={styles.textInput}
-            value={descripcion}
-            onChangeText={setDescripcion}
-            placeholder="Concepto del ingreso..."
-          />
-
-          {/* Notas */}
-          <Text style={styles.label}>Notas</Text>
+          {/* Observaciones */}
+          <Text style={styles.label}>Observaciones *</Text>
           <TextInput
             style={[styles.textInput, styles.textArea]}
-            value={notas}
-            onChangeText={setNotas}
-            placeholder="Información adicional..."
+            value={observaciones}
+            onChangeText={setObservaciones}
+            placeholder="Concepto o detalle del ingreso..."
             multiline
             numberOfLines={3}
           />
