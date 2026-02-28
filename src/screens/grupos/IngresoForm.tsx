@@ -14,6 +14,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Icon } from 'react-native-paper';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import { pickSingle, types as DocTypes } from 'react-native-document-picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PANTONE_295C } from '../../theme/colors';
@@ -59,8 +60,8 @@ export default function IngresoForm() {
 
   useEffect(() => { loadCategorias(); }, [loadCategorias]);
 
-  const pickImage = useCallback(() => {
-    Alert.alert('Comprobante', 'Seleccionar desde:', [
+  const pickFile = useCallback(() => {
+    Alert.alert('Adjuntar comprobante', 'Seleccionar desde:', [
       {
         text: 'Cámara',
         onPress: () =>
@@ -72,7 +73,7 @@ export default function IngresoForm() {
           }),
       },
       {
-        text: 'Galería',
+        text: 'Galería de fotos',
         onPress: () =>
           launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, (res) => {
             if (!res.didCancel && res.assets?.[0]) {
@@ -80,6 +81,19 @@ export default function IngresoForm() {
               setArchivo({ uri: a.uri!, type: a.type ?? 'image/jpeg', name: a.fileName ?? 'comprobante.jpg' });
             }
           }),
+      },
+      {
+        text: 'Documento (PDF u otro)',
+        onPress: async () => {
+          try {
+            const doc = await pickSingle({ type: [DocTypes.pdf, DocTypes.doc, DocTypes.docx, DocTypes.images] });
+            setArchivo({ uri: doc.uri, type: doc.type ?? 'application/pdf', name: doc.name ?? 'documento' });
+          } catch (e: any) {
+            if (!e?.message?.includes('cancelled')) {
+              Alert.alert('Error', 'No se pudo seleccionar el archivo.');
+            }
+          }
+        },
       },
       { text: 'Cancelar', style: 'cancel' },
     ]);
@@ -197,7 +211,7 @@ export default function IngresoForm() {
 
           {/* Comprobante */}
           <Text style={styles.label}>Comprobante</Text>
-          <TouchableOpacity style={styles.fileBtn} onPress={pickImage}>
+          <TouchableOpacity style={styles.fileBtn} onPress={pickFile}>
             <Icon source={archivo ? 'paperclip-check' : 'paperclip'} size={18} color={PANTONE_295C} />
             <Text style={styles.fileBtnText}>
               {archivo ? archivo.name : 'Adjuntar foto o documento'}

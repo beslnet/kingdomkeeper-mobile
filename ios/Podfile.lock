@@ -1648,6 +1648,35 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - SocketRocket
+  - react-native-document-picker (9.3.1):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
   - react-native-image-picker (8.2.1):
     - boost
     - DoubleConversion
@@ -2644,6 +2673,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
+  - react-native-document-picker (from `../node_modules/react-native-document-picker`)
   - react-native-image-picker (from `../node_modules/react-native-image-picker`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
@@ -2773,6 +2803,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-document-picker:
+    :path: "../node_modules/react-native-document-picker"
   react-native-image-picker:
     :path: "../node_modules/react-native-image-picker"
   react-native-safe-area-context:
@@ -2897,6 +2929,7 @@ SPEC CHECKSUMS:
   React-logger: 7cfc7b1ae1f8e5fe5097f9c746137cc3a8fad4ce
   React-Mapbuffer: 7018c5b7da5b13ed22fe55dae51d50187a00b2d7
   React-microtasksnativemodule: 8ff9cb220a8efa625b5885996bd69e69db9edf02
+  react-native-document-picker: 9d0f7bd58047d7a5406adea274e315da2c65838d
   react-native-image-picker: e9d833df19e87e25e38ddc0be3bad92f57307765
   react-native-safe-area-context: b84e3cefd1ec3d38aa1d8bfbc2a15400ffe05181
   React-NativeModulesApple: 37c08c3c54db55854de816b0df0f3683832be35a
