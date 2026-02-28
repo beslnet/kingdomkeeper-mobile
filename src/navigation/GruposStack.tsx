@@ -4,6 +4,7 @@ import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 
 import GruposListScreen from '../screens/grupos/GruposList';
 import GrupoDetailScreen from '../screens/grupos/GrupoDetail';
+import GrupoFormScreen from '../screens/grupos/GrupoForm';
 import GrupoMiembrosScreen from '../screens/grupos/GrupoMiembros';
 import GrupoLiderazgoScreen from '../screens/grupos/GrupoLiderazgo';
 import GrupoEventosScreen from '../screens/grupos/GrupoEventos';
@@ -26,6 +27,11 @@ export default function GruposStack() {
         name="GrupoDetail"
         component={GrupoDetailScreen}
         options={({ route }: { route: any }) => ({ title: route.params?.nombre || 'Grupo' })}
+      />
+      <Stack.Screen
+        name="GrupoForm"
+        component={GrupoFormScreen}
+        options={({ route }: { route: any }) => ({ title: route.params?.grupo ? 'Editar Grupo' : 'Nuevo Grupo' })}
       />
       <Stack.Screen name="GrupoMiembros" component={GrupoMiembrosScreen} options={{ title: 'Miembros' }} />
       <Stack.Screen name="GrupoLiderazgo" component={GrupoLiderazgoScreen} options={{ title: 'Liderazgo' }} />

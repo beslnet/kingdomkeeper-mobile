@@ -7,11 +7,13 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { usePermissionsStore } from '../../store/permissionsStore';
-import { obtenerGrupo } from '../../api/grupos';
+import { useAuthStore } from '../../store/authStore';
+import { obtenerGrupo, eliminarGrupo } from '../../api/grupos';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
 
 type SectionItem = {
@@ -60,6 +62,7 @@ export default function GrupoDetailScreen() {
   const hasPermission = usePermissionsStore((s) => s.hasPermission);
   const hasAnyRole = usePermissionsStore((s) => s.hasAnyRole);
   const isSuperAdmin = usePermissionsStore((s) => s.isSuperAdmin);
+  const user = useAuthStore((s) => s.user);
 
   const [grupo, setGrupo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -106,6 +109,42 @@ export default function GrupoDetailScreen() {
   }
 
   const grupoNombre = grupo?.nombre ?? nombre ?? 'Grupo';
+
+  // puedeGestionar: replicates web frontend logic (ListadoGrupos.jsx)
+  const miembroId = user?.miembro_id;
+  const esLiderPrincipal = miembroId && grupo && Number(miembroId) === Number(grupo.lider_id);
+  const esCoLider = miembroId && grupo?.miembros?.some(
+    (m: any) => Number(m.miembro_id) === Number(miembroId) && m.rol_en_grupo === 'co_leader'
+  );
+  const puedeGestionar = isSuperAdmin || hasAnyRole(['church_admin']) || esLiderPrincipal || esCoLider;
+  const puedeEliminar = isSuperAdmin || hasAnyRole(['church_admin']) || hasPermission('grupos', 'eliminar');
+
+  const handleEdit = () => {
+    navigation.navigate('GrupoForm', { grupo });
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Eliminar grupo',
+      `¿Estás seguro de que deseas eliminar "${grupoNombre}"? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await eliminarGrupo(id);
+              navigation.navigate('GruposList', { refresh: Date.now() });
+            } catch (err: any) {
+              const msg = err?.response?.data?.detail ?? 'No se pudo eliminar el grupo.';
+              Alert.alert('Error', msg);
+            }
+          },
+        },
+      ]
+    );
+  };
   const canSeeFinanzas =
     isSuperAdmin ||
     hasPermission('finanzas', 'ver') ||
@@ -160,6 +199,24 @@ export default function GrupoDetailScreen() {
             </View>
           ) : null}
         </View>
+
+        {/* Actions */}
+        {(puedeGestionar || puedeEliminar) ? (
+          <View style={styles.actionsRow}>
+            {puedeGestionar ? (
+              <TouchableOpacity style={styles.actionBtn} onPress={handleEdit} activeOpacity={0.8}>
+                <Icon source="pencil-outline" size={16} color={PANTONE_295C} />
+                <Text style={styles.actionBtnText}>Editar</Text>
+              </TouchableOpacity>
+            ) : null}
+            {puedeEliminar ? (
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={handleDelete} activeOpacity={0.8}>
+                <Icon source="trash-can-outline" size={16} color="#E53935" />
+                <Text style={styles.actionBtnTextDanger}>Eliminar</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
       </View>
 
       {/* Section menu */}
@@ -223,6 +280,29 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metaLabel: { fontSize: 13, color: '#666', fontWeight: '500' },
   metaValue: { fontSize: 13, color: '#333' },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: PANTONE_295C,
+    borderRadius: 20,
+    paddingVertical: 9,
+    backgroundColor: '#fff',
+  },
+  actionBtnText: { fontSize: 14, color: PANTONE_295C, fontWeight: '600' },
+  actionBtnDanger: { borderColor: '#E53935' },
+  actionBtnTextDanger: { fontSize: 14, color: '#E53935', fontWeight: '600' },
   sectionMenu: {
     backgroundColor: '#fff',
     marginHorizontal: 16,

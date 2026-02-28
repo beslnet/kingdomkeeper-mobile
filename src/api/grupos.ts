@@ -64,3 +64,17 @@ export const listarLideresIglesia = async (search?: string) => {
   const { data } = await api.get('/api/miembros/', { params: { search, rol: 'leader', page_size: 100 } });
   return data;
 };
+
+export const crearGrupo = async (data: Record<string, any>) => {
+  const { data: result } = await api.post('/api/grupos/', data);
+  return result;
+};
+
+export const actualizarGrupo = async (id: number, data: Record<string, any>) => {
+  const { data: result } = await api.patch(`/api/grupos/${id}/`, data);
+  return result;
+};
+
+export const eliminarGrupo = async (id: number) => {
+  await api.delete(`/api/grupos/${id}/`);
+};

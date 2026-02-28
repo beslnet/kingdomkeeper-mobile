@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { usePermissionsStore } from '../../store/permissionsStore';
 import { listarGrupos } from '../../api/grupos';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
@@ -91,6 +91,13 @@ export default function GruposListScreen() {
     load(searchQuery).finally(() => setLoading(false));
   }, [load, searchQuery]);
 
+  // Reload when navigating back from GrupoForm
+  useFocusEffect(
+    useCallback(() => {
+      load(searchQuery);
+    }, [load, searchQuery])
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await load(searchQuery);
@@ -168,7 +175,7 @@ export default function GruposListScreen() {
       {canCreate && (
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => Alert.alert('Próximamente', 'La creación de grupos estará disponible en una próxima actualización.')}
+          onPress={() => navigation.navigate('GrupoForm')}
           activeOpacity={0.85}
         >
           <Icon source="plus" size={28} color="#fff" />
