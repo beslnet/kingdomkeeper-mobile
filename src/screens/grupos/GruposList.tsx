@@ -170,6 +170,16 @@ export default function GruposListScreen() {
             <Text style={styles.emptyText}>No hay grupos disponibles</Text>
           </View>
         }
+        ListFooterComponent={
+          <TouchableOpacity
+            style={styles.archivedLink}
+            onPress={() => navigation.navigate('GruposArchivados')}
+            activeOpacity={0.7}
+          >
+            <Icon source="archive-outline" size={16} color="#78909C" />
+            <Text style={styles.archivedLinkText}>Ver grupos archivados</Text>
+          </TouchableOpacity>
+        }
       />
 
       {canCreate && (
@@ -249,4 +259,13 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 6,
   },
+  archivedLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 16,
+    paddingBottom: 100,
+  },
+  archivedLinkText: { fontSize: 13, color: '#78909C' },
 });

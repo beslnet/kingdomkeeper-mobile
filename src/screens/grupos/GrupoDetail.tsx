@@ -13,7 +13,7 @@ import { Icon } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { usePermissionsStore } from '../../store/permissionsStore';
 import { useAuthStore } from '../../store/authStore';
-import { obtenerGrupo, eliminarGrupo } from '../../api/grupos';
+import { obtenerGrupo, eliminarGrupo, archivarGrupo, restaurarGrupo } from '../../api/grupos';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
 
 type SectionItem = {
@@ -118,6 +118,8 @@ export default function GrupoDetailScreen() {
   );
   const puedeGestionar = isSuperAdmin || hasAnyRole(['church_admin']) || esLiderPrincipal || esCoLider;
   const puedeEliminar = isSuperAdmin || hasAnyRole(['church_admin']) || hasPermission('grupos', 'eliminar');
+  const estaArchivado = grupo?.estado === 'archivado';
+  const tieneRegistros = grupo?.tiene_registros === true;
 
   const handleEdit = () => {
     navigation.navigate('GrupoForm', { grupo });
@@ -137,7 +139,52 @@ export default function GrupoDetailScreen() {
               await eliminarGrupo(id);
               navigation.navigate('GruposList', { refresh: Date.now() });
             } catch (err: any) {
-              const msg = err?.response?.data?.detail ?? 'No se pudo eliminar el grupo.';
+              const msg = err?.response?.data?.detail ?? err?.response?.data?.error ?? 'No se pudo eliminar el grupo.';
+              Alert.alert('Error', msg);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleArchivar = () => {
+    Alert.alert(
+      'Archivar grupo',
+      `El grupo "${grupoNombre}" tiene miembros o registros asociados.\n\nArchivarlo lo ocultará del listado principal, pero sus datos se conservarán y podrás restaurarlo cuando quieras.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Archivar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await archivarGrupo(id);
+              navigation.navigate('GruposList', { refresh: Date.now() });
+            } catch (err: any) {
+              const msg = err?.response?.data?.error ?? 'No se pudo archivar el grupo.';
+              Alert.alert('Error', msg);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRestaurar = () => {
+    Alert.alert(
+      'Restaurar grupo',
+      `¿Deseas restaurar "${grupoNombre}"? Volverá a aparecer en el listado principal con estado activo.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Restaurar',
+          onPress: async () => {
+            try {
+              await restaurarGrupo(id);
+              navigation.navigate('GruposList', { refresh: Date.now() });
+            } catch (err: any) {
+              const msg = err?.response?.data?.error ?? 'No se pudo restaurar el grupo.';
               Alert.alert('Error', msg);
             }
           },
@@ -203,17 +250,30 @@ export default function GrupoDetailScreen() {
         {/* Actions */}
         {(puedeGestionar || puedeEliminar) ? (
           <View style={styles.actionsRow}>
-            {puedeGestionar ? (
+            {puedeGestionar && !estaArchivado ? (
               <TouchableOpacity style={styles.actionBtn} onPress={handleEdit} activeOpacity={0.8}>
                 <Icon source="pencil-outline" size={16} color={PANTONE_295C} />
                 <Text style={styles.actionBtnText}>Editar</Text>
               </TouchableOpacity>
             ) : null}
-            {puedeEliminar ? (
-              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={handleDelete} activeOpacity={0.8}>
-                <Icon source="trash-can-outline" size={16} color="#E53935" />
-                <Text style={styles.actionBtnTextDanger}>Eliminar</Text>
+            {puedeEliminar && estaArchivado ? (
+              <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSuccess]} onPress={handleRestaurar} activeOpacity={0.8}>
+                <Icon source="restore" size={16} color="#2E7D32" />
+                <Text style={styles.actionBtnTextSuccess}>Restaurar</Text>
               </TouchableOpacity>
+            ) : null}
+            {puedeEliminar && !estaArchivado ? (
+              tieneRegistros ? (
+                <TouchableOpacity style={[styles.actionBtn, styles.actionBtnWarning]} onPress={handleArchivar} activeOpacity={0.8}>
+                  <Icon source="archive-arrow-down-outline" size={16} color="#E65100" />
+                  <Text style={styles.actionBtnTextWarning}>Archivar</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger]} onPress={handleDelete} activeOpacity={0.8}>
+                  <Icon source="trash-can-outline" size={16} color="#E53935" />
+                  <Text style={styles.actionBtnTextDanger}>Eliminar</Text>
+                </TouchableOpacity>
+              )
             ) : null}
           </View>
         ) : null}
@@ -234,6 +294,7 @@ function getEstadoStyle(estado: string) {
     case 'activo': return { backgroundColor: '#E8F5E9' };
     case 'inactivo': return { backgroundColor: '#F5F5F5' };
     case 'suspendido': return { backgroundColor: '#FFF3E0' };
+    case 'archivado': return { backgroundColor: '#ECEFF1' };
     default: return { backgroundColor: '#E3F2FD' };
   }
 }
@@ -243,6 +304,7 @@ function getEstadoTextStyle(estado: string) {
     case 'activo': return { color: '#2E7D32' };
     case 'inactivo': return { color: '#757575' };
     case 'suspendido': return { color: '#E65100' };
+    case 'archivado': return { color: '#546E7A' };
     default: return { color: '#1565C0' };
   }
 }
@@ -303,6 +365,10 @@ const styles = StyleSheet.create({
   actionBtnText: { fontSize: 14, color: PANTONE_295C, fontWeight: '600' },
   actionBtnDanger: { borderColor: '#E53935' },
   actionBtnTextDanger: { fontSize: 14, color: '#E53935', fontWeight: '600' },
+  actionBtnWarning: { borderColor: '#E65100' },
+  actionBtnTextWarning: { fontSize: 14, color: '#E65100', fontWeight: '600' },
+  actionBtnSuccess: { borderColor: '#2E7D32' },
+  actionBtnTextSuccess: { fontSize: 14, color: '#2E7D32', fontWeight: '600' },
   sectionMenu: {
     backgroundColor: '#fff',
     marginHorizontal: 16,

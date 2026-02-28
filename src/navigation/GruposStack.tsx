@@ -17,6 +17,7 @@ import TransaccionDetailScreen from '../screens/grupos/TransaccionDetail';
 import RendicionFormScreen from '../screens/grupos/RendicionForm';
 import IngresoFormScreen from '../screens/grupos/IngresoForm';
 import GrupoRecursosScreen from '../screens/grupos/GrupoRecursos';
+import GruposArchivadosScreen from '../screens/grupos/GruposArchivados';
 
 const Stack = createStackNavigator();
 
@@ -74,6 +75,7 @@ export default function GruposStack() {
         })}
       />
       <Stack.Screen name="IngresoForm" component={IngresoFormScreen} options={{ title: 'Registrar Ingreso' }} />
+      <Stack.Screen name="GruposArchivados" component={GruposArchivadosScreen} options={{ title: 'Grupos Archivados' }} />
     </Stack.Navigator>
   );
 }

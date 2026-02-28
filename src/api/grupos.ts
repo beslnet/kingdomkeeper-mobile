@@ -78,3 +78,18 @@ export const actualizarGrupo = async (id: number, data: Record<string, any>) => 
 export const eliminarGrupo = async (id: number) => {
   await api.delete(`/api/grupos/${id}/`);
 };
+
+export const archivarGrupo = async (id: number) => {
+  const { data } = await api.post(`/api/grupos/${id}/archivar/`);
+  return data;
+};
+
+export const restaurarGrupo = async (id: number) => {
+  const { data } = await api.post(`/api/grupos/${id}/restaurar/`);
+  return data;
+};
+
+export const listarGruposArchivados = async () => {
+  const { data } = await api.get('/api/grupos/', { params: { solo_archivados: 'true' } });
+  return data;
+};
