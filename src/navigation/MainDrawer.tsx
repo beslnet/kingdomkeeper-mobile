@@ -17,7 +17,6 @@ import MembresiaScreen from '../screens/Membresia';
 import FinanzasScreen from '../screens/Finanzas';
 import CasosPastoralesScreen from '../screens/CasosPastorales';
 import InventarioScreen from '../screens/Inventario';
-import InboxScreen from '../screens/Inbox';
 
 const Drawer = createDrawerNavigator();
 
@@ -25,6 +24,7 @@ type MenuItem = {
   label: string;
   icon: string;
   screen: string;
+  nestedTab?: string;
   permission?: { module: string; action: string };
   roles?: string[];
 };
@@ -35,7 +35,7 @@ const MENU_ITEMS: MenuItem[] = [
   { label: 'Grupos y Células', icon: 'account-multiple-outline', screen: 'GruposCelulas', permission: { module: 'grupos', action: 'ver' } },
   { label: 'Finanzas', icon: 'cash-multiple', screen: 'Finanzas', permission: { module: 'finanzas', action: 'ver' } },
   { label: 'Comunicaciones', icon: 'forum-outline', screen: 'Comunicaciones', roles: ['church_admin', 'pastor', 'leader', 'treasurer'] },
-  { label: 'Bandeja de Entrada', icon: 'message-outline', screen: 'Bandeja de Entrada' },
+  { label: 'Bandeja de Entrada', icon: 'message-outline', screen: 'Inicio', nestedTab: 'Bandeja' },
   { label: 'Casos Pastorales', icon: 'heart-outline', screen: 'Casos Pastorales', permission: { module: 'pastoral', action: 'ver' } },
   { label: 'Inventario', icon: 'package-variant', screen: 'Inventario', permission: { module: 'inventario', action: 'ver' } },
   { label: 'Configuración', icon: 'cog-outline', screen: 'Configuración' },
@@ -121,7 +121,13 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
                 drawerStyles.menuItem,
                 activeRoute === item.screen && drawerStyles.menuItemActive,
               ]}
-              onPress={() => navigation.navigate(item.screen)}
+              onPress={() => {
+                if (item.nestedTab) {
+                  navigation.navigate(item.screen, { screen: item.nestedTab });
+                } else {
+                  navigation.navigate(item.screen);
+                }
+              }}
               activeOpacity={0.7}
             >
               <View style={drawerStyles.menuIconWrapper}>
@@ -241,7 +247,6 @@ export default function MainDrawer() {
       <Drawer.Screen name="Membresía" component={MembresiaScreen} />
       <Drawer.Screen name="Finanzas" component={FinanzasScreen} />
       <Drawer.Screen name="Comunicaciones" component={Comunicaciones} />
-      <Drawer.Screen name="Bandeja de Entrada" component={InboxScreen} />
       <Drawer.Screen name="Casos Pastorales" component={CasosPastoralesScreen} />
       <Drawer.Screen name="Inventario" component={InventarioScreen} />
       <Drawer.Screen name="Soporte" component={Soporte} />
