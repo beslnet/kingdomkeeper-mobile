@@ -17,10 +17,10 @@ import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplet
 import { Icon, Divider } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import DeviceInfo from 'react-native-device-info';
 import { useAuthStore } from '../store/authStore';
 import { useIglesiaStore } from '../store/iglesiaStore';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { version: APP_VERSION } = require('../../package.json') as { version: string };
+const APP_VERSION = DeviceInfo.getVersion();
 import {
   getMyProfile,
   updateProfile,
