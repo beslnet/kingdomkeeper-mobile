@@ -14,6 +14,8 @@ import RegistrarAsistenciaScreen from '../screens/grupos/RegistrarAsistencia';
 import VerAsistenciaScreen from '../screens/grupos/VerAsistencia';
 import GrupoFinanzasScreen from '../screens/grupos/GrupoFinanzas';
 import TransaccionDetailScreen from '../screens/grupos/TransaccionDetail';
+import RendicionFormScreen from '../screens/grupos/RendicionForm';
+import IngresoFormScreen from '../screens/grupos/IngresoForm';
 import GrupoRecursosScreen from '../screens/grupos/GrupoRecursos';
 
 const Stack = createStackNavigator();
@@ -64,6 +66,14 @@ export default function GruposStack() {
         options={{ title: 'Detalle Transacción' }}
       />
       <Stack.Screen name="GrupoRecursos" component={GrupoRecursosScreen} options={{ title: 'Recursos' }} />
+      <Stack.Screen
+        name="RendicionForm"
+        component={RendicionFormScreen}
+        options={({ route }: { route: any }) => ({
+          title: route.params?.transaccion ? 'Rectificar Rendición' : 'Nueva Rendición',
+        })}
+      />
+      <Stack.Screen name="IngresoForm" component={IngresoFormScreen} options={{ title: 'Registrar Ingreso' }} />
     </Stack.Navigator>
   );
 }

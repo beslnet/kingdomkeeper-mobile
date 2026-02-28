@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,16 @@ import {
   Modal,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { obtenerTransaccion, anularTransaccion } from '../../api/finanzas';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import {
+  obtenerTransaccion,
+  anularTransaccion,
+  aprobarTransaccion,
+  rechazarTransaccion,
+  pagarTransaccion,
+} from '../../api/finanzas';
 import { PANTONE_295C } from '../../theme/colors';
+import { usePermissionsStore } from '../../store/permissionsStore';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -91,21 +98,76 @@ const rowStyles = StyleSheet.create({
   value: { flex: 2, fontSize: 14, color: '#222', fontWeight: '500', textAlign: 'right' },
 });
 
+// ─── Modal helpers ───────────────────────────────────────────────────────────
+
+type ModalMode = 'anular' | 'rechazar' | 'aprobar' | 'pagar' | null;
+
+function getModalTitle(mode: ModalMode): string {
+  switch (mode) {
+    case 'anular':   return 'Anular Transacción';
+    case 'rechazar': return 'Rechazar Transacción';
+    case 'aprobar':  return 'Aprobar Transacción';
+    case 'pagar':    return 'Marcar como Pagado';
+    default:         return '';
+  }
+}
+
+function getModalSubtitle(mode: ModalMode): string {
+  switch (mode) {
+    case 'anular':   return 'Esta acción quedará registrada en el historial.';
+    case 'rechazar': return 'Indica el motivo para que el creador pueda rectificar.';
+    case 'aprobar':  return 'La transacción pasará a estado aprobado.';
+    case 'pagar':    return 'Confirma que el pago fue efectuado.';
+    default:         return '';
+  }
+}
+
+function getModalConfirmLabel(mode: ModalMode): string {
+  switch (mode) {
+    case 'anular':   return 'Anular';
+    case 'rechazar': return 'Rechazar';
+    case 'aprobar':  return 'Aprobar';
+    case 'pagar':    return 'Marcar como pagado';
+    default:         return 'Confirmar';
+  }
+}
+
+function getModalConfirmStyle(mode: ModalMode) {
+  switch (mode) {
+    case 'aprobar': return { backgroundColor: '#2E7D32' };
+    case 'pagar':   return { backgroundColor: PANTONE_295C };
+    default:        return { backgroundColor: '#C62828' };
+  }
+}
+
+function getSuccessMsg(mode: ModalMode): string {
+  switch (mode) {
+    case 'anular':   return 'Transacción anulada correctamente.';
+    case 'rechazar': return 'Transacción rechazada.';
+    case 'aprobar':  return 'Transacción aprobada correctamente.';
+    case 'pagar':    return 'Transacción marcada como pagada.';
+    default:         return 'Acción completada.';
+  }
+}
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function TransaccionDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { transaccionId, puedeGestionar } = route.params ?? {};
+  const { transaccionId, grupoId, puedeGestionar } = route.params ?? {};
+
+  const { hasPermission, isSuperAdmin, hasAnyRole } = usePermissionsStore();
+  const isTreasurer = isSuperAdmin || hasPermission('finanzas', 'aprobar') || hasAnyRole(['church_admin', 'tesorero']);
 
   const [transaccion, setTransaccion] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Anular modal state
-  const [showAnularModal, setShowAnularModal] = useState(false);
-  const [motivoAnulacion, setMotivoAnulacion] = useState('');
-  const [anulando, setAnulando] = useState(false);
+  // Modal state — shared between anular/rechazar/aprobar/pagar
+  const [modalMode, setModalMode] = useState<ModalMode>(null);
+  const [motivoText, setMotivoText] = useState('');
+  const [actioning, setActioning] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -117,10 +179,10 @@ export default function TransaccionDetailScreen() {
     }
   }, [transaccionId]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     setLoading(true);
     load().finally(() => setLoading(false));
-  }, [load]);
+  }, [load]));
 
   const handleVerComprobante = () => {
     const url = getComprobanteUrl(transaccion);
@@ -128,24 +190,36 @@ export default function TransaccionDetailScreen() {
     Linking.openURL(url).catch(() => Alert.alert('Error', 'No se pudo abrir el comprobante.'));
   };
 
-  const handleAnularConfirm = async () => {
-    if (!motivoAnulacion.trim()) {
-      Alert.alert('Requerido', 'Ingresa el motivo de anulación.');
-      return;
+  const handleAction = async () => {
+    if (!modalMode) return;
+
+    if (modalMode === 'rechazar' && !motivoText.trim()) {
+      Alert.alert('Requerido', 'Ingresa el motivo de rechazo.'); return;
     }
-    setAnulando(true);
+    if (modalMode === 'anular' && !motivoText.trim()) {
+      Alert.alert('Requerido', 'Ingresa el motivo de anulación.'); return;
+    }
+
+    setActioning(true);
     try {
-      await anularTransaccion(Number(transaccionId), motivoAnulacion.trim());
-      setShowAnularModal(false);
-      setMotivoAnulacion('');
-      Alert.alert('Éxito', 'Transacción anulada correctamente.', [
-        { text: 'OK', onPress: () => { load(); } },
-      ]);
+      const id = Number(transaccionId);
+      if (modalMode === 'anular')   await anularTransaccion(id, motivoText.trim());
+      if (modalMode === 'rechazar') await rechazarTransaccion(id, motivoText.trim());
+      if (modalMode === 'aprobar')  await aprobarTransaccion(id, motivoText.trim());
+      if (modalMode === 'pagar')    await pagarTransaccion(id, { observaciones: motivoText.trim() });
+
+      setModalMode(null);
+      setMotivoText('');
+      Alert.alert('Listo', getSuccessMsg(modalMode), [{ text: 'OK', onPress: load }]);
     } catch (err: any) {
-      const msg = err?.response?.data?.error ?? err?.response?.data?.detail ?? err?.message ?? 'No se pudo anular.';
+      const msg = err?.response?.data?.error
+        ?? err?.response?.data?.detail
+        ?? err?.response?.data?.non_field_errors?.[0]
+        ?? err?.message
+        ?? 'No se pudo completar la acción.';
       Alert.alert('Error', typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
-      setAnulando(false);
+      setActioning(false);
     }
   };
 
@@ -169,7 +243,13 @@ export default function TransaccionDetailScreen() {
   const estadoStyle = getEstadoStyle(transaccion.estado);
   const isIngreso = transaccion.tipo === 'ingreso';
   const comprobanteUrl = getComprobanteUrl(transaccion);
-  const puedeAnular = puedeGestionar && transaccion.estado !== 'anulado';
+
+  // Permission flags
+  const estado = transaccion.estado ?? '';
+  const puedeAprobar   = isTreasurer && estado === 'pendiente';
+  const puedePagar     = isTreasurer && estado === 'aprobado';
+  const puedeAnular    = (isTreasurer || puedeGestionar) && estado !== 'anulado' && estado !== 'rechazado';
+  const puedeRectificar = puedeGestionar && estado === 'rechazado';
 
   return (
     <>
@@ -188,6 +268,28 @@ export default function TransaccionDetailScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Rectificar banner */}
+        {puedeRectificar ? (
+          <TouchableOpacity
+            style={styles.rectificarBanner}
+            onPress={() => navigation.navigate('RendicionForm', {
+              grupoId,
+              transaccion,
+              motivoRechazo: transaccion.motivo_rechazo,
+            })}
+            activeOpacity={0.8}
+          >
+            <Icon source="pencil-circle-outline" size={20} color="#C62828" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rectificarTitle}>Esta rendición fue rechazada</Text>
+              {transaccion.motivo_rechazo ? (
+                <Text style={styles.rectificarMotive} numberOfLines={2}>{transaccion.motivo_rechazo}</Text>
+              ) : null}
+            </View>
+            <Text style={styles.rectificarCTA}>Rectificar →</Text>
+          </TouchableOpacity>
+        ) : null}
 
         {/* Main details card */}
         <View style={styles.card}>
@@ -247,11 +349,45 @@ export default function TransaccionDetailScreen() {
           </TouchableOpacity>
         ) : null}
 
+        {/* ── Acciones de aprobación (tesorero) ── */}
+        {(puedeAprobar || puedePagar) ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>ACCIONES DE APROBACIÓN</Text>
+            {puedeAprobar ? (
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: '#E8F5E9', borderColor: '#2E7D32' }]}
+                  onPress={() => { setModalMode('aprobar'); setMotivoText(''); }}
+                >
+                  <Icon source="check-circle-outline" size={18} color="#2E7D32" />
+                  <Text style={[styles.actionBtnText, { color: '#2E7D32' }]}>Aprobar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: '#FFEBEE', borderColor: '#C62828' }]}
+                  onPress={() => { setModalMode('rechazar'); setMotivoText(''); }}
+                >
+                  <Icon source="close-circle-outline" size={18} color="#C62828" />
+                  <Text style={[styles.actionBtnText, { color: '#C62828' }]}>Rechazar</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+            {puedePagar ? (
+              <TouchableOpacity
+                style={[styles.actionBtnFull, { backgroundColor: '#E3F2FD', borderColor: PANTONE_295C }]}
+                onPress={() => { setModalMode('pagar'); setMotivoText(''); }}
+              >
+                <Icon source="cash-check" size={18} color={PANTONE_295C} />
+                <Text style={[styles.actionBtnText, { color: PANTONE_295C }]}>Marcar como pagado</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Anular button */}
         {puedeAnular ? (
           <TouchableOpacity
             style={styles.anularBtn}
-            onPress={() => setShowAnularModal(true)}
+            onPress={() => { setModalMode('anular'); setMotivoText(''); }}
             activeOpacity={0.8}
           >
             <Icon source="cancel" size={20} color="#C62828" />
@@ -262,46 +398,46 @@ export default function TransaccionDetailScreen() {
         <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* Anular modal */}
+      {/* Action modal */}
       <Modal
-        visible={showAnularModal}
+        visible={modalMode !== null}
         transparent
         animationType="slide"
-        onRequestClose={() => !anulando && setShowAnularModal(false)}
+        onRequestClose={() => !actioning && setModalMode(null)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Anular Transacción</Text>
-            <Text style={styles.modalSubtitle}>
-              Esta acción quedará registrada en el historial.
-            </Text>
-            <TextInput
-              style={styles.motivoInput}
-              multiline
-              numberOfLines={4}
-              value={motivoAnulacion}
-              onChangeText={setMotivoAnulacion}
-              placeholder="Ingresa el motivo de anulación..."
-              placeholderTextColor="#AAA"
-              textAlignVertical="top"
-            />
+            <Text style={styles.modalTitle}>{getModalTitle(modalMode)}</Text>
+            <Text style={styles.modalSubtitle}>{getModalSubtitle(modalMode)}</Text>
+            {(modalMode === 'anular' || modalMode === 'rechazar' || modalMode === 'aprobar' || modalMode === 'pagar') ? (
+              <TextInput
+                style={styles.motivoInput}
+                multiline
+                numberOfLines={4}
+                value={motivoText}
+                onChangeText={setMotivoText}
+                placeholder={modalMode === 'rechazar' ? 'Ingresa el motivo de rechazo...' : 'Observaciones (opcional)...'}
+                placeholderTextColor="#AAA"
+                textAlignVertical="top"
+              />
+            ) : null}
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.modalBtnCancel]}
-                onPress={() => { setShowAnularModal(false); setMotivoAnulacion(''); }}
-                disabled={anulando}
+                onPress={() => { setModalMode(null); setMotivoText(''); }}
+                disabled={actioning}
               >
                 <Text style={styles.modalBtnCancelText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalBtn, styles.modalBtnConfirm, anulando && { opacity: 0.6 }]}
-                onPress={handleAnularConfirm}
-                disabled={anulando}
+                style={[styles.modalBtn, getModalConfirmStyle(modalMode), actioning && { opacity: 0.6 }]}
+                onPress={handleAction}
+                disabled={actioning}
               >
-                {anulando ? (
+                {actioning ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.modalBtnConfirmText}>Anular</Text>
+                  <Text style={styles.modalBtnConfirmText}>{getModalConfirmLabel(modalMode)}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -332,6 +468,16 @@ const styles = StyleSheet.create({
   tipoBadge: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 4 },
   tipoBadgeText: { fontSize: 13, fontWeight: '600' },
 
+  // Rectificar banner
+  rectificarBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#FFEBEE', borderRadius: 12, padding: 14,
+    marginHorizontal: 16, marginTop: 12, borderWidth: 1, borderColor: '#FFCDD2',
+  },
+  rectificarTitle: { fontSize: 13, fontWeight: '700', color: '#C62828' },
+  rectificarMotive: { fontSize: 12, color: '#C62828', marginTop: 2 },
+  rectificarCTA: { fontSize: 13, fontWeight: '700', color: '#C62828' },
+
   // Card
   card: {
     backgroundColor: '#fff',
@@ -353,6 +499,18 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 8,
   },
+
+  // Action buttons
+  actionsRow: { flexDirection: 'row', gap: 10 },
+  actionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderRadius: 10, paddingVertical: 12, borderWidth: 1.5, marginTop: 8,
+  },
+  actionBtnFull: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderRadius: 10, paddingVertical: 12, borderWidth: 1.5, marginTop: 8,
+  },
+  actionBtnText: { fontWeight: '700', fontSize: 14 },
 
   // Comprobante
   comprobanteBtn: {

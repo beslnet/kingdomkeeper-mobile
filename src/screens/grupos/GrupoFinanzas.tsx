@@ -363,7 +363,7 @@ export default function GrupoFinanzasScreen() {
         <View style={styles.fabContainer}>
           <TouchableOpacity
             style={[styles.fab, { backgroundColor: '#2E7D32' }]}
-            onPress={() => Alert.alert('Ingreso', 'La creación de ingresos estará disponible próximamente.')}
+            onPress={() => navigation.navigate('IngresoForm', { grupoId })}
             activeOpacity={0.85}
           >
             <Icon source="plus" size={20} color="#fff" />
@@ -371,7 +371,7 @@ export default function GrupoFinanzasScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.fab, { backgroundColor: PANTONE_295C }]}
-            onPress={() => Alert.alert('Rendición', 'La creación de rendiciones estará disponible próximamente.')}
+            onPress={() => navigation.navigate('RendicionForm', { grupoId })}
             activeOpacity={0.85}
           >
             <Icon source="receipt" size={20} color="#fff" />
