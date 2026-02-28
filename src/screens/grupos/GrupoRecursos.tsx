@@ -19,18 +19,29 @@ function getRecursoIcon(tipo: string): string {
   switch ((tipo ?? '').toLowerCase()) {
     case 'pdf': return 'file-pdf-box';
     case 'imagen':
-    case 'image': return 'image-outline';
+    case 'image':
+    case 'foto': return 'image-outline';
     case 'video': return 'video-outline';
-    case 'audio': return 'music-box-outline';
+    case 'audio':
+    case 'musica': return 'music-box-outline';
     case 'enlace':
+    case 'enlace_externo':
     case 'link':
     case 'url': return 'link-variant';
     case 'documento':
     case 'doc':
-    case 'docx': return 'file-word-box-outline';
+    case 'docx':
+    case 'word': return 'file-word-box-outline';
     case 'hoja':
     case 'xls':
-    case 'xlsx': return 'file-excel-box-outline';
+    case 'xlsx':
+    case 'excel': return 'file-excel-box-outline';
+    case 'presentacion':
+    case 'presentación':
+    case 'ppt':
+    case 'pptx': return 'file-powerpoint-box-outline';
+    case 'archivo':
+    case 'file': return 'file-outline';
     default: return 'file-outline';
   }
 }
@@ -80,7 +91,7 @@ export default function GrupoRecursosScreen() {
   }, [load]);
 
   const handleOpen = useCallback(async (recurso: any) => {
-    const url = recurso.url ?? recurso.archivo ?? recurso.enlace;
+    const url = recurso.archivo_url ?? recurso.enlace_externo ?? recurso.url ?? recurso.archivo ?? recurso.enlace;
     if (!url) {
       Alert.alert('Sin enlace', 'Este recurso no tiene un enlace disponible.');
       return;

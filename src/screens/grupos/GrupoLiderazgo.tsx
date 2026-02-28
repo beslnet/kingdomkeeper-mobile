@@ -10,6 +10,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  SafeAreaView,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useRoute } from '@react-navigation/native';
@@ -19,6 +20,7 @@ import {
   cambiarLider,
   agregarCoLideres,
   removerCoLideres,
+  listarLideresIglesia,
 } from '../../api/grupos';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
 
@@ -35,8 +37,10 @@ export default function GrupoLiderazgoScreen() {
 
   // Change leader modal
   const [liderModalVisible, setLiderModalVisible] = useState(false);
+  const [liderCandidatos, setLiderCandidatos] = useState<any[]>([]);
   // Add co-leader modal
   const [coLiderModalVisible, setCoLiderModalVisible] = useState(false);
+  const [lideresIglesia, setLideresIglesia] = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
 
   const canManage =
@@ -67,7 +71,7 @@ export default function GrupoLiderazgoScreen() {
   const handleChangeLider = useCallback((miembro: any) => {
     Alert.alert(
       'Cambiar líder',
-      `¿Designar a ${miembro.nombre_completo ?? miembro.nombre ?? 'este miembro'} como nuevo líder?`,
+      `¿Designar a ${miembro.miembro_nombre ?? miembro.nombre_completo ?? miembro.nombre ?? 'este miembro'} como nuevo líder?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -75,11 +79,12 @@ export default function GrupoLiderazgoScreen() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              await cambiarLider(grupoId, miembro.id);
+              await cambiarLider(grupoId, miembro.miembro_id ?? miembro.id);
               await load();
               setLiderModalVisible(false);
-            } catch {
-              Alert.alert('Error', 'No se pudo cambiar el líder.');
+            } catch (err: any) {
+              const msg = err?.response?.data?.detail ?? err?.response?.data?.nuevo_lider_id?.[0];
+              Alert.alert('Error', msg ?? 'No se pudo cambiar el líder.');
             } finally {
               setActionLoading(false);
             }
@@ -92,11 +97,12 @@ export default function GrupoLiderazgoScreen() {
   const handleAddCoLider = useCallback(async (miembro: any) => {
     setActionLoading(true);
     try {
-      await agregarCoLideres(grupoId, [miembro.id]);
+      await agregarCoLideres(grupoId, [miembro.miembro_id ?? miembro.id]);
       await load();
       setCoLiderModalVisible(false);
-    } catch {
-      Alert.alert('Error', 'No se pudo agregar el co-líder.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail ?? err?.response?.data?.miembros_ids?.[0];
+      Alert.alert('Error', msg ?? 'No se pudo agregar el co-líder.');
     } finally {
       setActionLoading(false);
     }
@@ -105,7 +111,7 @@ export default function GrupoLiderazgoScreen() {
   const handleRemoveCoLider = useCallback((miembro: any) => {
     Alert.alert(
       'Remover co-líder',
-      `¿Remover a ${miembro.nombre_completo ?? miembro.nombre ?? 'este miembro'} como co-líder?`,
+      `¿Remover a ${miembro.miembro_nombre ?? miembro.nombre_completo ?? miembro.nombre ?? 'este miembro'} como co-líder?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -114,10 +120,11 @@ export default function GrupoLiderazgoScreen() {
           onPress: async () => {
             setActionLoading(true);
             try {
-              await removerCoLideres(grupoId, [miembro.id]);
+              await removerCoLideres(grupoId, [miembro.miembro_id ?? miembro.id]);
               await load();
-            } catch {
-              Alert.alert('Error', 'No se pudo remover el co-líder.');
+            } catch (err: any) {
+              const msg = err?.response?.data?.detail ?? err?.response?.data?.miembros_ids?.[0];
+              Alert.alert('Error', msg ?? 'No se pudo remover el co-líder.');
             } finally {
               setActionLoading(false);
             }
@@ -144,11 +151,12 @@ export default function GrupoLiderazgoScreen() {
     );
   }
 
-  const lider = grupo?.lider ?? null;
-  const coLideres: any[] = grupo?.co_lideres ?? grupo?.colideres ?? [];
-  // Members eligible to be promoted (non-leaders)
+  const lider = grupo?.lider ?? (grupo?.lider_id ? { id: grupo.lider_id, nombre_completo: grupo.lider_nombre } : null);
+  const coLideres: any[] = grupo?.co_lideres ?? grupo?.colideres ??
+    (grupo?.miembros ?? []).filter((m: any) => m.rol_en_grupo === 'co_leader');
+  // Members eligible to be promoted (non-leaders/co-leaders)
   const miembros: any[] = (grupo?.miembros ?? []).filter(
-    (m: any) => (m.mi_rol ?? m.rol) !== 'lider' && (m.mi_rol ?? m.rol) !== 'co_lider'
+    (m: any) => m.rol_en_grupo !== 'leader' && m.rol_en_grupo !== 'co_leader'
   );
 
   return (
@@ -180,7 +188,16 @@ export default function GrupoLiderazgoScreen() {
         {canManage && (
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => setLiderModalVisible(true)}
+            onPress={async () => {
+              setLiderModalVisible(true);
+              try {
+                const result = await listarLideresIglesia();
+                const items: any[] = result?.results ?? result ?? [];
+                setLiderCandidatos(items.filter((m: any) => m.id !== grupo?.lider_id));
+              } catch {
+                setLiderCandidatos([]);
+              }
+            }}
             disabled={actionLoading}
           >
             <Icon source="account-switch-outline" size={18} color={PANTONE_295C} />
@@ -193,7 +210,17 @@ export default function GrupoLiderazgoScreen() {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Co-Líderes</Text>
         {canManage && (
-          <TouchableOpacity onPress={() => setCoLiderModalVisible(true)} disabled={actionLoading}>
+          <TouchableOpacity onPress={async () => {
+            setCoLiderModalVisible(true);
+            try {
+              const result = await listarLideresIglesia();
+              const items: any[] = result?.results ?? result ?? [];
+              const coLiderIds = new Set(coLideres.map((cl: any) => cl.miembro_id ?? cl.id));
+              setLideresIglesia(items.filter((m: any) => !coLiderIds.has(m.id) && m.id !== grupo?.lider_id));
+            } catch {
+              setLideresIglesia([]);
+            }
+          }} disabled={actionLoading}>
             <Icon source="plus-circle-outline" size={22} color={PANTONE_295C} />
           </TouchableOpacity>
         )}
@@ -208,8 +235,8 @@ export default function GrupoLiderazgoScreen() {
                 <Icon source="account-circle" size={36} color="#555" />
               </View>
               <View style={styles.personInfo}>
-                <Text style={styles.personName}>{cl.nombre_completo ?? cl.nombre ?? '—'}</Text>
-                {cl.email ? <Text style={styles.personEmail}>{cl.email}</Text> : null}
+                <Text style={styles.personName}>{cl.miembro_nombre ?? cl.nombre_completo ?? cl.nombre ?? '—'}</Text>
+                {cl.miembro_email ?? cl.email ? <Text style={styles.personEmail}>{cl.miembro_email ?? cl.email}</Text> : null}
               </View>
               {canManage && (
                 <TouchableOpacity onPress={() => handleRemoveCoLider(cl)} disabled={actionLoading}>
@@ -223,7 +250,7 @@ export default function GrupoLiderazgoScreen() {
 
       {/* Change leader modal */}
       <Modal visible={liderModalVisible} animationType="slide" onRequestClose={() => setLiderModalVisible(false)}>
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Seleccionar nuevo líder</Text>
             <TouchableOpacity onPress={() => setLiderModalVisible(false)}>
@@ -231,13 +258,13 @@ export default function GrupoLiderazgoScreen() {
             </TouchableOpacity>
           </View>
           <FlatList
-            data={miembros}
+            data={liderCandidatos}
             keyExtractor={(item, index) => String(item.id ?? index)}
-            contentContainerStyle={miembros.length === 0 ? styles.emptyContainer : { padding: 16 }}
+            contentContainerStyle={liderCandidatos.length === 0 ? styles.emptyContainer : { padding: 16 }}
             ListEmptyComponent={
               <View style={styles.centered}>
                 <Icon source="account-search-outline" size={40} color="#CCC" />
-                <Text style={styles.emptyText}>No hay miembros disponibles</Text>
+                <Text style={styles.emptyText}>No hay líderes disponibles para asignar</Text>
               </View>
             }
             renderItem={({ item }) => (
@@ -256,12 +283,12 @@ export default function GrupoLiderazgoScreen() {
               </TouchableOpacity>
             )}
           />
-        </View>
+        </SafeAreaView>
       </Modal>
 
       {/* Add co-leader modal */}
       <Modal visible={coLiderModalVisible} animationType="slide" onRequestClose={() => setCoLiderModalVisible(false)}>
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Agregar co-líder</Text>
             <TouchableOpacity onPress={() => setCoLiderModalVisible(false)}>
@@ -269,13 +296,13 @@ export default function GrupoLiderazgoScreen() {
             </TouchableOpacity>
           </View>
           <FlatList
-            data={miembros}
+            data={lideresIglesia}
             keyExtractor={(item, index) => String(item.id ?? index)}
-            contentContainerStyle={miembros.length === 0 ? styles.emptyContainer : { padding: 16 }}
+            contentContainerStyle={lideresIglesia.length === 0 ? styles.emptyContainer : { padding: 16 }}
             ListEmptyComponent={
               <View style={styles.centered}>
                 <Icon source="account-search-outline" size={40} color="#CCC" />
-                <Text style={styles.emptyText}>No hay miembros disponibles</Text>
+                <Text style={styles.emptyText}>No hay líderes disponibles para agregar</Text>
               </View>
             }
             renderItem={({ item }) => (
@@ -294,7 +321,7 @@ export default function GrupoLiderazgoScreen() {
               </TouchableOpacity>
             )}
           />
-        </View>
+        </SafeAreaView>
       </Modal>
     </ScrollView>
   );

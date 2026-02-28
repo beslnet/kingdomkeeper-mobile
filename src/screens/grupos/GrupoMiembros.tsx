@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  SafeAreaView,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useRoute } from '@react-navigation/native';
@@ -19,16 +20,16 @@ import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
 
 function getRolColor(rol: string): { bg: string; text: string } {
   switch (rol) {
-    case 'lider': return { bg: '#FFF8E1', text: '#F57F17' };
-    case 'co_lider': return { bg: '#E8EAF6', text: '#283593' };
+    case 'leader': return { bg: '#FFF8E1', text: '#F57F17' };
+    case 'co_leader': return { bg: '#E8EAF6', text: '#283593' };
     default: return { bg: '#F5F5F5', text: '#616161' };
   }
 }
 
 function getRolLabel(rol: string): string {
   switch (rol) {
-    case 'lider': return 'Líder';
-    case 'co_lider': return 'Co-Líder';
+    case 'leader': return 'Líder';
+    case 'co_leader': return 'Co-Líder';
     default: return 'Miembro';
   }
 }
@@ -87,7 +88,7 @@ export default function GrupoMiembrosScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await removerMiembros(grupoId, [miembro.id]);
+              await removerMiembros(grupoId, [miembro.miembro_id ?? miembro.id]);
               await load();
             } catch {
               Alert.alert('Error', 'No se pudo remover al miembro.');
@@ -131,8 +132,14 @@ export default function GrupoMiembrosScreen() {
       await agregarMiembros(grupoId, [miembro.id]);
       await load();
       setModalVisible(false);
-    } catch {
-      Alert.alert('Error', 'No se pudo agregar al miembro.');
+    } catch (err: any) {
+      const data = err?.response?.data;
+      const msg = data?.detail ?? data?.non_field_errors?.[0] ?? data?.miembros_ids?.[0];
+      if (msg) {
+        Alert.alert('No se pudo agregar', String(msg));
+      } else {
+        Alert.alert('Error', 'No se pudo agregar al miembro.');
+      }
     } finally {
       setAddingId(null);
     }
@@ -156,7 +163,7 @@ export default function GrupoMiembrosScreen() {
   }
 
   const filteredIglesia = iglesiaMiembros.filter(
-    (m) => !miembros.some((gm) => gm.id === m.id)
+    (m) => !miembros.some((gm) => (gm.miembro_id ?? gm.id) === m.id)
   );
 
   return (
@@ -173,14 +180,14 @@ export default function GrupoMiembrosScreen() {
           </View>
         }
         renderItem={({ item }) => {
-          const rolColor = getRolColor(item.mi_rol ?? item.rol ?? '');
+          const rolColor = getRolColor(item.rol_en_grupo ?? item.mi_rol ?? item.rol ?? '');
           return (
             <View style={styles.memberCard}>
               <View style={styles.memberAvatar}>
                 <Icon source="account-circle" size={38} color={PANTONE_295C} />
               </View>
               <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>{item.nombre_completo ?? item.nombre ?? '—'}</Text>
+                <Text style={styles.memberName}>{item.miembro_nombre ?? item.nombre_completo ?? item.nombre ?? '—'}</Text>
                 {item.email ? <Text style={styles.memberEmail}>{item.email}</Text> : null}
                 {item.fecha_union ? (
                   <Text style={styles.memberDate}>Desde {item.fecha_union}</Text>
@@ -188,10 +195,10 @@ export default function GrupoMiembrosScreen() {
               </View>
               <View style={[styles.rolChip, { backgroundColor: rolColor.bg }]}>
                 <Text style={[styles.rolChipText, { color: rolColor.text }]}>
-                  {getRolLabel(item.mi_rol ?? item.rol ?? '')}
+                  {getRolLabel(item.rol_en_grupo ?? item.mi_rol ?? item.rol ?? '')}
                 </Text>
               </View>
-              {canManage && (item.mi_rol ?? item.rol) !== 'lider' ? (
+              {canManage && (item.rol_en_grupo ?? item.mi_rol ?? item.rol) !== 'leader' ? (
                 <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemove(item)}>
                   <Icon source="account-remove-outline" size={20} color="#E53935" />
                 </TouchableOpacity>
@@ -209,7 +216,7 @@ export default function GrupoMiembrosScreen() {
 
       {/* Add member modal */}
       <Modal visible={modalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Agregar miembro</Text>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -262,7 +269,7 @@ export default function GrupoMiembrosScreen() {
               )}
             />
           )}
-        </View>
+        </SafeAreaView>
       </Modal>
     </View>
   );
