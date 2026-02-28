@@ -13,6 +13,7 @@ import GrupoEventoDetailScreen from '../screens/grupos/GrupoEventoDetail';
 import RegistrarAsistenciaScreen from '../screens/grupos/RegistrarAsistencia';
 import VerAsistenciaScreen from '../screens/grupos/VerAsistencia';
 import GrupoFinanzasScreen from '../screens/grupos/GrupoFinanzas';
+import TransaccionDetailScreen from '../screens/grupos/TransaccionDetail';
 import GrupoRecursosScreen from '../screens/grupos/GrupoRecursos';
 
 const Stack = createStackNavigator();
@@ -57,6 +58,11 @@ export default function GruposStack() {
         options={({ route }: { route: any }) => ({ title: route.params?.titulo || 'Ver Asistencia' })}
       />
       <Stack.Screen name="GrupoFinanzas" component={GrupoFinanzasScreen} options={{ title: 'Finanzas' }} />
+      <Stack.Screen
+        name="TransaccionDetail"
+        component={TransaccionDetailScreen}
+        options={{ title: 'Detalle Transacción' }}
+      />
       <Stack.Screen name="GrupoRecursos" component={GrupoRecursosScreen} options={{ title: 'Recursos' }} />
     </Stack.Navigator>
   );
