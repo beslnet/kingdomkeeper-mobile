@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Alert, View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Alert, View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking } from 'react-native';
 import { createDrawerNavigator, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { Icon } from 'react-native-paper';
 import { useAuthStore } from '../store/authStore';
@@ -11,8 +11,6 @@ import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 import MainTabs from './MainTabs';
 import GruposStack from './GruposStack';
 import Comunicaciones from '../screens/Comunicaciones';
-import Soporte from '../screens/Soporte';
-import Config from '../screens/Config';
 import MembresiaScreen from '../screens/Membresia';
 import FinanzasScreen from '../screens/Finanzas';
 import CasosPastoralesScreen from '../screens/CasosPastorales';
@@ -38,8 +36,6 @@ const MENU_ITEMS: MenuItem[] = [
   { label: 'Bandeja de Entrada', icon: 'message-outline', screen: 'Inicio', nestedTab: 'Bandeja' },
   { label: 'Casos Pastorales', icon: 'heart-outline', screen: 'Casos Pastorales', permission: { module: 'pastoral', action: 'ver' } },
   { label: 'Inventario', icon: 'package-variant', screen: 'Inventario', permission: { module: 'inventario', action: 'ver' } },
-  { label: 'Configuración', icon: 'cog-outline', screen: 'Configuración' },
-  { label: 'Soporte', icon: 'lifebuoy', screen: 'Soporte' },
 ];
 
 function CustomDrawerContent(props: DrawerContentComponentProps) {
@@ -163,16 +159,22 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 
       {/* FOOTER */}
       <View style={drawerStyles.footer}>
+        <TouchableOpacity
+          style={drawerStyles.logoutItem}
+          onPress={() => Linking.openURL('https://wa.me/56973798921')}
+          activeOpacity={0.7}
+        >
+          <View style={drawerStyles.menuIconWrapper}>
+            <Icon source="whatsapp" size={22} color="#25D366" />
+          </View>
+          <Text style={[drawerStyles.logoutText, { color: '#25D366' }]}>Soporte por WhatsApp</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={drawerStyles.logoutItem} onPress={handleLogout} activeOpacity={0.7}>
           <View style={drawerStyles.menuIconWrapper}>
             <Icon source="logout" size={22} color="#888" />
           </View>
           <Text style={drawerStyles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
-        <Text style={drawerStyles.footerText}>
-          Hecho con <Icon source="heart" size={13} color="#F44" /> por tu equipo
-        </Text>
-        <Text style={drawerStyles.versionText}>v0.1.0</Text>
       </View>
     </View>
   );
@@ -260,8 +262,6 @@ export default function MainDrawer() {
       <Drawer.Screen name="Comunicaciones" component={Comunicaciones} />
       <Drawer.Screen name="Casos Pastorales" component={CasosPastoralesScreen} />
       <Drawer.Screen name="Inventario" component={InventarioScreen} />
-      <Drawer.Screen name="Soporte" component={Soporte} />
-      <Drawer.Screen name="Configuración" component={Config} />
     </Drawer.Navigator>
   );
 }
