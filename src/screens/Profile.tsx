@@ -19,6 +19,8 @@ import { useNavigation } from '@react-navigation/native';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useAuthStore } from '../store/authStore';
 import { useIglesiaStore } from '../store/iglesiaStore';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { version: APP_VERSION } = require('../../package.json') as { version: string };
 import {
   getMyProfile,
   updateProfile,
@@ -587,6 +589,7 @@ export default function ProfileScreen() {
           <Icon source="logout" size={20} color="#fff" />
           <Text style={styles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
+        <Text style={styles.versionLabel}>v{APP_VERSION}</Text>
       </View>
     </ScrollView>
   );
@@ -754,4 +757,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logoutText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  versionLabel: { textAlign: 'center', fontSize: 12, color: '#BBB', marginTop: 16, marginBottom: 4 },
 });
