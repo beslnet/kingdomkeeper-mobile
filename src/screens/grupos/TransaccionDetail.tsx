@@ -158,7 +158,8 @@ export default function TransaccionDetailScreen() {
   const { transaccionId, grupoId, puedeGestionar } = route.params ?? {};
 
   const { hasPermission, isSuperAdmin, hasAnyRole } = usePermissionsStore();
-  const isTreasurer = isSuperAdmin || hasPermission('finanzas', 'aprobar') || hasAnyRole(['church_admin', 'tesorero']);
+  // Solo tesorero o superuser pueden aprobar/rechazar/pagar — igual que TesoreroPermission del backend
+  const isTreasurer = isSuperAdmin || hasAnyRole(['tesorero']);
 
   const [transaccion, setTransaccion] = useState<any>(null);
   const [loading, setLoading] = useState(true);
