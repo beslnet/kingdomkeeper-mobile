@@ -114,7 +114,7 @@ function getModalTitle(mode: ModalMode): string {
 
 function getModalSubtitle(mode: ModalMode): string {
   switch (mode) {
-    case 'anular':   return 'Esta acción quedará registrada en el historial.';
+    case 'anular':   return 'Indica el motivo de anulación (requerido).';
     case 'rechazar': return 'Indica el motivo para que el creador pueda rectificar.';
     case 'aprobar':  return 'La transacción pasará a estado aprobado.';
     case 'pagar':    return 'Confirma que el pago fue efectuado.';
@@ -416,7 +416,11 @@ export default function TransaccionDetailScreen() {
                 numberOfLines={4}
                 value={motivoText}
                 onChangeText={setMotivoText}
-                placeholder={modalMode === 'rechazar' ? 'Ingresa el motivo de rechazo...' : 'Observaciones (opcional)...'}
+                placeholder={
+                  modalMode === 'rechazar' ? 'Ingresa el motivo de rechazo...' :
+                  modalMode === 'anular'   ? 'Ingresa el motivo de anulación...' :
+                  'Observaciones (opcional)...'
+                }
                 placeholderTextColor="#AAA"
                 textAlignVertical="top"
               />
