@@ -8,6 +8,10 @@ import GrupoFormScreen from '../screens/grupos/GrupoForm';
 import GrupoMiembrosScreen from '../screens/grupos/GrupoMiembros';
 import GrupoLiderazgoScreen from '../screens/grupos/GrupoLiderazgo';
 import GrupoEventosScreen from '../screens/grupos/GrupoEventos';
+import GrupoEventoFormScreen from '../screens/grupos/GrupoEventoForm';
+import GrupoEventoDetailScreen from '../screens/grupos/GrupoEventoDetail';
+import RegistrarAsistenciaScreen from '../screens/grupos/RegistrarAsistencia';
+import VerAsistenciaScreen from '../screens/grupos/VerAsistencia';
 import GrupoFinanzasScreen from '../screens/grupos/GrupoFinanzas';
 import GrupoRecursosScreen from '../screens/grupos/GrupoRecursos';
 
@@ -36,8 +40,25 @@ export default function GruposStack() {
       <Stack.Screen name="GrupoMiembros" component={GrupoMiembrosScreen} options={{ title: 'Miembros' }} />
       <Stack.Screen name="GrupoLiderazgo" component={GrupoLiderazgoScreen} options={{ title: 'Liderazgo' }} />
       <Stack.Screen name="GrupoEventos" component={GrupoEventosScreen} options={{ title: 'Eventos' }} />
+      <Stack.Screen
+        name="GrupoEventoForm"
+        component={GrupoEventoFormScreen}
+        options={({ route }: { route: any }) => ({ title: route.params?.evento ? 'Editar Evento' : 'Nuevo Evento' })}
+      />
+      <Stack.Screen
+        name="GrupoEventoDetail"
+        component={GrupoEventoDetailScreen}
+        options={({ route }: { route: any }) => ({ title: route.params?.titulo || 'Detalle Evento' })}
+      />
+      <Stack.Screen name="RegistrarAsistencia" component={RegistrarAsistenciaScreen} options={{ title: 'Registrar Asistencia' }} />
+      <Stack.Screen
+        name="VerAsistencia"
+        component={VerAsistenciaScreen}
+        options={({ route }: { route: any }) => ({ title: route.params?.titulo || 'Ver Asistencia' })}
+      />
       <Stack.Screen name="GrupoFinanzas" component={GrupoFinanzasScreen} options={{ title: 'Finanzas' }} />
       <Stack.Screen name="GrupoRecursos" component={GrupoRecursosScreen} options={{ title: 'Recursos' }} />
     </Stack.Navigator>
   );
 }
+
