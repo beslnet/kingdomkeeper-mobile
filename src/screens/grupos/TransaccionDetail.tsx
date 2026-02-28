@@ -359,8 +359,8 @@ export default function TransaccionDetailScreen() {
             who={transaccion.created_by_nombre ?? getResponsableNombre(transaccion)}
             when={formatDateTime(transaccion.created_at)}
           />
-          {/* Aprobación */}
-          {transaccion.aprobado_por_nombre ? (
+          {/* Aprobación: solo si fue aprobado y NO rechazado (backend reutiliza aprobado_por al rechazar) */}
+          {transaccion.aprobado_por_nombre && !transaccion.motivo_rechazo ? (
             <TraceRow
               icon="check-circle-outline"
               color="#1565C0"
@@ -375,8 +375,8 @@ export default function TransaccionDetailScreen() {
               icon="close-circle-outline"
               color="#C62828"
               label="Rechazado"
-              who={null}
-              when={null}
+              who={transaccion.aprobado_por_nombre ?? null}
+              when={formatDateTime(transaccion.fecha_aprobacion)}
               note={transaccion.motivo_rechazo}
             />
           ) : null}
