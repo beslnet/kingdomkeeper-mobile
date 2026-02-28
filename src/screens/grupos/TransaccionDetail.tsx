@@ -92,10 +92,37 @@ function DetailRow({ label, value, valueColor }: { label: string; value: string;
   );
 }
 
+function TraceRow({ icon, color, label, who, when, note }: {
+  icon: string; color: string; label: string;
+  who: string | null; when: string | null; note?: string | null;
+}) {
+  return (
+    <View style={rowStyles.traceRow}>
+      <Icon source={icon} size={16} color={color} />
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={[rowStyles.traceLabel, { color }]}>{label}</Text>
+          {when ? <Text style={rowStyles.traceWhen}>{when}</Text> : null}
+        </View>
+        {who ? <Text style={rowStyles.traceWho}>{who}</Text> : null}
+        {note ? <Text style={rowStyles.traceNote}>{note}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
 const rowStyles = StyleSheet.create({
   row: { flexDirection: 'row', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
   label: { flex: 1, fontSize: 13, color: '#888', marginRight: 8 },
   value: { flex: 2, fontSize: 14, color: '#222', fontWeight: '500', textAlign: 'right' },
+  traceRow: {
+    flexDirection: 'row', gap: 10, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: '#F0F0F0', alignItems: 'flex-start',
+  },
+  traceLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
+  traceWho: { fontSize: 13, color: '#333', marginTop: 1 },
+  traceWhen: { fontSize: 11, color: '#999' },
+  traceNote: { fontSize: 12, color: '#666', fontStyle: 'italic', marginTop: 2 },
 });
 
 // ─── Modal helpers ───────────────────────────────────────────────────────────
@@ -321,24 +348,61 @@ export default function TransaccionDetailScreen() {
           ) : null}
         </View>
 
-        {/* Historial / motivo rechazo / anulación */}
-        {(transaccion.motivo_rechazo || transaccion.motivo_anulacion) ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>HISTORIAL</Text>
-            {transaccion.motivo_rechazo ? (
-              <DetailRow label="Motivo rechazo" value={transaccion.motivo_rechazo} valueColor="#C62828" />
-            ) : null}
-            {transaccion.motivo_anulacion ? (
-              <DetailRow label="Motivo anulación" value={transaccion.motivo_anulacion} valueColor="#757575" />
-            ) : null}
-          </View>
-        ) : null}
-
-        {/* Metadata */}
+        {/* Trazabilidad del flujo de aprobación */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>REGISTRO</Text>
-          <DetailRow label="Creado"       value={formatDateTime(transaccion.created_at)} />
-          <DetailRow label="Actualizado"  value={formatDateTime(transaccion.updated_at)} />
+          <Text style={styles.cardTitle}>REGISTRO Y TRAZABILIDAD</Text>
+          {/* Creación */}
+          <TraceRow
+            icon="plus-circle-outline"
+            color="#555"
+            label="Creado"
+            who={transaccion.created_by_nombre ?? getResponsableNombre(transaccion)}
+            when={formatDateTime(transaccion.created_at)}
+          />
+          {/* Aprobación */}
+          {transaccion.aprobado_por_nombre ? (
+            <TraceRow
+              icon="check-circle-outline"
+              color="#1565C0"
+              label="Aprobado"
+              who={transaccion.aprobado_por_nombre}
+              when={formatDateTime(transaccion.fecha_aprobacion)}
+            />
+          ) : null}
+          {/* Rechazo */}
+          {transaccion.motivo_rechazo ? (
+            <TraceRow
+              icon="close-circle-outline"
+              color="#C62828"
+              label="Rechazado"
+              who={null}
+              when={null}
+              note={transaccion.motivo_rechazo}
+            />
+          ) : null}
+          {/* Pago */}
+          {transaccion.pagado_por_nombre ? (
+            <TraceRow
+              icon="cash-check"
+              color="#2E7D32"
+              label="Pagado"
+              who={transaccion.pagado_por_nombre}
+              when={formatDateTime(transaccion.fecha_pago)}
+            />
+          ) : null}
+          {/* Anulación */}
+          {transaccion.anulado_por_nombre ? (
+            <TraceRow
+              icon="cancel"
+              color="#757575"
+              label="Anulado"
+              who={transaccion.anulado_por_nombre}
+              when={formatDateTime(transaccion.fecha_anulacion)}
+              note={transaccion.motivo_anulacion}
+            />
+          ) : null}
+          {/* Última actualización */}
+          <DetailRow label="Última actualización" value={formatDateTime(transaccion.updated_at)} />
         </View>
 
         {/* Comprobante */}
