@@ -30,7 +30,7 @@ type MenuItem = {
 };
 
 const MENU_ITEMS: MenuItem[] = [
-  { label: 'Inicio', icon: 'home-outline', screen: 'Inicio' },
+  { label: 'Inicio', icon: 'home-outline', screen: 'Inicio', nestedTab: 'Dashboard' },
   { label: 'Membresía', icon: 'account-group-outline', screen: 'Membresía', permission: { module: 'membresia', action: 'ver' } },
   { label: 'Grupos y Células', icon: 'account-multiple-outline', screen: 'GruposCelulas', permission: { module: 'grupos', action: 'ver' } },
   { label: 'Finanzas', icon: 'cash-multiple', screen: 'Finanzas', permission: { module: 'finanzas', action: 'ver' } },
