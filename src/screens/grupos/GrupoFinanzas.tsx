@@ -81,6 +81,7 @@ export default function GrupoFinanzasScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [estadoFiltro, setEstadoFiltro] = useState<string | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Permission: puedeGestionar = superAdmin | church_admin | pastor | lider | co-lider
@@ -100,7 +101,7 @@ export default function GrupoFinanzasScreen() {
     }
   }, [grupoId]);
 
-  const loadTransacciones = useCallback(async (pageNum: number, searchTerm: string, append = false) => {
+  const loadTransacciones = useCallback(async (pageNum: number, searchTerm: string, estadoFilter: string | null, append = false) => {
     try {
       const result = await listarTransacciones({
         grupo_id: grupoId,
@@ -108,6 +109,7 @@ export default function GrupoFinanzasScreen() {
         page_size: PAGE_SIZE,
         ordering: '-fecha,-created_at',
         search: searchTerm,
+        estado: estadoFilter ?? '',
       });
       const newItems: any[] = result.results ?? [];
       setTotalCount(result.count ?? 0);
@@ -129,8 +131,8 @@ export default function GrupoFinanzasScreen() {
       grupo ? Promise.resolve(grupo) : obtenerGrupo(grupoId),
     ]);
     if (!grupo) setGrupo(grupoData);
-    await Promise.all([loadResumen(), loadTransacciones(1, search)]);
-  }, [grupoId, grupo, search, loadResumen, loadTransacciones]);
+    await Promise.all([loadResumen(), loadTransacciones(1, search, estadoFiltro)]);
+  }, [grupoId, grupo, search, estadoFiltro, loadResumen, loadTransacciones]);
 
   useEffect(() => {
     setLoading(true);
@@ -146,27 +148,34 @@ export default function GrupoFinanzasScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setPage(1);
-    await Promise.all([loadResumen(), loadTransacciones(1, search)]);
+    await Promise.all([loadResumen(), loadTransacciones(1, search, estadoFiltro)]);
     setRefreshing(false);
-  }, [loadResumen, loadTransacciones, search]);
+  }, [loadResumen, loadTransacciones, search, estadoFiltro]);
 
   const onLoadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;
     setLoadingMore(true);
     const nextPage = page + 1;
     setPage(nextPage);
-    await loadTransacciones(nextPage, search, true);
+    await loadTransacciones(nextPage, search, estadoFiltro, true);
     setLoadingMore(false);
-  }, [hasMore, loadingMore, page, search, loadTransacciones]);
+  }, [hasMore, loadingMore, page, search, estadoFiltro, loadTransacciones]);
 
   const onSearchChange = useCallback((text: string) => {
     setSearch(text);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(async () => {
       setPage(1);
-      await loadTransacciones(1, text);
+      await loadTransacciones(1, text, estadoFiltro);
     }, 400);
-  }, [loadTransacciones]);
+  }, [loadTransacciones, estadoFiltro]);
+
+  const onEstadoFiltroChange = useCallback(async (estado: string | null) => {
+    const next = estadoFiltro === estado ? null : estado; // toggle
+    setEstadoFiltro(next);
+    setPage(1);
+    await loadTransacciones(1, search, next);
+  }, [estadoFiltro, search, loadTransacciones]);
 
   const totalIngresos = resumen?.total_ingresos ?? resumen?.ingresos ?? 0;
   const totalEgresos = resumen?.total_egresos ?? resumen?.egresos ?? 0;
@@ -195,19 +204,35 @@ export default function GrupoFinanzasScreen() {
         <Text style={styles.sectionTitle}>DESGLOSE EGRESOS</Text>
         <View style={styles.breakdownCard}>
           {[
-            { label: 'Pendientes', color: '#FF9800', value: resumen?.cantidad_egresos_pendientes ?? egresosPendientes },
-            { label: 'Aprobados',  color: PANTONE_295C, value: resumen?.cantidad_egresos_aprobados ?? egresosAprobados },
-            { label: 'Pagados',    color: '#2E7D32', value: resumen?.cantidad_egresos_pagados ?? egresosPagados },
-          ].map((item, i, arr) => (
-            <React.Fragment key={item.label}>
-              <View style={styles.breakdownRow}>
-                <View style={[styles.dot, { backgroundColor: item.color }]} />
-                <Text style={styles.breakdownLabel}>{item.label}</Text>
-                <Text style={styles.breakdownCount}>{item.value}</Text>
-              </View>
-              {i < arr.length - 1 && <View style={styles.separator} />}
-            </React.Fragment>
-          ))}
+            { label: 'Pendientes', color: '#FF9800', value: resumen?.cantidad_egresos_pendientes ?? egresosPendientes, estado: 'pendiente' },
+            { label: 'Aprobados',  color: PANTONE_295C, value: resumen?.cantidad_egresos_aprobados ?? egresosAprobados, estado: 'aprobado' },
+            { label: 'Pagados',    color: '#2E7D32', value: resumen?.cantidad_egresos_pagados ?? egresosPagados, estado: 'pagado' },
+          ].map((item, i, arr) => {
+            const isActive = estadoFiltro === item.estado;
+            return (
+              <React.Fragment key={item.label}>
+                <TouchableOpacity
+                  style={[styles.breakdownRow, isActive && { backgroundColor: item.color + '18' }]}
+                  onPress={() => onEstadoFiltroChange(item.estado)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.dot, { backgroundColor: item.color }]} />
+                  <Text style={[styles.breakdownLabel, isActive && { color: item.color, fontWeight: '700' }]}>
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.breakdownCount, isActive && { color: item.color }]}>
+                    {item.value}
+                  </Text>
+                  <Icon
+                    source={isActive ? 'filter-check' : 'filter-outline'}
+                    size={16}
+                    color={isActive ? item.color : '#CCC'}
+                  />
+                </TouchableOpacity>
+                {i < arr.length - 1 && <View style={styles.separator} />}
+              </React.Fragment>
+            );
+          })}
         </View>
       </View>
 
@@ -215,6 +240,12 @@ export default function GrupoFinanzasScreen() {
       <View style={[styles.section, { marginBottom: 8 }]}>
         <View style={styles.txHeaderRow}>
           <Text style={styles.sectionTitle}>TRANSACCIONES ({totalCount})</Text>
+          {estadoFiltro ? (
+            <TouchableOpacity style={styles.filterChip} onPress={() => onEstadoFiltroChange(null)}>
+              <Text style={styles.filterChipText}>{estadoFiltro}</Text>
+              <Icon source="close" size={13} color={PANTONE_295C} />
+            </TouchableOpacity>
+          ) : null}
         </View>
         <View style={styles.searchBar}>
           <Icon source="magnify" size={18} color="#888" />
@@ -274,7 +305,7 @@ export default function GrupoFinanzasScreen() {
             <View style={styles.emptyTx}>
               <Icon source="receipt" size={40} color="#CCC" />
               <Text style={styles.emptyTxText}>
-                {search ? 'Sin resultados para la búsqueda' : 'No hay transacciones registradas'}
+                {estadoFiltro ? `Sin transacciones con estado "${estadoFiltro}"` : search ? 'Sin resultados para la búsqueda' : 'No hay transacciones registradas'}
               </Text>
             </View>
           ) : null
@@ -380,7 +411,14 @@ const styles = StyleSheet.create({
   breakdownLabel: { flex: 1, fontSize: 14, color: '#333' },
   breakdownCount: { fontSize: 16, fontWeight: '700', color: '#333' },
   separator: { height: 1, backgroundColor: '#F0F0F0', marginHorizontal: 16 },
-  txHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  txHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  filterChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#EAF2FF', borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: PANTONE_295C,
+  },
+  filterChipText: { fontSize: 12, color: PANTONE_295C, fontWeight: '600', textTransform: 'capitalize' },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
     borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
