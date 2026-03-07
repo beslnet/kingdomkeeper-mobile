@@ -133,7 +133,8 @@ export function formatMonto(monto: number | string): string {
     style: 'currency',
     currency: 'CLP',
     minimumFractionDigits: 0,
-  }).format(num);
+    maximumFractionDigits: 0,
+  }).format(Math.round(num));
 }
 
 // ─── Transacciones ────────────────────────────────────────────────────────────

@@ -288,6 +288,40 @@ export default function CuentasListScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            {/* Totalizador consolidado */}
+            {cuentas.length > 0 && (() => {
+              const activas = cuentas.filter((c) => c.activo !== false);
+              const totalInicial = activas.reduce((s, c) => s + Number(c.saldo_inicial ?? 0), 0);
+              const totalIngresos = activas.reduce((s, c) => s + Number(c.total_ingresos ?? 0), 0);
+              const totalEgresos = activas.reduce((s, c) => s + Number(c.total_egresos ?? 0), 0);
+              const totalDisponible = activas.reduce((s, c) => s + Number(c.saldo_disponible ?? 0), 0);
+              return (
+                <View style={styles.totalizadorCard}>
+                  <Text style={styles.totalizadorTitle}>Total consolidado</Text>
+                  <View style={styles.totalizadorRow}>
+                    <View style={styles.totalizadorItem}>
+                      <Text style={styles.totalizadorLabel}>Inicial</Text>
+                      <Text style={styles.totalizadorNeutro}>{formatMonto(totalInicial)}</Text>
+                    </View>
+                    <View style={styles.totalizadorItem}>
+                      <Text style={styles.totalizadorLabel}>Ingresos</Text>
+                      <Text style={styles.totalizadorIngreso}>{formatMonto(totalIngresos)}</Text>
+                    </View>
+                    <View style={styles.totalizadorItem}>
+                      <Text style={styles.totalizadorLabel}>Egresos</Text>
+                      <Text style={styles.totalizadorEgreso}>{formatMonto(totalEgresos)}</Text>
+                    </View>
+                    <View style={styles.totalizadorItem}>
+                      <Text style={styles.totalizadorLabel}>Disponible</Text>
+                      <Text style={[styles.totalizadorDisponible, totalDisponible < 0 && { color: '#EF9A9A' }]}>
+                        {formatMonto(totalDisponible)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })()}
+
             {/* Nueva cuenta: form aparece arriba del listado */}
             {showForm && !editingCuenta && <FormCard />}
 
@@ -580,5 +614,51 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 6,
+  },
+  totalizadorCard: {
+    backgroundColor: PANTONE_295C,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 14,
+  },
+  totalizadorTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.75)',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  totalizadorRow: {
+    flexDirection: 'row',
+  },
+  totalizadorItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  totalizadorLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.65)',
+    marginBottom: 3,
+  },
+  totalizadorNeutro: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  totalizadorIngreso: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#A5D6A7',
+  },
+  totalizadorEgreso: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EF9A9A',
+  },
+  totalizadorDisponible: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#F2C75C',
   },
 });

@@ -11,13 +11,7 @@ import { Icon } from 'react-native-paper';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { usePermissionsStore } from '../../store/permissionsStore';
 import { PANTONE_295C } from '../../theme/colors';
-import {
-  obtenerResumen,
-  listarCuentas,
-  formatMonto,
-  ResumenFinanzas,
-  CuentaFondo,
-} from '../../api/finanzas';
+import { obtenerResumen, formatMonto, ResumenFinanzas } from '../../api/finanzas';
 
 export default function FinanzasDashboardScreen() {
   const navigation = useNavigation<any>();
@@ -26,7 +20,6 @@ export default function FinanzasDashboardScreen() {
   const canView = isSuperAdmin || hasPermission('finanzas', 'ver');
 
   const [resumen, setResumen] = useState<ResumenFinanzas | null>(null);
-  const [cuentas, setCuentas] = useState<CuentaFondo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,12 +27,8 @@ export default function FinanzasDashboardScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [resumenData, cuentasData] = await Promise.all([
-        obtenerResumen(),
-        listarCuentas(),
-      ]);
-      setResumen(resumenData);
-      setCuentas(Array.isArray(cuentasData) ? cuentasData : []);
+      const data = await obtenerResumen();
+      setResumen(data);
     } catch (err: any) {
       const d = err?.response?.data;
       let msg = 'Error al cargar el resumen.';
@@ -95,12 +84,6 @@ export default function FinanzasDashboardScreen() {
     (resumen?.cantidad_egresos_pendientes ?? 0) +
     (resumen?.cantidad_ingresos_pendientes ?? 0);
 
-  const cuentasActivas = cuentas.filter((c) => c.activo !== false);
-  const totalSaldoInicial = cuentasActivas.reduce((s, c) => s + Number(c.saldo_inicial ?? 0), 0);
-  const totalIngresos = cuentasActivas.reduce((s, c) => s + Number(c.total_ingresos ?? 0), 0);
-  const totalEgresos = cuentasActivas.reduce((s, c) => s + Number(c.total_egresos ?? 0), 0);
-  const totalDisponible = cuentasActivas.reduce((s, c) => s + Number(c.saldo_disponible ?? 0), 0);
-
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -129,71 +112,6 @@ export default function FinanzasDashboardScreen() {
             <Text style={styles.summaryCardSubLabel}>Pendientes</Text>
           </View>
         </View>
-
-        {/* Saldo por Cuenta/Fondo */}
-        {cuentasActivas.length > 0 && (
-          <>
-            <View style={styles.sectionTitleRow}>
-              <Text style={styles.sectionTitle}>Saldo por Cuenta/Fondo</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('CuentasList')} activeOpacity={0.7}>
-                <Text style={styles.sectionLink}>Ver todas</Text>
-              </TouchableOpacity>
-            </View>
-
-            {cuentasActivas.map((cuenta) => (
-              <View key={cuenta.id} style={styles.cuentaCard}>
-                <View style={styles.cuentaCardHeader}>
-                  <View style={styles.cuentaCardHeaderLeft}>
-                    <Text style={styles.cuentaNombre}>{cuenta.nombre}</Text>
-                    <Text style={styles.cuentaTipo}>{cuenta.tipo?.nombre ?? '—'}</Text>
-                  </View>
-                  <Text style={styles.cuentaSaldoDisponible}>{formatMonto(cuenta.saldo_disponible)}</Text>
-                </View>
-                <View style={styles.cuentaDesglose}>
-                  <View style={styles.desgloseCol}>
-                    <Text style={styles.desgloseLabel}>Inicial</Text>
-                    <Text style={styles.desgloseNeutro}>{formatMonto(cuenta.saldo_inicial ?? 0)}</Text>
-                  </View>
-                  <Text style={styles.desgloseSep}>+</Text>
-                  <View style={styles.desgloseCol}>
-                    <Text style={styles.desgloseLabel}>Ingresos</Text>
-                    <Text style={styles.desgloseIngreso}>{formatMonto(cuenta.total_ingresos)}</Text>
-                  </View>
-                  <Text style={styles.desgloseSep}>−</Text>
-                  <View style={styles.desgloseCol}>
-                    <Text style={styles.desgloseLabel}>Egresos</Text>
-                    <Text style={styles.desgloseEgreso}>{formatMonto(cuenta.total_egresos)}</Text>
-                  </View>
-                </View>
-              </View>
-            ))}
-
-            {/* Totalizador global */}
-            <View style={styles.totalizadorCard}>
-              <Text style={styles.totalizadorTitle}>Total consolidado</Text>
-              <View style={styles.totalizadorRow}>
-                <View style={styles.totalizadorItem}>
-                  <Text style={styles.totalizadorLabel}>Inicial</Text>
-                  <Text style={styles.totalizadorNeutro}>{formatMonto(totalSaldoInicial)}</Text>
-                </View>
-                <View style={styles.totalizadorItem}>
-                  <Text style={styles.totalizadorLabel}>Ingresos</Text>
-                  <Text style={styles.totalizadorIngreso}>{formatMonto(totalIngresos)}</Text>
-                </View>
-                <View style={styles.totalizadorItem}>
-                  <Text style={styles.totalizadorLabel}>Egresos</Text>
-                  <Text style={styles.totalizadorEgreso}>{formatMonto(totalEgresos)}</Text>
-                </View>
-                <View style={styles.totalizadorItem}>
-                  <Text style={styles.totalizadorLabel}>Disponible</Text>
-                  <Text style={[styles.totalizadorDisponible, totalDisponible < 0 && { color: '#E53935' }]}>
-                    {formatMonto(totalDisponible)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </>
-        )}
 
         <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Acceso Rápido</Text>
         <View style={styles.quickAccessRow}>

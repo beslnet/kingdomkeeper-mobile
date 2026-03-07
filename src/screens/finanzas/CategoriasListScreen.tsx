@@ -32,46 +32,6 @@ function FieldLabel({ label, required }: { label: string; required?: boolean }) 
   );
 }
 
-function CategoriaItem({
-  categoria,
-  canManage,
-  onEdit,
-  onToggle,
-  onDelete,
-}: {
-  categoria: CategoriaTransaccion;
-  canManage: boolean;
-  onEdit: () => void;
-  onToggle: () => void;
-  onDelete: () => void;
-}) {
-  const isIngreso = categoria.tipo === 'ingreso';
-  return (
-    <View style={[styles.categoriaItem, !categoria.activo && styles.categoriaItemInactive]}>
-      <View style={[styles.dot, { backgroundColor: isIngreso ? '#4CAF50' : '#E53935', opacity: categoria.activo ? 1 : 0.4 }]} />
-      <Text style={[styles.categoriaNombre, !categoria.activo && styles.categoriaInactiveText]}>
-        {categoria.nombre}
-      </Text>
-      {!categoria.activo && (
-        <Text style={styles.inactiveBadge}>Inactiva</Text>
-      )}
-      {canManage && (
-        <View style={styles.actionIcons}>
-          <TouchableOpacity onPress={onEdit} style={styles.iconBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
-            <Icon source="pencil-outline" size={17} color="#1976D2" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onToggle} style={styles.iconBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
-            <Icon source={categoria.activo ? 'toggle-switch' : 'toggle-switch-off-outline'} size={19} color={categoria.activo ? '#FF9800' : '#4CAF50'} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onDelete} style={styles.iconBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
-            <Icon source="trash-can-outline" size={17} color="#E53935" />
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-}
-
 export default function CategoriasListScreen() {
   const isSuperAdmin = usePermissionsStore((s) => s.isSuperAdmin);
   const hasPermission = usePermissionsStore((s) => s.hasPermission);
@@ -81,8 +41,8 @@ export default function CategoriasListScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [showForm, setShowForm] = useState(false);
-  const [editingCategoria, setEditingCategoria] = useState<CategoriaTransaccion | null>(null);
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const [formNombre, setFormNombre] = useState('');
   const [formTipo, setFormTipo] = useState<'ingreso' | 'egreso' | ''>('');
@@ -119,26 +79,26 @@ export default function CategoriasListScreen() {
   }, [loadCategorias]);
 
   const openCreate = () => {
-    setEditingCategoria(null);
+    setEditingId(null);
     setFormNombre('');
     setFormTipo('');
     setFormDescripcion('');
     setFormError(null);
-    setShowForm(true);
+    setShowNewForm(true);
   };
 
   const openEdit = (cat: CategoriaTransaccion) => {
-    setEditingCategoria(cat);
+    setShowNewForm(false);
+    setEditingId(cat.id);
     setFormNombre(cat.nombre);
     setFormTipo(cat.tipo);
     setFormDescripcion(cat.descripcion ?? '');
     setFormError(null);
-    setShowForm(true);
   };
 
   const handleCancel = () => {
-    setShowForm(false);
-    setEditingCategoria(null);
+    setShowNewForm(false);
+    setEditingId(null);
     setFormError(null);
   };
 
@@ -153,13 +113,13 @@ export default function CategoriasListScreen() {
         tipo: formTipo as 'ingreso' | 'egreso',
         descripcion: formDescripcion.trim() || undefined,
       };
-      if (editingCategoria) {
-        await editarCategoria(editingCategoria.id, payload);
+      if (editingId !== null) {
+        await editarCategoria(editingId, payload);
       } else {
         await crearCategoria(payload);
       }
-      setShowForm(false);
-      setEditingCategoria(null);
+      setShowNewForm(false);
+      setEditingId(null);
       await loadCategorias();
     } catch (err: any) {
       const d = err?.response?.data;
@@ -230,6 +190,90 @@ export default function CategoriasListScreen() {
 
   const tipoLabel = TIPOS_TRANSACCION.find((t) => t.value === formTipo)?.label;
 
+  function FormCard() {
+    return (
+      <View style={styles.formCard}>
+        <Text style={styles.formTitle}>
+          {editingId !== null ? 'Editar categoría' : 'Nueva categoría'}
+        </Text>
+
+        <FieldLabel label="Nombre" required />
+        <TextInput
+          style={styles.textInput}
+          placeholder="Nombre de la categoría"
+          placeholderTextColor="#AAA"
+          value={formNombre}
+          onChangeText={setFormNombre}
+        />
+
+        <FieldLabel label="Tipo" required />
+        <TouchableOpacity
+          style={styles.selectBtn}
+          onPress={() => setShowTipoDropdown((v) => !v)}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.selectBtnText, !formTipo && { color: '#AAA' }]}>
+            {tipoLabel ?? 'Seleccionar tipo...'}
+          </Text>
+          <Icon source={showTipoDropdown ? 'chevron-up' : 'chevron-down'} size={18} color="#888" />
+        </TouchableOpacity>
+        {showTipoDropdown && (
+          <View style={styles.inlineDropdown}>
+            {TIPOS_TRANSACCION.map((item) => (
+              <TouchableOpacity
+                key={item.value}
+                style={[styles.selectOption, formTipo === item.value && styles.selectOptionActive]}
+                onPress={() => { setFormTipo(item.value as 'ingreso' | 'egreso'); setShowTipoDropdown(false); }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.selectOptionText, formTipo === item.value && styles.selectOptionTextActive]}>
+                  {item.label}
+                </Text>
+                {formTipo === item.value && <Icon source="check" size={18} color={PANTONE_295C} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <FieldLabel label="Descripción" />
+        <TextInput
+          style={[styles.textInput, styles.textInputMultiline]}
+          placeholder="Descripción (opcional)"
+          placeholderTextColor="#AAA"
+          value={formDescripcion}
+          onChangeText={setFormDescripcion}
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
+
+        {formError ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerText}>{formError}</Text>
+          </View>
+        ) : null}
+
+        <View style={styles.formBtns}>
+          <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel} activeOpacity={0.75} disabled={saving}>
+            <Text style={styles.cancelBtnText}>Cancelar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+            onPress={handleSave}
+            activeOpacity={0.8}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Text style={styles.saveBtnText}>Guardar</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.container}>
@@ -250,7 +294,10 @@ export default function CategoriasListScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Ingresos section */}
+            {/* Nueva categoría: form al tope */}
+            {showNewForm && <FormCard />}
+
+            {/* Ingresos */}
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionDot, { backgroundColor: '#4CAF50' }]} />
               <Text style={styles.sectionTitle}>Ingresos</Text>
@@ -259,20 +306,35 @@ export default function CategoriasListScreen() {
               {ingresos.length === 0 ? (
                 <Text style={styles.emptySection}>Sin categorías de ingreso.</Text>
               ) : (
-                ingresos.map((cat) => (
-                  <CategoriaItem
-                    key={cat.id}
-                    categoria={cat}
-                    canManage={canManage}
-                    onEdit={() => openEdit(cat)}
-                    onToggle={() => handleToggleActivo(cat)}
-                    onDelete={() => handleDelete(cat)}
-                  />
+                ingresos.map((cat, idx) => (
+                  <React.Fragment key={cat.id}>
+                    <View style={[styles.categoriaItem, !cat.activo && styles.categoriaItemInactive, idx === ingresos.length - 1 && { borderBottomWidth: 0 }]}>
+                      <View style={[styles.dot, { backgroundColor: '#4CAF50', opacity: cat.activo ? 1 : 0.4 }]} />
+                      <Text style={[styles.categoriaNombre, !cat.activo && styles.categoriaInactiveText]}>
+                        {cat.nombre}
+                      </Text>
+                      {!cat.activo && <Text style={styles.inactiveBadge}>Inactiva</Text>}
+                      {canManage && (
+                        <View style={styles.actionIcons}>
+                          <TouchableOpacity onPress={() => openEdit(cat)} style={styles.iconBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                            <Icon source="pencil-outline" size={17} color="#1976D2" />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleToggleActivo(cat)} style={styles.iconBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                            <Icon source={cat.activo ? 'toggle-switch' : 'toggle-switch-off-outline'} size={19} color={cat.activo ? '#FF9800' : '#4CAF50'} />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleDelete(cat)} style={styles.iconBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                            <Icon source="trash-can-outline" size={17} color="#E53935" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                    {editingId === cat.id && <FormCard />}
+                  </React.Fragment>
                 ))
               )}
             </View>
 
-            {/* Egresos section */}
+            {/* Egresos */}
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionDot, { backgroundColor: '#E53935' }]} />
               <Text style={styles.sectionTitle}>Egresos</Text>
@@ -281,105 +343,37 @@ export default function CategoriasListScreen() {
               {egresos.length === 0 ? (
                 <Text style={styles.emptySection}>Sin categorías de egreso.</Text>
               ) : (
-                egresos.map((cat) => (
-                  <CategoriaItem
-                    key={cat.id}
-                    categoria={cat}
-                    canManage={canManage}
-                    onEdit={() => openEdit(cat)}
-                    onToggle={() => handleToggleActivo(cat)}
-                    onDelete={() => handleDelete(cat)}
-                  />
+                egresos.map((cat, idx) => (
+                  <React.Fragment key={cat.id}>
+                    <View style={[styles.categoriaItem, !cat.activo && styles.categoriaItemInactive, idx === egresos.length - 1 && { borderBottomWidth: 0 }]}>
+                      <View style={[styles.dot, { backgroundColor: '#E53935', opacity: cat.activo ? 1 : 0.4 }]} />
+                      <Text style={[styles.categoriaNombre, !cat.activo && styles.categoriaInactiveText]}>
+                        {cat.nombre}
+                      </Text>
+                      {!cat.activo && <Text style={styles.inactiveBadge}>Inactiva</Text>}
+                      {canManage && (
+                        <View style={styles.actionIcons}>
+                          <TouchableOpacity onPress={() => openEdit(cat)} style={styles.iconBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                            <Icon source="pencil-outline" size={17} color="#1976D2" />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleToggleActivo(cat)} style={styles.iconBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                            <Icon source={cat.activo ? 'toggle-switch' : 'toggle-switch-off-outline'} size={19} color={cat.activo ? '#FF9800' : '#4CAF50'} />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleDelete(cat)} style={styles.iconBtn} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                            <Icon source="trash-can-outline" size={17} color="#E53935" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                    {editingId === cat.id && <FormCard />}
+                  </React.Fragment>
                 ))
               )}
             </View>
-
-            {/* Inline form */}
-            {showForm && (
-              <View style={styles.formCard}>
-                <Text style={styles.formTitle}>
-                  {editingCategoria ? 'Editar categoría' : 'Nueva categoría'}
-                </Text>
-
-                <FieldLabel label="Nombre" required />
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Nombre de la categoría"
-                  placeholderTextColor="#AAA"
-                  value={formNombre}
-                  onChangeText={setFormNombre}
-                />
-
-                <FieldLabel label="Tipo" required />
-                <TouchableOpacity
-                  style={styles.selectBtn}
-                  onPress={() => setShowTipoDropdown((v) => !v)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={[styles.selectBtnText, !formTipo && { color: '#AAA' }]}>
-                    {tipoLabel ?? 'Seleccionar tipo...'}
-                  </Text>
-                  <Icon source={showTipoDropdown ? 'chevron-up' : 'chevron-down'} size={18} color="#888" />
-                </TouchableOpacity>
-                {showTipoDropdown && (
-                  <View style={styles.inlineDropdown}>
-                    {TIPOS_TRANSACCION.map((item) => (
-                      <TouchableOpacity
-                        key={item.value}
-                        style={[styles.selectOption, formTipo === item.value && styles.selectOptionActive]}
-                        onPress={() => { setFormTipo(item.value as 'ingreso' | 'egreso'); setShowTipoDropdown(false); }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.selectOptionText, formTipo === item.value && styles.selectOptionTextActive]}>
-                          {item.label}
-                        </Text>
-                        {formTipo === item.value && <Icon source="check" size={18} color={PANTONE_295C} />}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-
-                <FieldLabel label="Descripción" />
-                <TextInput
-                  style={[styles.textInput, styles.textInputMultiline]}
-                  placeholder="Descripción (opcional)"
-                  placeholderTextColor="#AAA"
-                  value={formDescripcion}
-                  onChangeText={setFormDescripcion}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
-
-                {formError ? (
-                  <View style={styles.errorBanner}>
-                    <Text style={styles.errorBannerText}>{formError}</Text>
-                  </View>
-                ) : null}
-
-                <View style={styles.formBtns}>
-                  <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel} activeOpacity={0.75} disabled={saving}>
-                    <Text style={styles.cancelBtnText}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-                    onPress={handleSave}
-                    activeOpacity={0.8}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <ActivityIndicator color="#FFF" size="small" />
-                    ) : (
-                      <Text style={styles.saveBtnText}>Guardar</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
           </ScrollView>
         )}
 
-        {canManage && !showForm && (
+        {canManage && editingId === null && !showNewForm && (
           <TouchableOpacity style={styles.fab} onPress={openCreate} activeOpacity={0.85}>
             <Icon source="plus" size={28} color="#FFF" />
           </TouchableOpacity>
