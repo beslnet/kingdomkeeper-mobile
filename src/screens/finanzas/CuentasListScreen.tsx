@@ -139,7 +139,7 @@ export default function CuentasListScreen() {
     setEditingCuenta(cuenta);
     setFormNombre(cuenta.nombre);
     setFormTipoId(cuenta.tipo?.id ?? null);
-    setFormSaldo(String(cuenta.saldo_inicial ?? ''));
+    setFormSaldo(String(Math.round(Number(cuenta.saldo_inicial ?? 0))));
     setFormError(null);
     setShowForm(true);
   };
