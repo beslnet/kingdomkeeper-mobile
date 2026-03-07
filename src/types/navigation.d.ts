@@ -26,3 +26,12 @@ export type MembresiaStackParamList = {
   FamilyMiembro: { miembroId: number; miembroNombre: string };
   MiembrosArchivados: undefined;
 };
+
+export type FinanzasStackParamList = {
+  FinanzasDashboard: undefined;
+  TransaccionesList: { tipoFiltro?: string; estadoFiltro?: string } | undefined;
+  TransaccionDetail: { transaccionId: number };
+  TransaccionForm: { transaccion?: import('../api/finanzas').Transaccion } | undefined;
+  CuentasList: undefined;
+  CategoriasList: undefined;
+};

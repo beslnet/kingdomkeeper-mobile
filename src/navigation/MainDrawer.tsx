@@ -12,7 +12,7 @@ import MainTabs from './MainTabs';
 import GruposStack from './GruposStack';
 import Comunicaciones from '../screens/Comunicaciones';
 import MembresiaStack from './MembresiaStack';
-import FinanzasScreen from '../screens/Finanzas';
+import FinanzasStack from './FinanzasStack';
 import CasosPastoralesScreen from '../screens/CasosPastorales';
 import InventarioScreen from '../screens/Inventario';
 
@@ -258,7 +258,7 @@ export default function MainDrawer() {
       <Drawer.Screen name="Inicio" component={MainTabs} />
       <Drawer.Screen name="GruposCelulas" component={GruposStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Membresía" component={MembresiaStack} options={{ headerShown: false }} />
-      <Drawer.Screen name="Finanzas" component={FinanzasScreen} />
+      <Drawer.Screen name="Finanzas" component={FinanzasStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Comunicaciones" component={Comunicaciones} />
       <Drawer.Screen name="Casos Pastorales" component={CasosPastoralesScreen} />
       <Drawer.Screen name="Inventario" component={InventarioScreen} />
