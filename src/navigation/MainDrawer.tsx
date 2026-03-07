@@ -11,7 +11,7 @@ import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 import MainTabs from './MainTabs';
 import GruposStack from './GruposStack';
 import Comunicaciones from '../screens/Comunicaciones';
-import MembresiaScreen from '../screens/Membresia';
+import MembresiaStack from './MembresiaStack';
 import FinanzasScreen from '../screens/Finanzas';
 import CasosPastoralesScreen from '../screens/CasosPastorales';
 import InventarioScreen from '../screens/Inventario';
@@ -256,8 +256,8 @@ export default function MainDrawer() {
       screenOptions={{ headerShown: true }}
     >
       <Drawer.Screen name="Inicio" component={MainTabs} />
-      <Drawer.Screen name="GruposCelulas" component={GruposStack} />
-      <Drawer.Screen name="Membresía" component={MembresiaScreen} />
+      <Drawer.Screen name="GruposCelulas" component={GruposStack} options={{ headerShown: false }} />
+      <Drawer.Screen name="Membresía" component={MembresiaStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Finanzas" component={FinanzasScreen} />
       <Drawer.Screen name="Comunicaciones" component={Comunicaciones} />
       <Drawer.Screen name="Casos Pastorales" component={CasosPastoralesScreen} />

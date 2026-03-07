@@ -17,3 +17,12 @@ export type GruposStackParamList = {
   GrupoFinanzas: { grupoId: number; grupoNombre: string };
   GrupoRecursos: { grupoId: number; grupoNombre: string };
 };
+
+export type MembresiaStackParamList = {
+  MiembrosList: undefined;
+  MiembroDetail: { miembroId: number; nombre?: string };
+  MiembroForm: { miembro?: import('../api/miembros').Miembro };
+  BitacoraMiembro: { miembroId: number; miembroNombre: string };
+  FamilyMiembro: { miembroId: number; miembroNombre: string };
+  MiembrosArchivados: undefined;
+};

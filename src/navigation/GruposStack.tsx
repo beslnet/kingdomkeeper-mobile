@@ -1,5 +1,8 @@
 import React from 'react';
+import { TouchableOpacity } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { DrawerActions } from '@react-navigation/native';
+import { Icon } from 'react-native-paper';
 import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 
 import GruposListScreen from '../screens/grupos/GruposList';
@@ -21,6 +24,16 @@ import GruposArchivadosScreen from '../screens/grupos/GruposArchivados';
 
 const Stack = createStackNavigator();
 
+const HamburgerButton = ({ navigation }: { navigation: any }) => (
+  <TouchableOpacity
+    onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
+    style={{ paddingHorizontal: 16 }}
+    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+  >
+    <Icon source="menu" size={24} color={PANTONE_134C} />
+  </TouchableOpacity>
+);
+
 export default function GruposStack() {
   return (
     <Stack.Navigator
@@ -28,9 +41,17 @@ export default function GruposStack() {
         headerStyle: { backgroundColor: PANTONE_295C },
         headerTintColor: PANTONE_134C,
         headerTitleStyle: { fontWeight: 'bold' },
+        headerBackButtonDisplayMode: 'minimal',
       }}
     >
-      <Stack.Screen name="GruposList" component={GruposListScreen} options={{ title: 'Grupos' }} />
+      <Stack.Screen
+        name="GruposList"
+        component={GruposListScreen}
+        options={({ navigation }: { navigation: any }) => ({
+          title: 'Grupos',
+          headerLeft: () => <HamburgerButton navigation={navigation} />,
+        })}
+      />
       <Stack.Screen
         name="GrupoDetail"
         component={GrupoDetailScreen}
