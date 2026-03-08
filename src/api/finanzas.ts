@@ -144,6 +144,7 @@ export const listarTransacciones = async (params: {
   estado?: string;
   cuenta?: number | string;
   categoria?: number | string;
+  grupo_id?: number | string;
   search?: string;
   ordering?: string;
   page?: number;
@@ -154,6 +155,7 @@ export const listarTransacciones = async (params: {
   if (params.estado) cleaned.estado = params.estado;
   if (params.cuenta) cleaned.cuenta = params.cuenta;
   if (params.categoria) cleaned.categoria = params.categoria;
+  if (params.grupo_id) cleaned.grupo_id = params.grupo_id;
   if (params.search) cleaned.search = params.search;
   cleaned.ordering = params.ordering ?? '-fecha';
   cleaned.page = params.page ?? 1;
