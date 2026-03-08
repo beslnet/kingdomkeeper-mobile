@@ -10,8 +10,9 @@ import {
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { DrawerActions } from '@react-navigation/native';
 import { getRecibidas } from '../api/comunicaciones';
-import { PANTONE_295C } from '../theme/colors';
+import { PANTONE_134C, PANTONE_295C } from '../theme/colors';
 
 function formatRelativeDate(dateStr: string): string {
   if (!dateStr) return '';
@@ -133,7 +134,18 @@ export default function InboxScreen() {
   };
 
   return (
-    <FlatList
+    <View style={styles.screenContainer}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
+          style={{ paddingRight: 12 }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Icon source="menu" size={24} color={PANTONE_134C} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Bandeja de Entrada</Text>
+      </View>
+      <FlatList
       data={messages}
       keyExtractor={(item, index) => String(item.id ?? index)}
       renderItem={renderItem}
@@ -154,10 +166,24 @@ export default function InboxScreen() {
         loadingMore ? <ActivityIndicator size="small" color={PANTONE_295C} style={{ margin: 16 }} /> : null
       }
     />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenContainer: { flex: 1, backgroundColor: '#F5F7FA' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: PANTONE_295C,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: PANTONE_134C,
+  },
   list: { flex: 1, backgroundColor: '#F5F7FA' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyContainer: { flexGrow: 1 },
