@@ -192,15 +192,7 @@ export default function BandejaEntradaScreen() {
       {puedeGestionar && (
         <TouchableOpacity
           style={styles.gestionBtn}
-          onPress={() => {
-            // Si estamos dentro de ComunicacionesStack, navegar directo
-            // Si estamos en el tab (MainTabs), subir al drawer y navegar
-            try {
-              navigation.navigate('GestionList');
-            } catch {
-              navigation.getParent()?.navigate('Comunicaciones', { screen: 'GestionList' });
-            }
-          }}
+          onPress={() => navigation.navigate('GestionList')}
           activeOpacity={0.85}
         >
           <Icon source="view-list" size={22} color={PANTONE_134C} />
