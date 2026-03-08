@@ -10,8 +10,7 @@ import {
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { usePermissionsStore } from '../../store/permissionsStore';
-import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
+import { PANTONE_295C } from '../../theme/colors';
 import { getRecibidas, Comunicacion } from '../../api/comunicaciones';
 
 const TIPO_COLORS: Record<string, { bg: string; text: string }> = {
@@ -82,10 +81,6 @@ function MensajeItem({
 
 export default function BandejaEntradaScreen() {
   const navigation = useNavigation<any>();
-  const isSuperAdmin = usePermissionsStore((s) => s.isSuperAdmin);
-  const hasAnyRole = usePermissionsStore((s) => s.hasAnyRole);
-  const puedeGestionar =
-    isSuperAdmin || hasAnyRole(['church_admin', 'pastor', 'leader', 'treasurer']);
 
   const [mensajes, setMensajes] = useState<Comunicacion[]>([]);
   const [page, setPage] = useState(1);
@@ -189,15 +184,6 @@ export default function BandejaEntradaScreen() {
           </View>
         }
       />
-      {puedeGestionar && (
-        <TouchableOpacity
-          style={styles.gestionBtn}
-          onPress={() => navigation.navigate('GestionList')}
-          activeOpacity={0.85}
-        >
-          <Icon source="view-list" size={22} color={PANTONE_134C} />
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -323,21 +309,5 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 11,
     fontWeight: '600',
-  },
-  gestionBtn: {
-    position: 'absolute',
-    bottom: 24,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: PANTONE_295C,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 6,
   },
 });
