@@ -195,7 +195,9 @@ export default function GrupoDetailScreen() {
   const canSeeFinanzas =
     isSuperAdmin ||
     hasPermission('finanzas', 'ver') ||
-    hasAnyRole(['church_admin', 'pastor', 'leader']);
+    hasAnyRole(['church_admin', 'pastor']) ||
+    esLiderPrincipal ||
+    esCoLider;
 
   const sections: SectionItem[] = [
     { icon: 'account-multiple-outline', label: 'Miembros', screen: 'GrupoMiembros', badgeCount: grupo?.total_miembros },

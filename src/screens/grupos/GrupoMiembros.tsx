@@ -15,6 +15,7 @@ import {
 import { Icon } from 'react-native-paper';
 import { useRoute } from '@react-navigation/native';
 import { usePermissionsStore } from '../../store/permissionsStore';
+import { useAuthStore } from '../../store/authStore';
 import { obtenerGrupo, agregarMiembros, removerMiembros, listarMiembrosIglesia } from '../../api/grupos';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
 
@@ -39,8 +40,10 @@ export default function GrupoMiembrosScreen() {
   const { grupoId } = route.params ?? {};
   const hasAnyRole = usePermissionsStore((s) => s.hasAnyRole);
   const isSuperAdmin = usePermissionsStore((s) => s.isSuperAdmin);
+  const user = useAuthStore((s) => s.user);
 
   const [miembros, setMiembros] = useState<any[]>([]);
+  const [grupo, setGrupo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,14 +55,22 @@ export default function GrupoMiembrosScreen() {
   const [modalLoading, setModalLoading] = useState(false);
   const [addingId, setAddingId] = useState<number | null>(null);
 
+  const miembroId = user?.miembro_id;
+  const esLiderPrincipal = miembroId && grupo && Number(miembroId) === Number(grupo.lider_id);
+  const esCoLider = miembroId && grupo?.miembros?.some(
+    (m: any) => Number(m.miembro_id) === Number(miembroId) && m.rol_en_grupo === 'co_leader'
+  );
   const canManage =
     isSuperAdmin ||
-    hasAnyRole(['church_admin', 'pastor', 'leader']);
+    hasAnyRole(['church_admin', 'pastor']) ||
+    esLiderPrincipal ||
+    esCoLider;
 
   const load = useCallback(async () => {
     setError(null);
     try {
       const result = await obtenerGrupo(grupoId);
+      setGrupo(result);
       setMiembros(result.miembros ?? []);
     } catch {
       setError('No se pudo cargar los miembros. Toca para reintentar.');
