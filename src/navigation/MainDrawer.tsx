@@ -59,9 +59,32 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const inicioRoute = state?.routes?.find(r => r.name === 'Inicio');
   const activeNestedTab = inicioRoute?.state?.routes?.[inicioRoute?.state?.index ?? 0]?.name;
 
+  // Para ComunicacionesStack: saber qué pantalla del stack está activa
+  const comunicacionesRoute = state?.routes?.find(r => r.name === 'Comunicaciones');
+  const comunicacionesStack = comunicacionesRoute?.state as any;
+  const activeComunicacionesScreen = comunicacionesStack?.routes?.[comunicacionesStack?.index ?? 0]?.name;
+
+  // Pantallas de gestión (del stack de Comunicaciones)
+  const GESTION_SCREENS = new Set(['GestionList', 'ComunicacionDetail', 'ComunicacionForm']);
+
   const isItemActive = (item: MenuItem): boolean => {
     if (item.nestedTab) {
       return activeRoute === item.screen && activeNestedTab === item.nestedTab;
+    }
+    // Diferencia "Bandeja de Entrada" de "Comunicaciones" dentro del mismo stack
+    if (item.screen === 'Comunicaciones') {
+      if (activeRoute !== 'Comunicaciones') return false;
+      if (item.nestedScreen) {
+        // "Comunicaciones" (gestión): activo cuando estamos en pantallas de gestión
+        return activeComunicacionesScreen
+          ? GESTION_SCREENS.has(activeComunicacionesScreen)
+          : false;
+      } else {
+        // "Bandeja de Entrada": activo cuando estamos en pantallas de bandeja
+        return activeComunicacionesScreen
+          ? !GESTION_SCREENS.has(activeComunicacionesScreen)
+          : true; // si no hay stack state aún, asumimos bandeja
+      }
     }
     return activeRoute === item.screen;
   };
