@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -17,11 +17,9 @@ import { PANTONE_295C } from '../../theme/colors';
 import {
   crearComunicacion,
   actualizarComunicacion,
-  listarCanales,
   listarDestinatarios,
   listarGruposDestinatarios,
   Comunicacion,
-  Canal,
   Destinatario,
   GrupoDestinatario,
   ComunicacionPayload,
@@ -110,18 +108,15 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
   const [contenido, setContenido] = useState(comunicacion?.contenido ?? '');
   const [resumen, setResumen] = useState(comunicacion?.resumen ?? '');
   const [tipo, setTipo] = useState(comunicacion?.tipo ?? 'notificacion');
-  const [canal, setCanal] = useState(comunicacion?.canal ?? 'in_app');
   const [prioridad, setPrioridad] = useState(comunicacion?.prioridad ?? 'normal');
 
   // Dropdown visibility
   const [showTipo, setShowTipo] = useState(false);
-  const [showCanal, setShowCanal] = useState(false);
   const [showPrioridad, setShowPrioridad] = useState(false);
 
   // Recipients
   const [destinatarios, setDestinatarios] = useState<Destinatario[]>([]);
   const [grupos, setGrupos] = useState<GrupoDestinatario[]>([]);
-  const [canales, setCanales] = useState<Canal[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   const [selectedDestinatarios, setSelectedDestinatarios] = useState<Set<number>>(
@@ -139,12 +134,10 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
     const fetchData = async () => {
       setLoadingData(true);
       try {
-        const [canalesData, destData, gruposData] = await Promise.all([
-          listarCanales(),
+        const [destData, gruposData] = await Promise.all([
           listarDestinatarios(),
           listarGruposDestinatarios(),
         ]);
-        setCanales(canalesData);
         setDestinatarios(destData);
         const gruposConTodos: GrupoDestinatario[] = [
           { id: 0, nombre: 'Todos los miembros activos', num_miembros: 0 },
@@ -200,7 +193,7 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
         contenido: contenido.trim(),
         resumen: resumen.trim() || undefined,
         tipo,
-        canal,
+        canal: 'in_app',
         prioridad,
         destinatarios: Array.from(selectedDestinatarios),
         grupos_destinatarios: Array.from(selectedGrupos),
@@ -233,15 +226,6 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
       setSaving(false);
     }
   };
-
-  const canalOptions = canales.length > 0
-    ? canales.map((c) => ({ value: c.id, label: c.nombre }))
-    : [
-        { value: 'in_app', label: 'En la app' },
-        { value: 'email', label: 'Correo electrónico' },
-        { value: 'sms', label: 'SMS' },
-        { value: 'whatsapp', label: 'WhatsApp' },
-      ];
 
   const filteredDestinatarios = destSearch.trim()
     ? destinatarios.filter((d) =>
@@ -302,19 +286,8 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
           value={tipo}
           options={TIPOS}
           show={showTipo}
-          onToggle={() => { setShowTipo((v) => !v); setShowCanal(false); setShowPrioridad(false); }}
+          onToggle={() => { setShowTipo((v) => !v); setShowPrioridad(false); }}
           onSelect={(v) => { setTipo(v as typeof tipo); setShowTipo(false); }}
-          required
-        />
-
-        {/* Canal */}
-        <InlineDropdown
-          label="Canal"
-          value={canal}
-          options={canalOptions}
-          show={showCanal}
-          onToggle={() => { setShowCanal((v) => !v); setShowTipo(false); setShowPrioridad(false); }}
-          onSelect={(v) => { setCanal(v as typeof canal); setShowCanal(false); }}
           required
         />
 
@@ -324,7 +297,7 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
           value={prioridad}
           options={PRIORIDADES}
           show={showPrioridad}
-          onToggle={() => { setShowPrioridad((v) => !v); setShowTipo(false); setShowCanal(false); }}
+          onToggle={() => { setShowPrioridad((v) => !v); setShowTipo(false); }}
           onSelect={(v) => { setPrioridad(v as typeof prioridad); setShowPrioridad(false); }}
           required
         />

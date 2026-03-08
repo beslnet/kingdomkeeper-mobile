@@ -99,7 +99,7 @@ export default function ComunicacionDetailScreen({ route }: { route: any }) {
     if (!comunicacion) return;
     Alert.alert(
       'Confirmar envío',
-      `¿Enviar "${comunicacion.titulo}" a ${comunicacion.num_destinatarios} destinatario(s)?`,
+      `¿Enviar "${comunicacion.titulo}" a ${comunicacion.num_destinatarios_display || comunicacion.num_destinatarios} destinatario(s)?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
