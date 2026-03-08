@@ -115,10 +115,9 @@ export default function GestionListScreen() {
         });
         const items: Comunicacion[] = result.results ?? result ?? [];
         const count: number = result.count ?? items.length;
-        const current = replace ? items : [...comunicaciones, ...items];
-        setComunicaciones(current);
+        setComunicaciones((prev) => (replace ? items : [...prev, ...items]));
         setPage(pageNum);
-        setHasMore(current.length < count);
+        setHasMore(!!result.next || (!result.next && items.length > 0 && pageNum * 20 < count));
       } catch (err: any) {
         const d = err?.response?.data;
         let msg = 'Error al cargar comunicaciones.';
@@ -132,7 +131,7 @@ export default function GestionListScreen() {
         setLoadingMore(false);
       }
     },
-    [filtro, comunicaciones]
+    [filtro]
   );
 
   useFocusEffect(

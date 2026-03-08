@@ -102,10 +102,9 @@ export default function BandejaEntradaScreen() {
     try {
       const result = await getRecibidas(pageNum);
       const items: Comunicacion[] = result.results ?? result ?? [];
-      const count: number = result.count ?? items.length;
       setMensajes((prev) => (replace ? items : [...prev, ...items]));
       setPage(pageNum);
-      setHasMore(items.length > 0 && mensajes.length + items.length < count);
+      setHasMore(!!result.next);
     } catch (err: any) {
       const d = err?.response?.data;
       let msg = 'Error al cargar mensajes.';

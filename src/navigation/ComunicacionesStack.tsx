@@ -51,7 +51,10 @@ export default function ComunicacionesStack() {
       <Stack.Screen
         name="GestionList"
         component={GestionListScreen}
-        options={{ title: 'Gestionar Comunicaciones' }}
+        options={({ navigation }: { navigation: any }) => ({
+          title: 'Gestionar Comunicaciones',
+          headerLeft: () => <HamburgerButton navigation={navigation} />,
+        })}
       />
       <Stack.Screen
         name="ComunicacionDetail"

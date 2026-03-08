@@ -268,10 +268,10 @@ export default function ComunicacionDetailScreen({ route }: { route: any }) {
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Estadísticas de envío</Text>
           <View style={styles.statsRow}>
-            <StatBox label="Enviados" value={comunicacion.estadisticas_envio.enviados} color="#2E7D32" />
-            <StatBox label="Leídos" value={comunicacion.estadisticas_envio.leidos} color={PANTONE_295C} />
-            <StatBox label="Fallos" value={comunicacion.estadisticas_envio.fallos} color="#C62828" />
-            <StatBox label="Pendientes" value={comunicacion.estadisticas_envio.pendientes} />
+            <StatBox label="Enviados" value={comunicacion.estadisticas_envio?.enviados ?? 0} color="#2E7D32" />
+            <StatBox label="Leídos" value={comunicacion.estadisticas_envio?.leidos ?? 0} color={PANTONE_295C} />
+            <StatBox label="Fallos" value={comunicacion.estadisticas_envio?.fallos ?? 0} color="#C62828" />
+            <StatBox label="Pendientes" value={comunicacion.estadisticas_envio?.pendientes ?? 0} />
           </View>
         </View>
       )}
