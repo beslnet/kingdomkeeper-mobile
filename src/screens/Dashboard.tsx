@@ -189,7 +189,7 @@ export default function DashboardScreen() {
         <QuickCard
           icon="account-group-outline"
           label="Grupos"
-          onPress={() => navigation.navigate('Grupos')}
+          onPress={() => navigation.getParent()?.navigate('GruposCelulas')}
         />
         <QuickCard
           icon="message-outline"
@@ -221,7 +221,7 @@ export default function DashboardScreen() {
             </View>
           ))}
           {gruposOrdenados.length > 4 && (
-            <TouchableOpacity onPress={() => navigation.navigate('Grupos')}>
+            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('GruposCelulas')}>
               <Text style={styles.linkText}>Ver todos →</Text>
             </TouchableOpacity>
           )}

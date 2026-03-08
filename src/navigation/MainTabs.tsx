@@ -5,7 +5,6 @@ import { useIsFocused } from '@react-navigation/native';
 
 // Pantallas principales
 import DashboardScreen from '../screens/Dashboard';
-import GruposStack from './GruposStack';
 import InboxScreen from '../screens/Inbox';
 import ProfileStack from './ProfileStack';
 import { getNoLeidasCount } from '../api/comunicaciones';
@@ -50,8 +49,6 @@ const getScreenOptions = (route: { name: string }, badgeCount: number | undefine
     let iconName: string = '';
     if (route.name === 'Dashboard') {
       iconName = 'view-dashboard-outline';
-    } else if (route.name === 'Grupos') {
-      iconName = 'account-multiple-outline';
     } else if (route.name === 'Bandeja') {
       iconName = 'message-outline';
     } else if (route.name === 'Perfil') {
@@ -70,7 +67,6 @@ export default function MainTabs() {
       screenOptions={({ route }) => getScreenOptions(route, count)}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Grupos" component={GruposStack} options={{ headerShown: false }} />
       <Tab.Screen name="Bandeja" component={BandejaTab} />
       <Tab.Screen name="Perfil" component={ProfileStack} options={{ headerShown: false }} />
     </Tab.Navigator>
