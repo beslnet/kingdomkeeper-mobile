@@ -253,20 +253,15 @@ export default function MainDrawer() {
     <Drawer.Navigator
       initialRouteName="Inicio"
       drawerContent={CustomDrawerContent}
-      screenOptions={{
-        headerShown: true,
-        headerStyle: { backgroundColor: PANTONE_295C },
-        headerTintColor: PANTONE_134C,
-        headerTitleStyle: { fontWeight: 'bold', color: PANTONE_134C },
-      }}
+      screenOptions={{ headerShown: true }}
     >
-      <Drawer.Screen name="Inicio" component={MainTabs} options={{ headerShown: false }} />
+      <Drawer.Screen name="Inicio" component={MainTabs} />
       <Drawer.Screen name="GruposCelulas" component={GruposStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Membresía" component={MembresiaStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Finanzas" component={FinanzasStack} options={{ headerShown: false }} />
-      <Drawer.Screen name="Comunicaciones" component={Comunicaciones} options={{ title: 'Comunicaciones' }} />
-      <Drawer.Screen name="Casos Pastorales" component={CasosPastoralesScreen} options={{ title: 'Casos Pastorales' }} />
-      <Drawer.Screen name="Inventario" component={InventarioScreen} options={{ title: 'Inventario' }} />
+      <Drawer.Screen name="Comunicaciones" component={Comunicaciones} />
+      <Drawer.Screen name="Casos Pastorales" component={CasosPastoralesScreen} />
+      <Drawer.Screen name="Inventario" component={InventarioScreen} />
     </Drawer.Navigator>
   );
 }
