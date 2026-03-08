@@ -73,14 +73,18 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
     }
     // Diferencia "Bandeja de Entrada" de "Comunicaciones" dentro del mismo stack
     if (item.screen === 'Comunicaciones') {
-      if (activeRoute !== 'Comunicaciones') return false;
+      // También activo cuando se está en el tab Bandeja del bottom bar (MainTabs)
+      const inBottomBandeja = activeRoute === 'Inicio' && activeNestedTab === 'Bandeja';
+
       if (item.nestedScreen && GESTION_SCREENS.has(item.nestedScreen)) {
         // "Comunicaciones" (gestión): activo cuando estamos en pantallas de gestión
-        return activeComunicacionesScreen
+        return activeRoute === 'Comunicaciones' && (activeComunicacionesScreen
           ? GESTION_SCREENS.has(activeComunicacionesScreen)
-          : false;
+          : false);
       } else {
-        // "Bandeja de Entrada": activo cuando estamos en pantallas de bandeja
+        // "Bandeja de Entrada": activo cuando estamos en pantallas de bandeja o tab bottom
+        if (inBottomBandeja) return true;
+        if (activeRoute !== 'Comunicaciones') return false;
         return activeComunicacionesScreen
           ? !GESTION_SCREENS.has(activeComunicacionesScreen)
           : true;
