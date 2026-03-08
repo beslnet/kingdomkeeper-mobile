@@ -7,7 +7,9 @@ export const loginApi = async (username: string, password: string) => {
 
 export const getMe = async () => {
   const res = await api.get('/api/auth/me/');
-  return res.data;
+  const data = res.data;
+  // Normalize miembro_id for convenience (API returns it nested as miembro_asociado.id)
+  return { ...data, miembro_id: data.miembro_asociado?.id ?? null };
 };
 
 export const getMisIglesias = async () => {
