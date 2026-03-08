@@ -34,7 +34,7 @@ const MENU_ITEMS: MenuItem[] = [
   { label: 'Grupos y Células', icon: 'account-multiple-outline', screen: 'GruposCelulas', permission: { module: 'grupos', action: 'ver' } },
   { label: 'Finanzas', icon: 'cash-multiple', screen: 'Finanzas', permission: { module: 'finanzas', action: 'ver' } },
   { label: 'Comunicaciones', icon: 'forum-outline', screen: 'Comunicaciones', nestedScreen: 'GestionList', roles: ['church_admin', 'pastor', 'leader', 'treasurer'] },
-  { label: 'Bandeja de Entrada', icon: 'message-outline', screen: 'Comunicaciones' },
+  { label: 'Bandeja de Entrada', icon: 'message-outline', screen: 'Comunicaciones', nestedScreen: 'BandejaEntrada' },
   { label: 'Casos Pastorales', icon: 'heart-outline', screen: 'Casos Pastorales', permission: { module: 'pastoral', action: 'ver' } },
   { label: 'Inventario', icon: 'package-variant', screen: 'Inventario', permission: { module: 'inventario', action: 'ver' } },
 ];
@@ -74,7 +74,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
     // Diferencia "Bandeja de Entrada" de "Comunicaciones" dentro del mismo stack
     if (item.screen === 'Comunicaciones') {
       if (activeRoute !== 'Comunicaciones') return false;
-      if (item.nestedScreen) {
+      if (item.nestedScreen && GESTION_SCREENS.has(item.nestedScreen)) {
         // "Comunicaciones" (gestión): activo cuando estamos en pantallas de gestión
         return activeComunicacionesScreen
           ? GESTION_SCREENS.has(activeComunicacionesScreen)
@@ -83,7 +83,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         // "Bandeja de Entrada": activo cuando estamos en pantallas de bandeja
         return activeComunicacionesScreen
           ? !GESTION_SCREENS.has(activeComunicacionesScreen)
-          : true; // si no hay stack state aún, asumimos bandeja
+          : true;
       }
     }
     return activeRoute === item.screen;
