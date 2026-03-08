@@ -108,9 +108,10 @@ export default function ComunicacionDetailScreen({ route }: { route: any }) {
             setActionLoading(true);
             try {
               const result = await enviarComunicacion(id);
+              const stats = result?.estadisticas ?? result;
               Alert.alert(
-                'Enviado',
-                `Enviados: ${result?.enviados ?? '—'} | Fallos: ${result?.fallos ?? 0}`,
+                'Enviado ✓',
+                `Total: ${stats?.total ?? 0} | Enviados: ${stats?.enviados ?? 0} | Fallos: ${stats?.fallos ?? 0}`,
                 [{ text: 'OK', onPress: load }]
               );
             } catch (err: any) {
@@ -134,9 +135,10 @@ export default function ComunicacionDetailScreen({ route }: { route: any }) {
     setActionLoading(true);
     try {
       const result = await reintentarComunicacion(id);
+      const stats = result?.estadisticas ?? result;
       Alert.alert(
         'Reintento',
-        `Enviados: ${result?.enviados ?? '—'} | Fallos: ${result?.fallos ?? 0}`,
+        `Total: ${stats?.total ?? 0} | Enviados: ${stats?.enviados ?? 0} | Fallos: ${stats?.fallos ?? 0}`,
         [{ text: 'OK', onPress: load }]
       );
     } catch (err: any) {
