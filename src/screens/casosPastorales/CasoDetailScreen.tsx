@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -116,6 +116,22 @@ export default function CasoDetailScreen({ route }: { route: any }) {
 
   const [accionActiva, setAccionActiva] = useState<AccionActiva>(null);
   const [inputTexto, setInputTexto] = useState('');
+
+  const scrollRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
+
+  // Al activar una acción: scroll al final + focus en el TextInput
+  const activarAccion = useCallback((accion: AccionActiva) => {
+    setInputTexto('');
+    setAccionActiva((prev) => {
+      if (prev === accion) return null;
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+        setTimeout(() => inputRef.current?.focus(), 200);
+      }, 100);
+      return accion;
+    });
+  }, []);
 
   const isAdmin = isSuperAdmin || hasAnyRole(['pastor', 'leader', 'church_admin']);
   const puedeGestionar = isAdmin;
@@ -339,6 +355,7 @@ export default function CasoDetailScreen({ route }: { route: any }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -470,10 +487,7 @@ export default function CasoDetailScreen({ route }: { route: any }) {
                 styles.actionBtn,
                 accionActiva === 'cerrar' ? styles.actionBtnGreenOutline : styles.actionBtnGreen,
               ]}
-              onPress={() => {
-                setAccionActiva(accionActiva === 'cerrar' ? null : 'cerrar');
-                setInputTexto('');
-              }}
+              onPress={() => activarAccion(accionActiva === 'cerrar' ? null : 'cerrar')}
               disabled={actionLoading}
               activeOpacity={0.8}
             >
@@ -497,10 +511,7 @@ export default function CasoDetailScreen({ route }: { route: any }) {
           {puedeReabrir && (
             <TouchableOpacity
               style={[styles.actionBtn, styles.actionBtnOrangeOutline]}
-              onPress={() => {
-                setAccionActiva(accionActiva === 'reabrir' ? null : 'reabrir');
-                setInputTexto('');
-              }}
+              onPress={() => activarAccion(accionActiva === 'reabrir' ? null : 'reabrir')}
               disabled={actionLoading}
               activeOpacity={0.8}
             >
@@ -514,10 +525,7 @@ export default function CasoDetailScreen({ route }: { route: any }) {
               styles.actionBtn,
               accionActiva === 'comentar' ? styles.actionBtnBlue : styles.actionBtnBlueOutline,
             ]}
-            onPress={() => {
-              setAccionActiva(accionActiva === 'comentar' ? null : 'comentar');
-              setInputTexto('');
-            }}
+            onPress={() => activarAccion(accionActiva === 'comentar' ? null : 'comentar')}
             disabled={actionLoading}
             activeOpacity={0.8}
           >
@@ -544,6 +552,7 @@ export default function CasoDetailScreen({ route }: { route: any }) {
                 {accionConfig[accionActiva].label}
               </Text>
               <TextInput
+                ref={inputRef}
                 style={[
                   styles.accionInput,
                   accionConfig[accionActiva].multiline && styles.accionInputMultiline,
@@ -555,7 +564,6 @@ export default function CasoDetailScreen({ route }: { route: any }) {
                 multiline={accionConfig[accionActiva].multiline}
                 numberOfLines={4}
                 textAlignVertical="top"
-                autoFocus
               />
               <View style={styles.accionButtons}>
                 <TouchableOpacity
