@@ -13,7 +13,7 @@ import GruposStack from './GruposStack';
 import ComunicacionesStack from './ComunicacionesStack';
 import MembresiaStack from './MembresiaStack';
 import FinanzasStack from './FinanzasStack';
-import CasosPastoralesScreen from '../screens/CasosPastorales';
+import CasosPastoralesStack from './CasosPastoralesStack';
 import InventarioScreen from '../screens/Inventario';
 
 const Drawer = createDrawerNavigator();
@@ -290,7 +290,7 @@ export default function MainDrawer() {
       <Drawer.Screen name="Membresía" component={MembresiaStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Finanzas" component={FinanzasStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Comunicaciones" component={ComunicacionesStack} options={{ headerShown: false }} />
-      <Drawer.Screen name="Casos Pastorales" component={CasosPastoralesScreen} />
+      <Drawer.Screen name="Casos Pastorales" component={CasosPastoralesStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Inventario" component={InventarioScreen} />
     </Drawer.Navigator>
   );
