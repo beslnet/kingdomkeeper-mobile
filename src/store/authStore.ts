@@ -52,9 +52,22 @@ export const useAuthStore = create<AuthState>()(
             // If terms check fails, allow navigation (non-blocking)
           }
           set({ isLoggedIn: true, loading: false, user, iglesias: iglesias ?? [], termsAccepted, pendingDocuments });
-        } catch (error) {
+        } catch (error: any) {
           set({ loading: false });
-          throw error;
+          // Translate HTTP errors to user-friendly messages
+          const status = error?.response?.status;
+          const detail = error?.response?.data?.detail;
+          if (status === 401) {
+            throw new Error('Usuario o contraseña incorrectos. Verifica tus datos e intenta de nuevo.');
+          } else if (status === 400) {
+            throw new Error(detail || 'Datos inválidos. Revisa tu usuario y contraseña.');
+          } else if (status === 403) {
+            throw new Error('Tu cuenta no tiene acceso. Contacta al administrador.');
+          } else if (!error?.response) {
+            throw new Error('No se pudo conectar con el servidor. Verifica tu conexión a internet.');
+          } else {
+            throw new Error(detail || 'Error al iniciar sesión. Intenta de nuevo.');
+          }
         }
       },
 
