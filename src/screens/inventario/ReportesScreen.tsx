@@ -61,11 +61,13 @@ function ArticuloRow({
   nombre,
   estado,
   cantidad,
+  prestamosActivos,
   extra,
 }: {
   nombre: string;
   estado: string;
   cantidad: number;
+  prestamosActivos?: number;
   extra?: string;
 }) {
   const colors = ESTADO_COLORS[estado] ?? { bg: '#F5F5F5', text: '#616161' };
@@ -78,7 +80,14 @@ function ArticuloRow({
         {!!extra && <Text style={styles.articuloExtra}>{extra}</Text>}
       </View>
       <View style={styles.articuloRight}>
-        <Text style={styles.articuloCantidad}>{cantidad}</Text>
+        <Text style={styles.articuloCantidad}>
+          {cantidad}
+          {(prestamosActivos ?? 0) > 0 && (
+            <Text style={{ color: '#E65100', fontSize: 10 }}>
+              {' '}({prestamosActivos} prest.)
+            </Text>
+          )}
+        </Text>
         <View style={[styles.articuloEstado, { backgroundColor: colors.bg }]}>
           <Text style={[styles.articuloEstadoText, { color: colors.text }]}>{estado}</Text>
         </View>
@@ -284,6 +293,7 @@ export default function ReportesScreen() {
                       nombre={art.nombre}
                       estado={art.estado}
                       cantidad={art.cantidad}
+                      prestamosActivos={art.prestamos_activos_count}
                       extra={art.categoria_nombre}
                     />
                   ))}
@@ -363,6 +373,7 @@ export default function ReportesScreen() {
                       nombre={art.nombre}
                       estado={art.estado}
                       cantidad={art.cantidad}
+                      prestamosActivos={art.prestamos_activos_count}
                       extra={art.ubicacion_nombre}
                     />
                   ))}
