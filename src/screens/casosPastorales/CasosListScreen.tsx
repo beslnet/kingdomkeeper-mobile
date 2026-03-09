@@ -446,6 +446,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#EEE',
   },
   tabContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 8,
@@ -457,6 +459,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DDD',
     backgroundColor: '#FFF',
+    alignSelf: 'flex-start',
   },
   tabActive: {
     backgroundColor: PANTONE_295C,
