@@ -57,6 +57,9 @@ function estadoLabel(estado: EstadoArticulo): string {
 function ArticuloCard({ item, onPress }: { item: ArticuloList; onPress: () => void }) {
   const estadoStyle = ESTADO_COLORS[item.estado] ?? { bg: '#F5F5F5', text: '#616161' };
 
+  // Build a readable stock label: e.g. "50 uds" or "1 ud"
+  const cantidadLabel = item.cantidad === 1 ? `${item.cantidad} ud` : `${item.cantidad} uds`;
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
       <View style={styles.cardHeader}>
@@ -76,15 +79,36 @@ function ArticuloCard({ item, onPress }: { item: ArticuloList; onPress: () => vo
           {item.stock_bajo && (
             <Text style={styles.stockBajoEmoji}>⚠️</Text>
           )}
-          <View style={styles.cantidadBadge}>
-            <Text style={styles.cantidadBadgeText}>{item.cantidad}</Text>
-          </View>
         </View>
       </View>
 
       <Text style={styles.cardNombre} numberOfLines={2}>
         {item.nombre}
       </Text>
+
+      {/* Stock row: always visible, contextual label when not disponible */}
+      <View style={styles.cardMeta}>
+        <Icon source="package-variant-closed" size={13} color="#888" />
+        <Text style={styles.cardMetaText}>
+          {cantidadLabel}
+          {item.estado !== 'disponible' && (
+            <Text style={{ color: estadoStyle.text, fontWeight: '600' }}>
+              {' · '}
+              {item.estado === 'prestado'
+                ? 'en préstamo'
+                : item.estado === 'en_uso'
+                ? 'en uso'
+                : item.estado === 'mantenimiento'
+                ? 'en mantención'
+                : item.estado === 'dañado'
+                ? 'dañado'
+                : item.estado === 'baja'
+                ? 'dado de baja'
+                : item.estado}
+            </Text>
+          )}
+        </Text>
+      </View>
 
       {!!item.codigo && (
         <View style={styles.cardMeta}>
