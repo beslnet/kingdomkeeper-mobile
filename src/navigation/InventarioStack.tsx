@@ -52,10 +52,7 @@ export default function InventarioStack() {
       <Stack.Screen
         name="ArticulosList"
         component={ArticulosListScreen}
-        options={({ navigation }: { navigation: any }) => ({
-          title: 'Artículos',
-          headerLeft: () => <HamburgerButton navigation={navigation} />,
-        })}
+        options={{ title: 'Artículos' }}
       />
       <Stack.Screen
         name="ArticuloDetail"
