@@ -116,6 +116,18 @@ export default function DevolucionFormScreen() {
             </View>
           </View>
 
+          {(prestamo.cantidad_prestada > 1 || prestamo.articulo_data?.es_consumible) && (
+            <View style={styles.summaryRow}>
+              <Icon source="package-variant-closed" size={16} color="#555" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.summaryLabel}>Cantidad prestada</Text>
+                <Text style={styles.summaryValue}>
+                  {prestamo.cantidad_prestada} {prestamo.articulo_data?.unidad_medida ?? 'uds'}
+                </Text>
+              </View>
+            </View>
+          )}
+
           <View style={styles.summaryRow}>
             <Icon source="calendar-outline" size={16} color="#555" />
             <View style={{ flex: 1 }}>

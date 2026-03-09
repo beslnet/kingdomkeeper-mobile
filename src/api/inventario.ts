@@ -82,9 +82,11 @@ export interface ArticuloList {
   ubicacion_nombre: string | null;
   estado: EstadoArticulo;
   cantidad: number;
+  unidad_medida: UnidadMedida;
   responsable_nombre: string | null;
   stock_bajo: boolean;
   foto_url: string | null;
+  es_consumible: boolean;
 }
 
 export interface Articulo {
@@ -130,11 +132,12 @@ export interface MovimientoInventario {
 export interface Prestamo {
   id: number;
   articulo: number;
-  articulo_data?: { id: number; nombre: string };
+  articulo_data?: { id: number; nombre: string; es_consumible?: boolean; cantidad?: number; unidad_medida?: string };
   prestatario: number;
   prestatario_data?: { id: number; nombre: string; apellidos: string };
   grupo: number | null;
   grupo_data?: { id: number; nombre: string } | null;
+  cantidad_prestada: number;
   fecha_prestamo: string;
   fecha_devolucion_esperada: string | null;
   fecha_devolucion_real: string | null;
@@ -285,6 +288,7 @@ export const listarPrestamosVencidos = async (): Promise<PaginatedResponse<Prest
 export const crearPrestamo = async (payload: {
   articulo: number;
   prestatario: number;
+  cantidad_prestada?: number;
   grupo?: number | null;
   fecha_devolucion_esperada?: string | null;
   condicion_entrega?: string;

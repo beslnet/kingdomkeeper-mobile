@@ -159,6 +159,16 @@ export default function PrestamosScreen() {
           <Text style={styles.infoText}>{borrowerName}</Text>
         </View>
 
+        {/* Cantidad prestada — solo visible si es > 1 o es consumible */}
+        {(item.cantidad_prestada > 1 || item.articulo_data?.es_consumible) && (
+          <View style={styles.infoRow}>
+            <Icon source="package-variant-closed" size={14} color="#888" />
+            <Text style={styles.infoText}>
+              {item.cantidad_prestada} {item.articulo_data?.unidad_medida ?? 'uds'} prestadas
+            </Text>
+          </View>
+        )}
+
         <View style={styles.infoRow}>
           <Icon source="calendar-outline" size={14} color="#888" />
           <Text style={styles.infoText}>

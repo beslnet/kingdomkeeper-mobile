@@ -40,6 +40,7 @@ export default function PrestamoFormScreen() {
   const [loadingArticulos, setLoadingArticulos] = useState(true);
 
   const [selectedArticulo, setSelectedArticulo] = useState<ArticuloList | null>(null);
+  const [cantidadPrestada, setCantidadPrestada] = useState('1');
   const [prestatarioId, setPrestatarioId] = useState('');
   const [fechaDevolucion, setFechaDevolucion] = useState('');
   const [condicionEntrega, setCondicionEntrega] = useState('');
@@ -48,13 +49,17 @@ export default function PrestamoFormScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ─── Load available articles ────────────────────────────────────────────────
+  // ─── Load available articles ─────────────────────────────────────────────────
 
   const loadArticulos = useCallback(async () => {
     setLoadingArticulos(true);
     try {
-      const data = await listarArticulos({ estado: 'disponible', page_size: 100 });
-      setArticulosDisponibles(data.results);
+      // Load all and filter: disponibles or consumibles with stock > 0
+      const data = await listarArticulos({ page_size: 200 });
+      const prestables = data.results.filter(
+        (a) => a.estado === 'disponible' || (a.es_consumible && a.cantidad > 0),
+      );
+      setArticulosDisponibles(prestables);
     } catch {
       setArticulosDisponibles([]);
     } finally {
@@ -82,8 +87,13 @@ export default function PrestamoFormScreen() {
       'Artículos disponibles:',
       [
         ...articulosDisponibles.slice(0, 9).map((a) => ({
-          text: `${a.nombre}${a.codigo ? ` (${a.codigo})` : ''}`,
-          onPress: () => setSelectedArticulo(a),
+          text: a.es_consumible
+            ? `${a.nombre}${a.codigo ? ` (${a.codigo})` : ''} — ${a.cantidad} disp.`
+            : `${a.nombre}${a.codigo ? ` (${a.codigo})` : ''}`,
+          onPress: () => {
+            setSelectedArticulo(a);
+            setCantidadPrestada('1');
+          },
         })),
         { text: 'Cancelar', style: 'cancel' as const },
       ],
@@ -100,12 +110,22 @@ export default function PrestamoFormScreen() {
       setError('El ID del prestatario es requerido y debe ser un número válido.');
       return;
     }
+    const cantNum = parseInt(cantidadPrestada, 10);
+    if (isNaN(cantNum) || cantNum < 1) {
+      setError('La cantidad a prestar debe ser al menos 1.');
+      return;
+    }
+    if (selectedArticulo.es_consumible && cantNum > selectedArticulo.cantidad) {
+      setError(`Stock insuficiente. Disponible: ${selectedArticulo.cantidad} ${selectedArticulo.unidad_medida}.`);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       await crearPrestamo({
         articulo: selectedArticulo.id,
         prestatario: prestatarioNum,
+        cantidad_prestada: cantNum,
         fecha_devolucion_esperada: fechaDevolucion.trim() || null,
         condicion_entrega: condicionEntrega.trim(),
         notas: notas.trim(),
@@ -156,6 +176,11 @@ export default function PrestamoFormScreen() {
                         Código: {selectedArticulo.codigo}
                       </Text>
                     )}
+                    {selectedArticulo.es_consumible && (
+                      <Text style={[styles.selectButtonSubText, { color: '#388E3C' }]}>
+                        Stock disponible: {selectedArticulo.cantidad} {selectedArticulo.unidad_medida}
+                      </Text>
+                    )}
                   </View>
                 </>
               ) : (
@@ -167,6 +192,21 @@ export default function PrestamoFormScreen() {
             <Icon source="chevron-down" size={20} color="#666" />
           </TouchableOpacity>
         </View>
+
+        {/* Cantidad a prestar — solo para consumibles */}
+        {selectedArticulo?.es_consumible && (
+          <View style={styles.section}>
+            <FieldLabel label={`Cantidad a prestar (máx. ${selectedArticulo.cantidad} ${selectedArticulo.unidad_medida})`} required />
+            <TextInput
+              style={styles.input}
+              value={cantidadPrestada}
+              onChangeText={(t) => setCantidadPrestada(t.replace(/[^0-9]/g, ''))}
+              placeholder="1"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+            />
+          </View>
+        )}
 
         {/* Prestatario */}
         <View style={styles.section}>
