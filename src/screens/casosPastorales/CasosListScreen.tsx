@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F7FA',
   },
   tabScroll: {
-    flexGrow: 0,
+    flexShrink: 0,
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',
