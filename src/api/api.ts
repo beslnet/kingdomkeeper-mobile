@@ -34,6 +34,18 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    if (error.response?.status === 451) {
+      // Legal terms not accepted — trigger terms screen
+      try {
+        const { useAuthStore } = await import('../store/authStore');
+        await useAuthStore.getState().checkTerms();
+      } catch {
+        // Ignore
+      }
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {

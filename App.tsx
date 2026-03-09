@@ -3,13 +3,14 @@ import { NavigationContainer } from '@react-navigation/native';
 import AuthNavigator from './src/navigation/AuthNavigator';
 import AppNavigator from './src/navigation/AppNavigator';
 import ChurchSelectorScreen from './src/screens/ChurchSelector';
+import TermsAcceptanceScreen from './src/screens/TermsAcceptanceScreen';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from './src/store/authStore';
 import { useIglesiaStore } from './src/store/iglesiaStore';
 
 export default function App() {
-  const { isLoggedIn, checkAuth } = useAuthStore();
+  const { isLoggedIn, checkAuth, termsAccepted } = useAuthStore();
   const iglesiaId = useIglesiaStore((state) => state.iglesiaId);
 
   useEffect(() => {
@@ -30,9 +31,11 @@ export default function App() {
         <NavigationContainer>
           {!isLoggedIn
             ? <AuthNavigator />
-            : iglesiaId
-              ? <AppNavigator />
-              : <ChurchSelectorScreen />
+            : termsAccepted === false
+              ? <TermsAcceptanceScreen />
+              : iglesiaId
+                ? <AppNavigator />
+                : <ChurchSelectorScreen />
           }
         </NavigationContainer>
       </SafeAreaView>

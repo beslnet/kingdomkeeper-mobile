@@ -264,14 +264,14 @@ export default function CasosListScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Tab bar */}
+      {/* Tab bar — miembros sin gestión solo ven "Mis Casos" */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.tabScroll}
         contentContainerStyle={styles.tabContent}
       >
-        {TABS.map((t) => (
+        {TABS.filter((t) => puedeGestionar || t.key === 'mis_casos').map((t) => (
           <TouchableOpacity
             key={t.key}
             style={[styles.tab, tab === t.key && styles.tabActive]}

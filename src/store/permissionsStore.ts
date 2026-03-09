@@ -7,6 +7,7 @@ type PermissionsState = {
   modulosAccesibles: string[];
   isSuperAdmin: boolean;
   isLoading: boolean;
+  tieneCasosAsignados: boolean;
   fetchPermissions: () => Promise<void>;
   hasPermission: (module: string, action: string) => boolean;
   hasRole: (role: string) => boolean;
@@ -21,6 +22,7 @@ const initialState = {
   modulosAccesibles: [] as string[],
   isSuperAdmin: false,
   isLoading: false,
+  tieneCasosAsignados: false,
 };
 
 export const usePermissionsStore = create<PermissionsState>()((set, get) => ({
@@ -36,6 +38,7 @@ export const usePermissionsStore = create<PermissionsState>()((set, get) => ({
         permisos: data.permisos ?? {},
         modulosAccesibles: data.modulos_accesibles ?? [],
         isSuperAdmin: data.es_super_admin === true || roles.includes('super_admin'),
+        tieneCasosAsignados: data.tiene_casos_asignados === true,
         isLoading: false,
       });
     } catch {

@@ -50,6 +50,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const isLoading = usePermissionsStore((s) => s.isLoading);
   const hasPermission = usePermissionsStore((s) => s.hasPermission);
   const hasAnyRole = usePermissionsStore((s) => s.hasAnyRole);
+  const tieneCasosAsignados = usePermissionsStore((s) => s.tieneCasosAsignados);
   const fetchPermissions = usePermissionsStore((s) => s.fetchPermissions);
   const { navigation, state } = props;
   const activeRoute = state?.routeNames[state?.index];
@@ -102,6 +103,10 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
     if (isSuperAdmin) return true;
     if (isLoading) return !item.permission && !item.roles;
     if (item.roles && item.roles.length > 0 && !hasAnyRole(item.roles)) return false;
+    // Casos Pastorales: visible si tiene permiso de gestión O tiene casos asignados
+    if (item.screen === 'Casos Pastorales') {
+      return hasPermission('pastoral', 'ver') || tieneCasosAsignados;
+    }
     if (item.permission && !hasPermission(item.permission.module, item.permission.action)) return false;
     return true;
   };
