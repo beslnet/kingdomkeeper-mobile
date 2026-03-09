@@ -87,6 +87,7 @@ export interface ArticuloList {
   stock_bajo: boolean;
   foto_url: string | null;
   es_consumible: boolean;
+  prestamos_activos_count: number;
 }
 
 export interface Articulo {

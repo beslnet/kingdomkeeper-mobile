@@ -57,8 +57,48 @@ function estadoLabel(estado: EstadoArticulo): string {
 function ArticuloCard({ item, onPress }: { item: ArticuloList; onPress: () => void }) {
   const estadoStyle = ESTADO_COLORS[item.estado] ?? { bg: '#F5F5F5', text: '#616161' };
 
-  // Build a readable stock label: e.g. "50 uds" or "1 ud"
-  const cantidadLabel = item.cantidad === 1 ? `${item.cantidad} ud` : `${item.cantidad} uds`;
+  // Build stock label depending on item type:
+  // - consumible: "45 uds" (remaining stock after loans)
+  // - non-consumible with 1 unit: "en préstamo" / "disponible" / …
+  // - non-consumible with N units: "50 uds · 2 en préstamo"
+  const unidad = item.unidad_medida && item.unidad_medida !== 'unidad' ? item.unidad_medida : item.cantidad === 1 ? 'ud' : 'uds';
+  const cantidadLabel = `${item.cantidad} ${unidad}`;
+  const prestadosCount = item.prestamos_activos_count ?? 0;
+
+  // What to show in the stock row
+  let stockLine: React.ReactNode;
+  if (item.es_consumible) {
+    // consumible: quantity IS the available stock
+    stockLine = (
+      <Text style={styles.cardMetaText}>
+        {cantidadLabel}
+        {prestadosCount > 0 && (
+          <Text style={{ color: '#E65100', fontWeight: '600' }}>
+            {' · '}{prestadosCount} en préstamo
+          </Text>
+        )}
+      </Text>
+    );
+  } else if (item.cantidad > 1) {
+    // non-consumible pool (e.g. 50 Bibles, 8 mics): show N total and X loaned
+    stockLine = (
+      <Text style={styles.cardMetaText}>
+        {cantidadLabel}
+        {prestadosCount > 0 && (
+          <Text style={{ color: estadoStyle.text, fontWeight: '600' }}>
+            {' · '}{prestadosCount} en préstamo
+          </Text>
+        )}
+      </Text>
+    );
+  } else {
+    // single non-consumible asset: just show estado in the chip, no quantity noise
+    stockLine = item.estado !== 'disponible' ? (
+      <Text style={[styles.cardMetaText, { color: estadoStyle.text, fontWeight: '600' }]}>
+        {estadoLabel(item.estado)}
+      </Text>
+    ) : null;
+  }
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
@@ -86,29 +126,13 @@ function ArticuloCard({ item, onPress }: { item: ArticuloList; onPress: () => vo
         {item.nombre}
       </Text>
 
-      {/* Stock row: always visible, contextual label when not disponible */}
-      <View style={styles.cardMeta}>
-        <Icon source="package-variant-closed" size={13} color="#888" />
-        <Text style={styles.cardMetaText}>
-          {cantidadLabel}
-          {item.estado !== 'disponible' && (
-            <Text style={{ color: estadoStyle.text, fontWeight: '600' }}>
-              {' · '}
-              {item.estado === 'prestado'
-                ? 'en préstamo'
-                : item.estado === 'en_uso'
-                ? 'en uso'
-                : item.estado === 'mantenimiento'
-                ? 'en mantención'
-                : item.estado === 'dañado'
-                ? 'dañado'
-                : item.estado === 'baja'
-                ? 'dado de baja'
-                : item.estado}
-            </Text>
-          )}
-        </Text>
-      </View>
+      {/* Stock row: contextual by item type */}
+      {stockLine !== null && (
+        <View style={styles.cardMeta}>
+          <Icon source="package-variant-closed" size={13} color="#888" />
+          {stockLine}
+        </View>
+      )}
 
       {!!item.codigo && (
         <View style={styles.cardMeta}>
