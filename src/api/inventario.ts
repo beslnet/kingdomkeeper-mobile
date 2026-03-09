@@ -193,31 +193,31 @@ export const listarArticulos = async (params?: {
   page?: number;
   page_size?: number;
 }): Promise<PaginatedResponse<ArticuloList>> => {
-  const { data } = await api.get('/inventario/articulos/', { params });
+  const { data } = await api.get('/api/inventario/articulos/', { params });
   return data;
 };
 
 export const obtenerArticulo = async (id: number): Promise<Articulo> => {
-  const { data } = await api.get(`/inventario/articulos/${id}/`);
+  const { data } = await api.get(`/api/inventario/articulos/${id}/`);
   return data;
 };
 
 export const crearArticulo = async (payload: Partial<Articulo>): Promise<Articulo> => {
-  const { data } = await api.post('/inventario/articulos/', payload);
+  const { data } = await api.post('/api/inventario/articulos/', payload);
   return data;
 };
 
 export const actualizarArticulo = async (id: number, payload: Partial<Articulo>): Promise<Articulo> => {
-  const { data } = await api.patch(`/inventario/articulos/${id}/`, payload);
+  const { data } = await api.patch(`/api/inventario/articulos/${id}/`, payload);
   return data;
 };
 
 export const eliminarArticulo = async (id: number): Promise<void> => {
-  await api.delete(`/inventario/articulos/${id}/`);
+  await api.delete(`/api/inventario/articulos/${id}/`);
 };
 
 export const ajustarStock = async (id: number, cantidad: number, motivo: string): Promise<Articulo> => {
-  const { data } = await api.post(`/inventario/articulos/${id}/ajustar-stock/`, { cantidad, motivo });
+  const { data } = await api.post(`/api/inventario/articulos/${id}/ajustar-stock/`, { cantidad, motivo });
   return data;
 };
 
@@ -227,43 +227,43 @@ export const listarCategorias = async (params?: {
   tipo?: string;
   es_consumible?: boolean;
 }): Promise<PaginatedResponse<CategoriaInventario>> => {
-  const { data } = await api.get('/inventario/categorias/', { params });
+  const { data } = await api.get('/api/inventario/categorias/', { params });
   return data;
 };
 
 export const crearCategoria = async (payload: Partial<CategoriaInventario>): Promise<CategoriaInventario> => {
-  const { data } = await api.post('/inventario/categorias/', payload);
+  const { data } = await api.post('/api/inventario/categorias/', payload);
   return data;
 };
 
 export const actualizarCategoria = async (id: number, payload: Partial<CategoriaInventario>): Promise<CategoriaInventario> => {
-  const { data } = await api.patch(`/inventario/categorias/${id}/`, payload);
+  const { data } = await api.patch(`/api/inventario/categorias/${id}/`, payload);
   return data;
 };
 
 export const eliminarCategoria = async (id: number): Promise<void> => {
-  await api.delete(`/inventario/categorias/${id}/`);
+  await api.delete(`/api/inventario/categorias/${id}/`);
 };
 
 // ─── Ubicaciones ─────────────────────────────────────────────────────────────
 
 export const listarUbicaciones = async (): Promise<PaginatedResponse<Ubicacion>> => {
-  const { data } = await api.get('/inventario/ubicaciones/');
+  const { data } = await api.get('/api/inventario/ubicaciones/');
   return data;
 };
 
 export const crearUbicacion = async (payload: Partial<Ubicacion>): Promise<Ubicacion> => {
-  const { data } = await api.post('/inventario/ubicaciones/', payload);
+  const { data } = await api.post('/api/inventario/ubicaciones/', payload);
   return data;
 };
 
 export const actualizarUbicacion = async (id: number, payload: Partial<Ubicacion>): Promise<Ubicacion> => {
-  const { data } = await api.patch(`/inventario/ubicaciones/${id}/`, payload);
+  const { data } = await api.patch(`/api/inventario/ubicaciones/${id}/`, payload);
   return data;
 };
 
 export const eliminarUbicacion = async (id: number): Promise<void> => {
-  await api.delete(`/inventario/ubicaciones/${id}/`);
+  await api.delete(`/api/inventario/ubicaciones/${id}/`);
 };
 
 // ─── Préstamos ────────────────────────────────────────────────────────────────
@@ -273,12 +273,12 @@ export const listarPrestamos = async (params?: {
   page?: number;
   page_size?: number;
 }): Promise<PaginatedResponse<Prestamo>> => {
-  const { data } = await api.get('/inventario/prestamos/', { params });
+  const { data } = await api.get('/api/inventario/prestamos/', { params });
   return data;
 };
 
 export const listarPrestamosVencidos = async (): Promise<PaginatedResponse<Prestamo>> => {
-  const { data } = await api.get('/inventario/prestamos/vencidos/');
+  const { data } = await api.get('/api/inventario/prestamos/vencidos/');
   return data;
 };
 
@@ -290,12 +290,12 @@ export const crearPrestamo = async (payload: {
   condicion_entrega?: string;
   notas?: string;
 }): Promise<Prestamo> => {
-  const { data } = await api.post('/inventario/prestamos/', payload);
+  const { data } = await api.post('/api/inventario/prestamos/', payload);
   return data;
 };
 
 export const devolverPrestamo = async (id: number, condicion_devolucion: string, notas_devolucion?: string): Promise<Prestamo> => {
-  const { data } = await api.post(`/inventario/prestamos/${id}/devolver/`, {
+  const { data } = await api.post(`/api/inventario/prestamos/${id}/devolver/`, {
     condicion_devolucion,
     notas_devolucion: notas_devolucion ?? '',
   });
@@ -309,37 +309,37 @@ export const listarProveedores = async (params?: {
   search?: string;
   page?: number;
 }): Promise<PaginatedResponse<Proveedor>> => {
-  const { data } = await api.get('/inventario/proveedores/', { params });
+  const { data } = await api.get('/api/inventario/proveedores/', { params });
   return data;
 };
 
 export const crearProveedor = async (payload: Partial<Proveedor>): Promise<Proveedor> => {
-  const { data } = await api.post('/inventario/proveedores/', payload);
+  const { data } = await api.post('/api/inventario/proveedores/', payload);
   return data;
 };
 
 export const actualizarProveedor = async (id: number, payload: Partial<Proveedor>): Promise<Proveedor> => {
-  const { data } = await api.patch(`/inventario/proveedores/${id}/`, payload);
+  const { data } = await api.patch(`/api/inventario/proveedores/${id}/`, payload);
   return data;
 };
 
 export const eliminarProveedor = async (id: number): Promise<void> => {
-  await api.delete(`/inventario/proveedores/${id}/`);
+  await api.delete(`/api/inventario/proveedores/${id}/`);
 };
 
 // ─── Reportes ─────────────────────────────────────────────────────────────────
 
 export const reporteStockBajo = async (): Promise<ReporteStockBajo> => {
-  const { data } = await api.get('/inventario/reportes/stock-bajo/');
+  const { data } = await api.get('/api/inventario/reportes/stock-bajo/');
   return data;
 };
 
 export const reportePorUbicacion = async (): Promise<ReportePorUbicacion[]> => {
-  const { data } = await api.get('/inventario/reportes/por-ubicacion/');
+  const { data } = await api.get('/api/inventario/reportes/por-ubicacion/');
   return data;
 };
 
 export const reportePorCategoria = async (): Promise<ReportePorCategoria[]> => {
-  const { data } = await api.get('/inventario/reportes/por-categoria/');
+  const { data } = await api.get('/api/inventario/reportes/por-categoria/');
   return data;
 };
