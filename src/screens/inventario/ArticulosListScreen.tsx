@@ -301,7 +301,7 @@ export default function ArticulosListScreen() {
         </View>
       </View>
 
-      {/* Estado chips */}
+      {/* Filters: estado chips + categoría + ubicación in one scrollable row */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -328,62 +328,60 @@ export default function ArticulosListScreen() {
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
 
-      {/* Categoría + Ubicación filters */}
-      <View style={styles.filterRow}>
+        {/* Separator */}
+        <View style={styles.chipsDivider} />
+
+        {/* Categoría filter */}
         <TouchableOpacity
-          style={[styles.filterBtn, !!selectedCategoria && styles.filterBtnActive]}
+          style={[styles.filterChip, !!selectedCategoria && styles.filterChipActive]}
           onPress={openCategoriaFilter}
           activeOpacity={0.75}
         >
-          <Icon
-            source="tag-outline"
-            size={14}
-            color={selectedCategoria ? PANTONE_295C : '#888'}
-          />
-          <Text
-            style={[styles.filterBtnText, selectedCategoria && styles.filterBtnTextActive]}
-            numberOfLines={1}
-          >
+          <Icon source="tag-outline" size={13} color={selectedCategoria ? PANTONE_295C : '#888'} />
+          <Text style={[styles.filterChipText, selectedCategoria && styles.filterChipTextActive]}>
             {selectedCategoria?.nombre ?? 'Categoría'}
           </Text>
-          <Icon source="chevron-down" size={14} color="#888" />
+          {selectedCategoria ? (
+            <TouchableOpacity
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              onPress={() => {
+                setSelectedCategoria(null);
+                load({ catId: null, pageNum: 1, replace: true });
+              }}
+            >
+              <Icon source="close-circle" size={13} color={PANTONE_295C} />
+            </TouchableOpacity>
+          ) : (
+            <Icon source="chevron-down" size={13} color="#AAA" />
+          )}
         </TouchableOpacity>
 
+        {/* Ubicación filter */}
         <TouchableOpacity
-          style={[styles.filterBtn, !!selectedUbicacion && styles.filterBtnActive]}
+          style={[styles.filterChip, !!selectedUbicacion && styles.filterChipActive]}
           onPress={openUbicacionFilter}
           activeOpacity={0.75}
         >
-          <Icon
-            source="map-marker-outline"
-            size={14}
-            color={selectedUbicacion ? PANTONE_295C : '#888'}
-          />
-          <Text
-            style={[styles.filterBtnText, selectedUbicacion && styles.filterBtnTextActive]}
-            numberOfLines={1}
-          >
+          <Icon source="map-marker-outline" size={13} color={selectedUbicacion ? PANTONE_295C : '#888'} />
+          <Text style={[styles.filterChipText, selectedUbicacion && styles.filterChipTextActive]}>
             {selectedUbicacion?.nombre ?? 'Ubicación'}
           </Text>
-          <Icon source="chevron-down" size={14} color="#888" />
+          {selectedUbicacion ? (
+            <TouchableOpacity
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              onPress={() => {
+                setSelectedUbicacion(null);
+                load({ ubicId: null, pageNum: 1, replace: true });
+              }}
+            >
+              <Icon source="close-circle" size={13} color={PANTONE_295C} />
+            </TouchableOpacity>
+          ) : (
+            <Icon source="chevron-down" size={13} color="#AAA" />
+          )}
         </TouchableOpacity>
-
-        {(selectedCategoria || selectedUbicacion) && (
-          <TouchableOpacity
-            style={styles.clearFiltersBtn}
-            onPress={() => {
-              setSelectedCategoria(null);
-              setSelectedUbicacion(null);
-              load({ catId: null, ubicId: null, pageNum: 1, replace: true });
-            }}
-            activeOpacity={0.75}
-          >
-            <Icon source="close" size={14} color="#E53935" />
-          </TouchableOpacity>
-        )}
-      </View>
+      </ScrollView>
 
       {/* List / Loading / Error */}
       {loading ? (
@@ -489,14 +487,16 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   chipsScroll: {
-    flexGrow: 0,
+    flexShrink: 0,
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
     borderBottomColor: '#EEE',
   },
   chipsContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
     gap: 6,
   },
   estadoChip: {
@@ -520,47 +520,36 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '700',
   },
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+  chipsDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 4,
   },
-  filterBtn: {
-    flex: 1,
+  filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderWidth: 1,
     borderColor: '#DDD',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    gap: 4,
     backgroundColor: '#FAFAFA',
+    gap: 4,
   },
-  filterBtnActive: {
+  filterChipActive: {
     borderColor: PANTONE_295C,
     backgroundColor: '#EAF0FB',
   },
-  filterBtnText: {
-    flex: 1,
+  filterChipText: {
     fontSize: 12,
     color: '#888',
+    fontWeight: '500',
+    maxWidth: 100,
   },
-  filterBtnTextActive: {
+  filterChipTextActive: {
     color: PANTONE_295C,
     fontWeight: '600',
-  },
-  clearFiltersBtn: {
-    padding: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FFCDD2',
-    backgroundColor: '#FFF8F8',
   },
   centered: {
     flex: 1,
