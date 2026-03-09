@@ -120,17 +120,10 @@ export default function CasoDetailScreen({ route }: { route: any }) {
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
 
-  // Al activar una acción: scroll al final + focus en el TextInput
+  // Al activar una acción: el onLayout del panel dispara el scroll+focus
   const activarAccion = useCallback((accion: AccionActiva) => {
     setInputTexto('');
-    setAccionActiva((prev) => {
-      if (prev === accion) return null;
-      setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-        setTimeout(() => inputRef.current?.focus(), 200);
-      }, 100);
-      return accion;
-    });
+    setAccionActiva((prev) => (prev === accion ? null : accion));
   }, []);
 
   const isAdmin = isSuperAdmin || hasAnyRole(['pastor', 'leader', 'church_admin']);
@@ -547,7 +540,14 @@ export default function CasoDetailScreen({ route }: { route: any }) {
 
           {/* ─── Inline action panel ──────────────────────────────────────── */}
           {accionActiva && (
-            <View style={styles.accionPanel}>
+            <View
+              style={styles.accionPanel}
+              onLayout={() => {
+                // Scroll preciso al panel después de que termine el layout
+                scrollRef.current?.scrollToEnd({ animated: true });
+                setTimeout(() => inputRef.current?.focus(), 150);
+              }}
+            >
               <Text style={styles.accionPanelLabel}>
                 {accionConfig[accionActiva].label}
               </Text>
