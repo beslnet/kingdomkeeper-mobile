@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // Pantallas principales
 import DashboardScreen from '../screens/Dashboard';
 import ProfileStack from './ProfileStack';
+import BandejaStack from './BandejaStack';
 import { getNoLeidasCount } from '../api/comunicaciones';
 
 const Tab = createBottomTabNavigator();
@@ -29,11 +29,6 @@ function useBadgeCount() {
   }, [refresh]);
 
   return { count, refresh };
-}
-
-// Placeholder vacío — el tab press siempre redirige, nunca se renderiza
-function EmptyBandeja() {
-  return <View style={{ flex: 1 }} />;
 }
 
 const getScreenOptions = (route: { name: string }, badgeCount: number | undefined) => ({
@@ -60,17 +55,7 @@ export default function MainTabs() {
       screenOptions={({ route }) => getScreenOptions(route, count)}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen
-        name="Bandeja"
-        component={EmptyBandeja}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            // Navegar al ComunicacionesStack en el drawer (mismo header azul que el sidebar)
-            navigation.getParent()?.navigate('Comunicaciones', { screen: 'BandejaEntrada' });
-          },
-        })}
-      />
+      <Tab.Screen name="Bandeja" component={BandejaStack} />
       <Tab.Screen name="Perfil" component={ProfileStack} options={{ headerShown: false }} />
     </Tab.Navigator>
   );
