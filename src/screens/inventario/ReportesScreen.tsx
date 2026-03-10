@@ -50,6 +50,17 @@ type ArticuloFlat = {
   stock_porcentaje?: number | null;
 };
 
+type ProductoGroup = {
+  nombre: string;
+  categoria_nombre: string;
+  ubicaciones: string[];
+  total: number;
+  disponibles: number;
+  prestados: number;
+  otros: number;        // mantenimiento / dañado / baja
+  articulos: ArticuloFlat[];
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function stockColor(pct: number) {
@@ -177,6 +188,35 @@ export default function ReportesScreen() {
     [currentFlat, filterCategoria, filterUbicacion],
   );
 
+  // Group activos by product name for per-product stock view
+  const groupedActivos = useMemo<ProductoGroup[]>(() => {
+    if (activeTab !== 'activos') return [];
+    const map = new Map<string, ProductoGroup>();
+    for (const art of filtered) {
+      const key = `${art.nombre}||${art.categoria_nombre}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          nombre: art.nombre,
+          categoria_nombre: art.categoria_nombre,
+          ubicaciones: [],
+          total: 0,
+          disponibles: 0,
+          prestados: 0,
+          otros: 0,
+          articulos: [],
+        });
+      }
+      const g = map.get(key)!;
+      g.total += 1;
+      if (art.estado === 'disponible') g.disponibles += 1;
+      else if (art.estado === 'prestado') g.prestados += 1;
+      else g.otros += 1;
+      if (!g.ubicaciones.includes(art.ubicacion_nombre)) g.ubicaciones.push(art.ubicacion_nombre);
+      g.articulos.push(art);
+    }
+    return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [filtered, activeTab]);
+
   // Summary for current tab
   const summary = useMemo(() => {
     if (activeTab === 'activos') {
@@ -185,7 +225,7 @@ export default function ReportesScreen() {
       const noDisp       = filtered.filter((a) =>
         ['mantenimiento', 'dañado', 'baja'].includes(a.estado),
       ).length;
-      return { total: filtered.length, disponibles, prestados, noDisp };
+      return { total: filtered.length, productos: groupedActivos.length, disponibles, prestados, noDisp };
     } else {
       const totalUnidades = filtered.reduce((s, a) => s + a.cantidad, 0);
       const stockBajoCount = filtered.filter(
@@ -193,7 +233,7 @@ export default function ReportesScreen() {
       ).length;
       return { total: filtered.length, totalUnidades, stockBajoCount };
     }
-  }, [filtered, activeTab]);
+  }, [filtered, activeTab, groupedActivos]);
 
   // ─── Filter pickers ───────────────────────────────────────────────────────
 
@@ -223,33 +263,87 @@ export default function ReportesScreen() {
     setFilterUbicacion('Todos');
   };
 
-  // ─── Render: Activo card ──────────────────────────────────────────────────
+  // ─── Render: Producto group card (activos) ───────────────────────────────
 
-  const renderActivoCard = (art: ArticuloFlat, idx: number) => {
-    const m = ESTADO_META[art.estado] ?? { bg: '#F5F5F5', text: '#616161', label: art.estado };
+  const renderProductoGroupCard = (g: ProductoGroup, idx: number) => {
+    const allDisp = g.prestados === 0 && g.otros === 0;
+    const hasPrest = g.prestados > 0;
     return (
-      <View key={`a-${art.id}-${idx}`} style={styles.articleCard}>
+      <View key={`pg-${g.nombre}-${idx}`} style={[styles.articleCard, hasPrest && styles.articleCardWarning]}>
         <View style={styles.articleCardTop}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.articleNombre} numberOfLines={2}>{art.nombre}</Text>
-            {art.codigo ? (
-              <Text style={styles.articleCodigo}>{art.codigo}</Text>
-            ) : null}
+            <Text style={styles.articleNombre} numberOfLines={2}>{g.nombre}</Text>
+            <View style={styles.metaItem}>
+              <Icon source="folder-outline" size={12} color="#aaa" />
+              <Text style={styles.metaText}>{g.categoria_nombre}</Text>
+            </View>
           </View>
-          <View style={[styles.estadoBadge, { backgroundColor: m.bg }]}>
-            <Text style={[styles.estadoBadgeText, { color: m.text }]}>{m.label}</Text>
+          {/* Total badge */}
+          <View style={styles.totalBadge}>
+            <Text style={styles.totalBadgeNum}>{g.total}</Text>
+            <Text style={styles.totalBadgeLbl}>unidades</Text>
           </View>
         </View>
-        <View style={styles.articleMeta}>
-          <View style={styles.metaItem}>
-            <Icon source="folder-outline" size={12} color="#aaa" />
-            <Text style={styles.metaText} numberOfLines={1}>{art.categoria_nombre}</Text>
+
+        {/* Stock mini-bar */}
+        <View style={styles.stockIndicatorRow}>
+          <View style={styles.stockIndicator}>
+            <View style={[styles.stockDot, { backgroundColor: '#2E7D32' }]} />
+            <Text style={styles.stockIndicatorNum}>{g.disponibles}</Text>
+            <Text style={styles.stockIndicatorLbl}>Disponibles</Text>
           </View>
-          <View style={styles.metaItem}>
+          <View style={styles.stockIndicator}>
+            <View style={[styles.stockDot, { backgroundColor: g.prestados > 0 ? '#E65100' : '#BDBDBD' }]} />
+            <Text style={[styles.stockIndicatorNum, { color: g.prestados > 0 ? '#E65100' : '#BDBDBD' }]}>
+              {g.prestados}
+            </Text>
+            <Text style={[styles.stockIndicatorLbl, { color: g.prestados > 0 ? '#E65100' : '#BDBDBD' }]}>
+              Prestados
+            </Text>
+          </View>
+          {g.otros > 0 && (
+            <View style={styles.stockIndicator}>
+              <View style={[styles.stockDot, { backgroundColor: '#9E9E9E' }]} />
+              <Text style={[styles.stockIndicatorNum, { color: '#9E9E9E' }]}>{g.otros}</Text>
+              <Text style={[styles.stockIndicatorLbl, { color: '#9E9E9E' }]}>Otros</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Visual progress bar: disponibles/total */}
+        <View style={styles.progressTrack}>
+          {g.disponibles > 0 && (
+            <View style={[styles.progressFill, {
+              width: `${(g.disponibles / g.total) * 100}%` as `${number}%`,
+              backgroundColor: allDisp ? '#4CAF50' : '#66BB6A',
+              borderRadius: 4,
+            }]} />
+          )}
+          {g.prestados > 0 && (
+            <View style={[styles.progressFill, {
+              width: `${(g.prestados / g.total) * 100}%` as `${number}%`,
+              backgroundColor: '#FF7043',
+              borderRadius: 4,
+            }]} />
+          )}
+          {g.otros > 0 && (
+            <View style={[styles.progressFill, {
+              width: `${(g.otros / g.total) * 100}%` as `${number}%`,
+              backgroundColor: '#BDBDBD',
+              borderRadius: 4,
+            }]} />
+          )}
+        </View>
+
+        {/* Ubicaciones */}
+        {g.ubicaciones.length > 0 && (
+          <View style={[styles.metaItem, { marginTop: 6 }]}>
             <Icon source="map-marker-outline" size={12} color="#aaa" />
-            <Text style={styles.metaText} numberOfLines={1}>{art.ubicacion_nombre}</Text>
+            <Text style={styles.metaText} numberOfLines={1}>
+              {g.ubicaciones.join(', ')}
+            </Text>
           </View>
-        </View>
+        )}
       </View>
     );
   };
@@ -313,12 +407,17 @@ export default function ReportesScreen() {
   const renderSummary = () => {
     const color = activeTab === 'activos' ? COLOR_ACTIVOS : COLOR_CONSUMIBLE;
     if (activeTab === 'activos') {
-      const s = summary as { total: number; disponibles: number; prestados: number; noDisp: number };
+      const s = summary as { total: number; productos: number; disponibles: number; prestados: number; noDisp: number };
       return (
         <View style={[styles.summaryBar, { borderLeftColor: color }]}>
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryNum, { color }]}>{s.total}</Text>
-            <Text style={styles.summaryLbl}>Total</Text>
+            <Text style={[styles.summaryNum, { color }]}>{s.productos}</Text>
+            <Text style={styles.summaryLbl}>Productos</Text>
+          </View>
+          <View style={styles.summarySep} />
+          <View style={styles.summaryItem}>
+            <Text style={[styles.summaryNum, { color: '#888' }]}>{s.total}</Text>
+            <Text style={styles.summaryLbl}>Unidades</Text>
           </View>
           <View style={styles.summarySep} />
           <View style={styles.summaryItem}>
@@ -488,12 +587,10 @@ export default function ReportesScreen() {
                   : 'Sin resultados para los filtros aplicados'}
               </Text>
             </View>
+          ) : activeTab === 'activos' ? (
+            groupedActivos.map((g, idx) => renderProductoGroupCard(g, idx))
           ) : (
-            filtered.map((art, idx) =>
-              activeTab === 'activos'
-                ? renderActivoCard(art, idx)
-                : renderConsumibleCard(art, idx),
-            )
+            filtered.map((art, idx) => renderConsumibleCard(art, idx))
           )}
         </ScrollView>
       )}
@@ -650,6 +747,10 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#E53935',
   },
+  articleCardWarning: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF7043',
+  },
   articleCardTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -693,6 +794,51 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#888',
   },
+  // ── Stock indicators (activos grouped) ──
+  totalBadge: {
+    alignItems: 'center',
+    flexShrink: 0,
+    backgroundColor: '#F0F4FF',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  totalBadgeNum: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: PANTONE_295C,
+    lineHeight: 26,
+  },
+  totalBadgeLbl: {
+    fontSize: 9,
+    color: '#888',
+    marginTop: 1,
+  },
+  stockIndicatorRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  stockIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  stockDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  stockIndicatorNum: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#444',
+  },
+  stockIndicatorLbl: {
+    fontSize: 11,
+    color: '#888',
+  },
   // ── Stock (consumibles) ──
   stockBox: {
     alignItems: 'center',
@@ -712,6 +858,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8E8E8',
     borderRadius: 3,
     overflow: 'hidden',
+    flexDirection: 'row',
   },
   progressFill: {
     height: 6,
