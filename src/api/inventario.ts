@@ -223,6 +223,8 @@ export const listarArticulos = async (params?: {
   categoria_id?: number | null;
   ubicacion_id?: number | null;
   estado?: string;
+  tipo_articulo?: TipoArticulo;
+  excluir_tipo?: TipoArticulo;
   page?: number;
   page_size?: number;
 }): Promise<PaginatedResponse<ArticuloList>> => {

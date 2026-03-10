@@ -87,6 +87,7 @@ export default function PrestamoFormScreen() {
         const res = await listarArticulos({
           buscar: articuloSearch.trim(),
           estado: 'disponible',
+          excluir_tipo: 'consumible',
           page_size: 20,
         });
         setArticuloResults(res.results ?? []);
