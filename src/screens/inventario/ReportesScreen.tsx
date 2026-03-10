@@ -17,6 +17,8 @@ import {
   reportePorCategoria,
   ReporteStockBajo,
   ReportePorCategoria,
+  ConsumoInventario,
+  getConsumosRecientes,
 } from '../../api/inventario';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -94,6 +96,7 @@ function FilterPill({
 export default function ReportesScreen() {
   const [porCategoria, setPorCategoria] = useState<ReportePorCategoria[]>([]);
   const [stockBajo, setStockBajo]       = useState<ReporteStockBajo | null>(null);
+  const [consumosRecientes, setConsumosRecientes] = useState<ConsumoInventario[]>([]);
 
   const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,6 +116,17 @@ export default function ReportesScreen() {
       const [pc, sb] = await Promise.all([reportePorCategoria(), reporteStockBajo()]);
       setPorCategoria(pc);
       setStockBajo(sb);
+      
+      // Load recent consumos (last 30 days)
+      try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const fechaDesde = thirtyDaysAgo.toISOString().split('T')[0];
+        const consumosRes = await getConsumosRecientes(fechaDesde);
+        setConsumosRecientes(consumosRes.results?.slice(0, 5) ?? []);
+      } catch {
+        setConsumosRecientes([]);
+      }
     } catch {
       setError('No se pudieron cargar los reportes.');
     } finally {
@@ -669,7 +683,51 @@ export default function ReportesScreen() {
           ) : activeTab === 'granel' ? (
             filtered.map((art, idx) => renderGranelCard(art, idx))
           ) : (
-            filtered.map((art, idx) => renderConsumibleCard(art, idx))
+            <>
+              {/* Consumo reciente section for consumibles tab */}
+              {consumosRecientes.length > 0 && (
+                <View style={styles.consumosRecentesCard}>
+                  <View style={styles.consumosRecentesHeader}>
+                    <Icon source="clock-outline" size={18} color="#388E3C" />
+                    <Text style={styles.consumosRecentesTitle}>Consumo reciente (últimos 30 días)</Text>
+                  </View>
+                  {consumosRecientes.map((c) => (
+                    <View key={c.id} style={styles.consumoRecenteRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.consumoRecenteArticulo} numberOfLines={1}>
+                          {c.articulo_data?.nombre ?? 'Artículo'}
+                        </Text>
+                        <Text style={styles.consumoRecenteMiembro} numberOfLines={1}>
+                          {c.consumido_por_data
+                            ? `${c.consumido_por_data.primer_nombre} ${c.consumido_por_data.apellido_paterno}`
+                            : 'Responsable'}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={styles.consumoRecenteCantidad}>
+                          {c.cantidad} {c.articulo_data?.unidad_medida ?? ''}
+                        </Text>
+                        <Text style={styles.consumoRecenteFecha}>
+                          {c.dias_ago === 0
+                            ? 'Hoy'
+                            : c.dias_ago === 1
+                            ? 'Ayer'
+                            : `Hace ${c.dias_ago}d`}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                  <TouchableOpacity
+                    style={styles.verTodoBtn}
+                    onPress={() => Alert.alert('Próximamente', 'Historial completo de consumos')}
+                  >
+                    <Text style={styles.verTodoText}>Ver todo</Text>
+                    <Icon source="chevron-right" size={16} color="#388E3C" />
+                  </TouchableOpacity>
+                </View>
+              )}
+              {filtered.map((art, idx) => renderConsumibleCard(art, idx))}
+            </>
           )}
         </ScrollView>
       )}
@@ -836,4 +894,63 @@ const styles = StyleSheet.create({
   errorBox: { alignItems: 'center', paddingVertical: 48, gap: 12 },
   errorText: { color: '#E53935', fontSize: 14, textAlign: 'center', paddingHorizontal: 24 },
   retryLink: { color: PANTONE_295C, fontWeight: '700', fontSize: 14 },
+  // ── Consumos recientes ──
+  consumosRecentesCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E8F5E9',
+  },
+  consumosRecentesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  consumosRecentesTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2E7D32',
+  },
+  consumoRecenteRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  consumoRecenteArticulo: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  consumoRecenteMiembro: {
+    fontSize: 12,
+    color: '#777',
+    marginTop: 2,
+  },
+  consumoRecenteCantidad: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#388E3C',
+  },
+  consumoRecenteFecha: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 2,
+  },
+  verTodoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    paddingVertical: 6,
+  },
+  verTodoText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#388E3C',
+  },
 });

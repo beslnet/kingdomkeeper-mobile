@@ -185,6 +185,30 @@ export interface ReportePorCategoria {
   articulos: { id: number; codigo: string; nombre: string; ubicacion_nombre: string; cantidad: number; estado: string; tipo_articulo: TipoArticulo; unidad_medida?: string; prestamos_activos_count?: number }[];
 }
 
+export interface ConsumoInventario {
+  id: number;
+  articulo: number;
+  articulo_data?: ArticuloList;
+  cantidad: number;
+  consumido_por: number;
+  consumido_por_data?: { primer_nombre: string; apellido_paterno: string; apellido_materno?: string };
+  grupo?: number | null;
+  grupo_data?: { id: number; nombre: string } | null;
+  fecha_consumo: string;
+  motivo: string;
+  dias_ago: number;
+  created_at: string;
+}
+
+export interface CreateConsumoPayload {
+  articulo: number;
+  cantidad: number;
+  consumido_por: number;
+  grupo?: number | null;
+  fecha_consumo: string;
+  motivo?: string;
+}
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
@@ -350,5 +374,23 @@ export const reportePorUbicacion = async (): Promise<ReportePorUbicacion[]> => {
 
 export const reportePorCategoria = async (): Promise<ReportePorCategoria[]> => {
   const { data } = await api.get('/api/inventario/reportes/por-categoria/');
+  return data;
+};
+
+// ─── Consumos ─────────────────────────────────────────────────────────────────
+
+export const getConsumosByArticulo = async (articuloId: number): Promise<PaginatedResponse<ConsumoInventario>> => {
+  const { data } = await api.get(`/api/inventario/consumos/?articulo_id=${articuloId}`);
+  return data;
+};
+
+export const createConsumo = async (payload: CreateConsumoPayload): Promise<ConsumoInventario> => {
+  const { data } = await api.post('/api/inventario/consumos/', payload);
+  return data;
+};
+
+export const getConsumosRecientes = async (fechaDesde?: string): Promise<PaginatedResponse<ConsumoInventario>> => {
+  const params = fechaDesde ? { fecha_desde: fechaDesde } : {};
+  const { data } = await api.get('/api/inventario/consumos/', { params });
   return data;
 };

@@ -93,3 +93,8 @@ export const listarGruposArchivados = async () => {
   const { data } = await api.get('/api/grupos/', { params: { solo_archivados: 'true' } });
   return data;
 };
+
+export const getGruposLideradosPor = async (miembroId: number) => {
+  const { data } = await api.get<{ id: number; nombre: string }[]>(`/api/grupos/liderados_por/?miembro_id=${miembroId}`);
+  return data;
+};

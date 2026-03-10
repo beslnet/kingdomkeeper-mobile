@@ -17,6 +17,8 @@ import {
   eliminarArticulo,
   Articulo,
   MovimientoInventario,
+  ConsumoInventario,
+  getConsumosByArticulo,
 } from '../../api/inventario';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -133,6 +135,9 @@ export default function ArticuloDetailScreen({ route }: { route: any }) {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const [consumos, setConsumos] = useState<ConsumoInventario[]>([]);
+  const [loadingConsumos, setLoadingConsumos] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -140,6 +145,19 @@ export default function ArticuloDetailScreen({ route }: { route: any }) {
     try {
       const data = await obtenerArticulo(id);
       setArticulo(data);
+      
+      // If consumible, load consumos
+      if (data.tipo_articulo === 'consumible') {
+        setLoadingConsumos(true);
+        try {
+          const consumosRes = await getConsumosByArticulo(id);
+          setConsumos(consumosRes.results ?? []);
+        } catch {
+          setConsumos([]);
+        } finally {
+          setLoadingConsumos(false);
+        }
+      }
     } catch (err: any) {
       const d = err?.response?.data;
       let msg = 'Error al cargar el artículo.';
@@ -506,14 +524,72 @@ export default function ArticuloDetailScreen({ route }: { route: any }) {
         </TouchableOpacity>
       )}
       {tipoArticulo === 'consumible' && (
-        <TouchableOpacity
-          style={[styles.prestarBtn, { backgroundColor: '#388E3C' }]}
-          onPress={() => navigation.navigate('ArticuloForm', { articulo })}
-          activeOpacity={0.8}
-        >
-          <Icon source="pencil-outline" size={18} color="#FFF" />
-          <Text style={styles.prestarBtnText}>Registrar uso / Ajustar stock</Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity
+            style={[styles.prestarBtn, { backgroundColor: '#388E3C' }]}
+            onPress={() =>
+              navigation.navigate('ConsumoForm', {
+                articuloId: articulo.id,
+                articuloNombre: articulo.nombre,
+                articuloUnidad: articulo.unidad_medida,
+                stockDisponible: articulo.cantidad,
+              })
+            }
+            activeOpacity={0.8}
+          >
+            <Icon source="beaker-check-outline" size={18} color="#FFF" />
+            <Text style={styles.prestarBtnText}>Registrar Consumo</Text>
+          </TouchableOpacity>
+          
+          {/* Historial de consumos */}
+          <SectionCard>
+            <SectionTitle title="Historial de Consumos" icon="history" />
+            {loadingConsumos ? (
+              <ActivityIndicator size="small" color="#388E3C" style={{ marginVertical: 12 }} />
+            ) : consumos.length === 0 ? (
+              <Text style={styles.emptyText}>Sin consumos registrados</Text>
+            ) : (
+              consumos.slice(0, 10).map((c) => (
+                <View key={c.id} style={styles.consumoRow}>
+                  <View style={styles.consumoLeft}>
+                    <Text style={styles.consumoDate}>
+                      {c.dias_ago === 0
+                        ? 'Hoy'
+                        : c.dias_ago === 1
+                        ? 'Ayer'
+                        : c.dias_ago < 7
+                        ? `Hace ${c.dias_ago} días`
+                        : new Date(c.fecha_consumo).toLocaleDateString('es-CL', {
+                            day: '2-digit',
+                            month: 'short',
+                          })}
+                    </Text>
+                    <Text style={styles.consumoResponsable} numberOfLines={1}>
+                      {c.consumido_por_data
+                        ? `${c.consumido_por_data.primer_nombre} ${c.consumido_por_data.apellido_paterno}`
+                        : 'Responsable'}
+                    </Text>
+                    {c.motivo && (
+                      <Text style={styles.consumoMotivo} numberOfLines={2}>
+                        {c.motivo}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.consumoRight}>
+                    <Text style={styles.consumoCantidad}>
+                      {c.cantidad} {articulo.unidad_medida}
+                    </Text>
+                    {c.grupo_data && (
+                      <Text style={styles.consumoGrupo} numberOfLines={1}>
+                        {c.grupo_data.nombre}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              ))
+            )}
+          </SectionCard>
+        </>
       )}
 
       {/* ── Edit / Delete ────────────────────────────────────────────── */}
@@ -881,5 +957,53 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 24,
+  },
+  // ── Consumo history ──
+  emptyText: {
+    color: '#999',
+    fontSize: 13,
+    textAlign: 'center',
+    paddingVertical: 16,
+  },
+  consumoRow: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  consumoLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  consumoDate: {
+    fontSize: 12,
+    color: '#888',
+    fontWeight: '500',
+  },
+  consumoResponsable: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  consumoMotivo: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  consumoRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  consumoCantidad: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#388E3C',
+  },
+  consumoGrupo: {
+    fontSize: 11,
+    color: '#7B1FA2',
+    marginTop: 2,
+    maxWidth: 100,
   },
 });

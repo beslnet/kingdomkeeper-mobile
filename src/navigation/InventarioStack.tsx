@@ -16,6 +16,7 @@ import PrestamoFormScreen from '../screens/inventario/PrestamoFormScreen';
 import DevolucionFormScreen from '../screens/inventario/DevolucionFormScreen';
 import ProveedoresScreen from '../screens/inventario/ProveedoresScreen';
 import ReportesScreen from '../screens/inventario/ReportesScreen';
+import ConsumoFormScreen from '../screens/inventario/ConsumoFormScreen';
 
 const Stack = createStackNavigator();
 
@@ -106,6 +107,11 @@ export default function InventarioStack() {
         name="Reportes"
         component={ReportesScreen}
         options={{ title: 'Reportes de Inventario' }}
+      />
+      <Stack.Screen
+        name="ConsumoForm"
+        component={ConsumoFormScreen}
+        options={{ title: 'Registrar Consumo' }}
       />
     </Stack.Navigator>
   );

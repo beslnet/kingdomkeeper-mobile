@@ -35,3 +35,23 @@ export type FinanzasStackParamList = {
   CuentasList: undefined;
   CategoriasList: undefined;
 };
+
+export type InventarioStackParamList = {
+  InventarioMain: undefined;
+  ArticulosList: undefined;
+  ArticuloDetail: { id: number; nombre?: string };
+  ArticuloForm: { articulo?: import('../api/inventario').Articulo } | undefined;
+  Categorias: undefined;
+  Ubicaciones: undefined;
+  Prestamos: undefined;
+  PrestamoForm: undefined;
+  DevolucionForm: { prestamoId: number } | undefined;
+  Proveedores: undefined;
+  Reportes: undefined;
+  ConsumoForm: {
+    articuloId: number;
+    articuloNombre: string;
+    articuloUnidad: string;
+    stockDisponible: number;
+  };
+};
