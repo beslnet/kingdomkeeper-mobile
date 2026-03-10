@@ -167,17 +167,21 @@ export interface ReporteStockBajo {
 export interface ReportePorUbicacion {
   ubicacion_nombre: string;
   cantidad_total: number;
+  total_articulos: number;
   por_estado: Record<string, number>;
-  articulos: { codigo: string; nombre: string; categoria_nombre: string; cantidad: number; estado: string }[];
+  articulos: { id: number; codigo: string; nombre: string; categoria_nombre: string; cantidad: number; estado: string; es_consumible: boolean; unidad_medida?: string }[];
 }
 
 export interface ReportePorCategoria {
+  categoria_id: number;
   categoria_nombre: string;
+  categoria_tipo: string;
   tipo: string;
   es_consumible: boolean;
+  total_articulos: number;
   cantidad_total: number;
   por_estado: Record<string, number>;
-  articulos: { codigo: string; nombre: string; ubicacion_nombre: string; cantidad: number; estado: string }[];
+  articulos: { id: number; codigo: string; nombre: string; ubicacion_nombre: string; cantidad: number; estado: string; unidad_medida?: string }[];
 }
 
 export interface PaginatedResponse<T> {

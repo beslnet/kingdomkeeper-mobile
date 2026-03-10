@@ -20,363 +20,475 @@ import {
   ReportePorCategoria,
 } from '../../api/inventario';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Palette ──────────────────────────────────────────────────────────────────
 
-const ESTADO_COLORS: Record<string, { bg: string; text: string }> = {
-  disponible: { bg: '#E8F5E9', text: '#2E7D32' },
-  en_uso: { bg: '#E3F2FD', text: '#1565C0' },
-  prestado: { bg: '#FFF3E0', text: '#E65100' },
-  mantenimiento: { bg: '#FFF9C4', text: '#F57F17' },
-  dañado: { bg: '#FFEBEE', text: '#B71C1C' },
-  baja: { bg: '#F5F5F5', text: '#616161' },
+const ESTADO_META: Record<string, { bg: string; text: string; label: string }> = {
+  disponible:    { bg: '#E8F5E9', text: '#2E7D32', label: 'Disponible' },
+  en_uso:        { bg: '#E3F2FD', text: '#1565C0', label: 'En uso' },
+  prestado:      { bg: '#FFF3E0', text: '#E65100', label: 'Prestado' },
+  mantenimiento: { bg: '#FFF9C4', text: '#F57F17', label: 'Mantenimiento' },
+  dañado:        { bg: '#FFEBEE', text: '#B71C1C', label: 'Dañado' },
+  baja:          { bg: '#F5F5F5', text: '#616161', label: 'Baja' },
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+const COLOR_ACTIVOS   = PANTONE_295C;      // azul institucional
+const COLOR_CONSUMIBLE = '#388E3C';        // verde
+const COLOR_UBICACION  = '#5C6BC0';        // índigo
 
-function SectionHeader({ title, count }: { title: string; count?: number }) {
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+
+function BlockHeader({
+  icon,
+  label,
+  color,
+  badge,
+  badgeColor,
+}: {
+  icon: string;
+  label: string;
+  color: string;
+  badge?: string | number;
+  badgeColor?: string;
+}) {
   return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {count !== undefined && (
-        <View style={styles.countBadge}>
-          <Text style={styles.countBadgeText}>{count}</Text>
+    <View style={[styles.blockHeader, { borderLeftColor: color }]}>
+      <Icon source={icon} size={20} color={color} />
+      <Text style={[styles.blockHeaderText, { color }]}>{label}</Text>
+      {badge !== undefined && (
+        <View style={[styles.blockBadge, { backgroundColor: badgeColor ?? color }]}>
+          <Text style={styles.blockBadgeText}>{badge}</Text>
         </View>
       )}
+    </View>
+  );
+}
+
+function SummaryRow({ label, value, valueColor }: { label: string; value: string | number; valueColor?: string }) {
+  return (
+    <View style={styles.summaryRow}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={[styles.summaryValue, valueColor ? { color: valueColor } : {}]}>{value}</Text>
     </View>
   );
 }
 
 function EstadoChip({ estado, cantidad }: { estado: string; cantidad: number }) {
-  const colors = ESTADO_COLORS[estado] ?? { bg: '#F5F5F5', text: '#616161' };
+  if (cantidad === 0) return null;
+  const m = ESTADO_META[estado] ?? { bg: '#F5F5F5', text: '#616161', label: estado };
   return (
-    <View style={[styles.estadoChip, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.estadoChipText, { color: colors.text }]}>
-        {estado}: {cantidad}
+    <View style={[styles.estadoChip, { backgroundColor: m.bg }]}>
+      <Text style={[styles.estadoChipText, { color: m.text }]}>
+        {m.label}: <Text style={{ fontWeight: '700' }}>{cantidad}</Text>
       </Text>
     </View>
   );
 }
 
-function ArticuloRow({
-  nombre,
-  estado,
-  cantidad,
-  prestamosActivos,
-  extra,
-}: {
-  nombre: string;
-  estado: string;
-  cantidad: number;
-  prestamosActivos?: number;
-  extra?: string;
-}) {
-  const colors = ESTADO_COLORS[estado] ?? { bg: '#F5F5F5', text: '#616161' };
-  return (
-    <View style={styles.articuloRow}>
-      <View style={styles.articuloInfo}>
-        <Text style={styles.articuloNombre} numberOfLines={1}>
-          {nombre}
-        </Text>
-        {!!extra && <Text style={styles.articuloExtra}>{extra}</Text>}
-      </View>
-      <View style={styles.articuloRight}>
-        <Text style={styles.articuloCantidad}>
-          {cantidad}
-          {(prestamosActivos ?? 0) > 0 && (
-            <Text style={{ color: '#E65100', fontSize: 10 }}>
-              {' '}({prestamosActivos} prest.)
-            </Text>
-          )}
-        </Text>
-        <View style={[styles.articuloEstado, { backgroundColor: colors.bg }]}>
-          <Text style={[styles.articuloEstadoText, { color: colors.text }]}>{estado}</Text>
-        </View>
-      </View>
-    </View>
-  );
+function stockColor(pct: number) {
+  if (pct < 30) return '#E53935';
+  if (pct < 60) return '#FF9800';
+  return '#4CAF50';
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ReportesScreen() {
-  const [stockBajo, setStockBajo] = useState<ReporteStockBajo | null>(null);
-  const [porUbicacion, setPorUbicacion] = useState<ReportePorUbicacion[]>([]);
-  const [porCategoria, setPorCategoria] = useState<ReportePorCategoria[]>([]);
+  const [stockBajo, setStockBajo]         = useState<ReporteStockBajo | null>(null);
+  const [porUbicacion, setPorUbicacion]   = useState<ReportePorUbicacion[]>([]);
+  const [porCategoria, setPorCategoria]   = useState<ReportePorCategoria[]>([]);
 
-  const [loadingStock, setLoadingStock] = useState(true);
-  const [loadingUbicacion, setLoadingUbicacion] = useState(true);
-  const [loadingCategoria, setLoadingCategoria] = useState(true);
+  const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError]         = useState<string | null>(null);
 
-  const [errorStock, setErrorStock] = useState<string | null>(null);
-  const [errorUbicacion, setErrorUbicacion] = useState<string | null>(null);
-  const [errorCategoria, setErrorCategoria] = useState<string | null>(null);
+  const [expandedActivos, setExpandedActivos]       = useState<Record<string, boolean>>({});
+  const [expandedConsumibles, setExpandedConsumibles] = useState<Record<string, boolean>>({});
+  const [expandedUbicacion, setExpandedUbicacion]   = useState<Record<string, boolean>>({});
 
-  const [expandedUbicacion, setExpandedUbicacion] = useState<Record<string, boolean>>({});
-  const [expandedCategoria, setExpandedCategoria] = useState<Record<string, boolean>>({});
-
-  // ─── Data loading ───────────────────────────────────────────────────────────
+  // ─── Load ────────────────────────────────────────────────────────────────────
 
   const loadAll = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
 
-    setLoadingStock(true);
-    setLoadingUbicacion(true);
-    setLoadingCategoria(true);
-    setErrorStock(null);
-    setErrorUbicacion(null);
-    setErrorCategoria(null);
-
-    await Promise.all([
-      reporteStockBajo()
-        .then(setStockBajo)
-        .catch(() => setErrorStock('Error al cargar stock bajo.'))
-        .finally(() => setLoadingStock(false)),
-
-      reportePorUbicacion()
-        .then(setPorUbicacion)
-        .catch(() => setErrorUbicacion('Error al cargar reporte por ubicación.'))
-        .finally(() => setLoadingUbicacion(false)),
-
-      reportePorCategoria()
-        .then(setPorCategoria)
-        .catch(() => setErrorCategoria('Error al cargar reporte por categoría.'))
-        .finally(() => setLoadingCategoria(false)),
-    ]);
-
-    setRefreshing(false);
+    try {
+      const [sb, pu, pc] = await Promise.all([
+        reporteStockBajo(),
+        reportePorUbicacion(),
+        reportePorCategoria(),
+      ]);
+      setStockBajo(sb);
+      setPorUbicacion(pu);
+      setPorCategoria(pc);
+    } catch {
+      setError('No se pudieron cargar los reportes. Tire para refrescar.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadAll();
-    }, [loadAll]),
-  );
+  useFocusEffect(useCallback(() => { loadAll(); }, [loadAll]));
 
-  const isAnyLoading = loadingStock || loadingUbicacion || loadingCategoria;
+  // ─── Derived data ─────────────────────────────────────────────────────────────
 
-  // ─── Helpers ────────────────────────────────────────────────────────────────
+  const activos     = porCategoria.filter((c) => !c.es_consumible);
+  const consumibles = porCategoria.filter((c) => c.es_consumible);
 
-  const toggleUbicacion = (key: string) =>
-    setExpandedUbicacion((prev) => ({ ...prev, [key]: !prev[key] }));
+  const totalActivos     = activos.reduce((s, c) => s + c.total_articulos, 0);
+  const totalPrestados   = activos.reduce((s, c) => s + (c.por_estado.prestado ?? 0), 0);
+  const totalNoDisp      = activos.reduce((s, c) =>
+    s + (c.por_estado.mantenimiento ?? 0) + (c.por_estado.dañado ?? 0) + (c.por_estado.baja ?? 0), 0);
 
-  const toggleCategoria = (key: string) =>
-    setExpandedCategoria((prev) => ({ ...prev, [key]: !prev[key] }));
+  const totalUnidades    = consumibles.reduce((s, c) => s + c.cantidad_total, 0);
+  const stockBajoCount   = stockBajo?.total ?? 0;
 
-  const stockColor = (porcentaje: number): string => {
-    if (porcentaje < 30) return '#E53935';
-    if (porcentaje < 60) return '#FF9800';
-    return '#4CAF50';
-  };
+  // ─── Render helpers ───────────────────────────────────────────────────────────
 
-  // ─── Section: Stock Bajo ────────────────────────────────────────────────────
+  const toggle = (
+    key: string,
+    setter: React.Dispatch<React.SetStateAction<Record<string, boolean>>>,
+  ) => setter((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const renderStockBajo = () => (
+  // ─── PANEL: Activos Institucionales ──────────────────────────────────────────
+
+  const renderActivos = () => (
     <View style={styles.section}>
-      <SectionHeader
-        title="Stock bajo"
-        count={stockBajo?.total}
+      <BlockHeader
+        icon="package-variant-closed"
+        label="Activos Institucionales"
+        color={COLOR_ACTIVOS}
+        badge={totalActivos}
       />
 
-      {loadingStock ? (
-        <ActivityIndicator size="small" color={PANTONE_295C} style={styles.sectionLoader} />
-      ) : errorStock ? (
-        <View style={styles.sectionError}>
-          <Text style={styles.sectionErrorText}>{errorStock}</Text>
-          <TouchableOpacity onPress={() => loadAll()}>
-            <Text style={styles.retryLink}>Reintentar</Text>
-          </TouchableOpacity>
-        </View>
-      ) : !stockBajo || stockBajo.articulos.length === 0 ? (
-        <View style={styles.sectionEmpty}>
-          <Icon source="check-circle-outline" size={32} color="#4CAF50" />
-          <Text style={styles.sectionEmptyText}>Todos los artículos tienen stock suficiente</Text>
+      {/* Mini-resumen */}
+      <View style={styles.summaryCard}>
+        <SummaryRow label="Total artículos registrados" value={totalActivos} />
+        <SummaryRow
+          label="Disponibles"
+          value={activos.reduce((s, c) => s + (c.por_estado.disponible ?? 0), 0)}
+          valueColor="#2E7D32"
+        />
+        <SummaryRow
+          label="Prestados actualmente"
+          value={totalPrestados}
+          valueColor={totalPrestados > 0 ? '#E65100' : '#2E7D32'}
+        />
+        {totalNoDisp > 0 && (
+          <SummaryRow
+            label="Fuera de servicio (mant./dañado/baja)"
+            value={totalNoDisp}
+            valueColor="#B71C1C"
+          />
+        )}
+      </View>
+
+      {/* Por categoría */}
+      {activos.length === 0 ? (
+        <View style={styles.emptyRow}>
+          <Icon source="package-variant-closed-remove" size={28} color="#ccc" />
+          <Text style={styles.emptyText}>Sin categorías de activos</Text>
         </View>
       ) : (
-        <View style={styles.stockList}>
-          {stockBajo.articulos.map((item, idx) => {
-            const pct = Math.min(Math.max(item.porcentaje, 0), 100);
-            const color = stockColor(pct);
-            return (
-              <View key={idx} style={styles.stockItem}>
-                <View style={styles.stockItemHeader}>
-                  <Text style={styles.stockItemNombre} numberOfLines={1}>
-                    {item.articulo.nombre}
-                  </Text>
-                  <Text style={[styles.stockItemCount, { color }]}>
-                    {item.stock_actual}/{item.stock_minimo}
-                  </Text>
+        activos.map((cat, idx) => {
+          const key = `act-${idx}`;
+          const expanded = !!expandedActivos[key];
+          const disponible  = cat.por_estado.disponible ?? 0;
+          const prestado    = cat.por_estado.prestado ?? 0;
+          const otrosNoDisp = (cat.por_estado.mantenimiento ?? 0)
+                            + (cat.por_estado.dañado ?? 0)
+                            + (cat.por_estado.baja ?? 0);
+          return (
+            <View key={key} style={styles.card}>
+              <TouchableOpacity
+                style={styles.cardHeader}
+                onPress={() => toggle(key, setExpandedActivos)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.cardHeaderLeft}>
+                  <Icon source="folder-outline" size={17} color={COLOR_ACTIVOS} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>{cat.categoria_nombre}</Text>
+                    <Text style={styles.cardSubtitle}>{cat.categoria_tipo} · {cat.total_articulos} unidades</Text>
+                  </View>
                 </View>
-                <Text style={styles.stockItemCategoria}>{item.articulo.categoria_nombre}</Text>
-                <View style={styles.progressTrack}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: `${pct}%` as `${number}%`, backgroundColor: color },
-                    ]}
-                  />
+                <View style={styles.cardHeaderRight}>
+                  {prestado > 0 && (
+                    <View style={[styles.miniChip, { backgroundColor: '#FFF3E0' }]}>
+                      <Text style={{ fontSize: 11, color: '#E65100', fontWeight: '700' }}>
+                        {prestado} prest.
+                      </Text>
+                    </View>
+                  )}
+                  {otrosNoDisp > 0 && (
+                    <View style={[styles.miniChip, { backgroundColor: '#FFEBEE' }]}>
+                      <Text style={{ fontSize: 11, color: '#B71C1C', fontWeight: '700' }}>
+                        {otrosNoDisp} n/d
+                      </Text>
+                    </View>
+                  )}
+                  <Icon source={expanded ? 'chevron-up' : 'chevron-down'} size={18} color="#999" />
                 </View>
-                <Text style={[styles.progressLabel, { color }]}>
-                  {pct.toFixed(0)}% del mínimo
-                </Text>
-              </View>
-            );
-          })}
-        </View>
+              </TouchableOpacity>
+
+              {expanded && (
+                <View style={styles.cardBody}>
+                  {/* Estado summary chips */}
+                  <View style={styles.chipsRow}>
+                    {Object.entries(cat.por_estado).map(([est, cnt]) => (
+                      <EstadoChip key={est} estado={est} cantidad={cnt} />
+                    ))}
+                  </View>
+                  {/* Item list */}
+                  {cat.articulos.map((art, i) => {
+                    const m = ESTADO_META[art.estado] ?? { bg: '#F5F5F5', text: '#616161', label: art.estado };
+                    return (
+                      <View key={i} style={styles.itemRow}>
+                        <View style={[styles.itemDot, { backgroundColor: m.bg, borderColor: m.text }]} />
+                        <View style={styles.itemInfo}>
+                          <Text style={styles.itemNombre} numberOfLines={1}>{art.nombre}</Text>
+                          {art.codigo ? (
+                            <Text style={styles.itemCodigo}>{art.codigo}</Text>
+                          ) : null}
+                        </View>
+                        <View style={[styles.itemEstadoBadge, { backgroundColor: m.bg }]}>
+                          <Text style={[styles.itemEstadoText, { color: m.text }]}>{m.label}</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          );
+        })
       )}
     </View>
   );
 
-  // ─── Section: Por Ubicación ─────────────────────────────────────────────────
+  // ─── PANEL: Inventario Consumible ─────────────────────────────────────────────
 
-  const renderPorUbicacion = () => (
+  const renderConsumibles = () => (
     <View style={styles.section}>
-      <SectionHeader title="Por ubicación" />
+      <BlockHeader
+        icon="layers-outline"
+        label="Inventario Consumible"
+        color={COLOR_CONSUMIBLE}
+        badge={stockBajoCount > 0 ? `${stockBajoCount} con stock bajo` : undefined}
+        badgeColor="#E53935"
+      />
 
-      {loadingUbicacion ? (
-        <ActivityIndicator size="small" color={PANTONE_295C} style={styles.sectionLoader} />
-      ) : errorUbicacion ? (
-        <View style={styles.sectionError}>
-          <Text style={styles.sectionErrorText}>{errorUbicacion}</Text>
-          <TouchableOpacity onPress={() => loadAll()}>
-            <Text style={styles.retryLink}>Reintentar</Text>
-          </TouchableOpacity>
+      {/* Mini-resumen */}
+      <View style={styles.summaryCard}>
+        <SummaryRow label="Categorías de insumos" value={consumibles.length} />
+        <SummaryRow label="Unidades totales en stock" value={totalUnidades} />
+        <SummaryRow
+          label="Alertas de stock bajo"
+          value={stockBajoCount === 0 ? 'Ninguna ✓' : stockBajoCount}
+          valueColor={stockBajoCount > 0 ? '#E53935' : '#2E7D32'}
+        />
+      </View>
+
+      {consumibles.length === 0 ? (
+        <View style={styles.emptyRow}>
+          <Icon source="layers-remove" size={28} color="#ccc" />
+          <Text style={styles.emptyText}>Sin categorías consumibles</Text>
         </View>
-      ) : porUbicacion.length === 0 ? (
-        <View style={styles.sectionEmpty}>
-          <Icon source="map-marker-off-outline" size={32} color="#ccc" />
-          <Text style={styles.sectionEmptyText}>Sin datos de ubicación</Text>
+      ) : (
+        consumibles.map((cat, idx) => {
+          const key = `cons-${idx}`;
+          const expanded = !!expandedConsumibles[key];
+          const stockMinimoCategoria = stockBajo?.articulos
+            .find((a) => a.articulo.categoria_nombre === cat.categoria_nombre)
+            ?.stock_minimo ?? null;
+
+          return (
+            <View key={key} style={styles.card}>
+              <TouchableOpacity
+                style={styles.cardHeader}
+                onPress={() => toggle(key, setExpandedConsumibles)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.cardHeaderLeft}>
+                  <Icon source="layers-outline" size={17} color={COLOR_CONSUMIBLE} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>{cat.categoria_nombre}</Text>
+                    <Text style={styles.cardSubtitle}>{cat.total_articulos} artículo(s) · {cat.cantidad_total} unidades</Text>
+                  </View>
+                </View>
+                <View style={styles.cardHeaderRight}>
+                  {stockBajoCount > 0 && stockBajo?.articulos.some(
+                    (a) => a.articulo.categoria_nombre === cat.categoria_nombre,
+                  ) && (
+                    <View style={[styles.miniChip, { backgroundColor: '#FFEBEE' }]}>
+                      <Text style={{ fontSize: 11, color: '#E53935', fontWeight: '700' }}>⚠ bajo</Text>
+                    </View>
+                  )}
+                  <Icon source={expanded ? 'chevron-up' : 'chevron-down'} size={18} color="#999" />
+                </View>
+              </TouchableOpacity>
+
+              {expanded && (
+                <View style={styles.cardBody}>
+                  {cat.articulos.map((art, i) => {
+                    const sbItem = stockBajo?.articulos.find(
+                      (s) => s.articulo.id === art.id,
+                    );
+                    const pct = sbItem
+                      ? Math.min(Math.max(sbItem.porcentaje, 0), 100)
+                      : null;
+                    const color = pct !== null ? stockColor(pct) : '#4CAF50';
+                    const hasMinimo = sbItem !== null && sbItem !== undefined;
+
+                    return (
+                      <View key={i} style={styles.stockItemCard}>
+                        <View style={styles.stockItemTop}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.stockItemNombre} numberOfLines={1}>{art.nombre}</Text>
+                            <Text style={styles.stockItemUnidad}>Unidad: {art.unidad_medida ?? 'unidad'}</Text>
+                          </View>
+                          <View style={styles.stockItemRight}>
+                            <Text style={[styles.stockCount, { color }]}>
+                              {art.cantidad}
+                            </Text>
+                            <Text style={styles.stockUnit}>en stock</Text>
+                          </View>
+                        </View>
+                        {hasMinimo && pct !== null && (
+                          <>
+                            <View style={styles.progressTrack}>
+                              <View
+                                style={[
+                                  styles.progressFill,
+                                  {
+                                    width: `${pct}%` as `${number}%`,
+                                    backgroundColor: color,
+                                  },
+                                ]}
+                              />
+                            </View>
+                            <Text style={[styles.progressLabel, { color }]}>
+                              {pct.toFixed(0)}% del mínimo ({sbItem!.stock_minimo} u.)
+                            </Text>
+                          </>
+                        )}
+                        {!hasMinimo && (
+                          <Text style={styles.noMinimoLabel}>Sin stock mínimo definido</Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          );
+        })
+      )}
+    </View>
+  );
+
+  // ─── PANEL: Por Ubicación ─────────────────────────────────────────────────────
+
+  const renderUbicaciones = () => (
+    <View style={styles.section}>
+      <BlockHeader
+        icon="map-marker-outline"
+        label="Por Ubicación"
+        color={COLOR_UBICACION}
+      />
+
+      {porUbicacion.length === 0 ? (
+        <View style={styles.emptyRow}>
+          <Icon source="map-marker-off-outline" size={28} color="#ccc" />
+          <Text style={styles.emptyText}>Sin ubicaciones registradas</Text>
         </View>
       ) : (
         porUbicacion.map((loc, idx) => {
           const key = `ub-${idx}`;
           const expanded = !!expandedUbicacion[key];
+
+          const activosLoc     = loc.articulos?.filter((a) => !a.es_consumible) ?? [];
+          const consumiblesLoc = loc.articulos?.filter((a) => a.es_consumible)  ?? [];
+          const prestadosLoc   = activosLoc.filter((a) => a.estado === 'prestado').length;
+
           return (
-            <View key={key} style={styles.expandableCard}>
+            <View key={key} style={styles.card}>
               <TouchableOpacity
-                style={styles.expandableHeader}
-                onPress={() => toggleUbicacion(key)}
+                style={styles.cardHeader}
+                onPress={() => toggle(key, setExpandedUbicacion)}
                 activeOpacity={0.7}
               >
-                <View style={styles.expandableHeaderLeft}>
-                  <Icon source="map-marker-outline" size={18} color={PANTONE_295C} />
-                  <Text style={styles.expandableTitle} numberOfLines={1}>
-                    {loc.ubicacion_nombre}
-                  </Text>
-                </View>
-                <View style={styles.expandableHeaderRight}>
-                  <View style={styles.totalBadge}>
-                    <Text style={styles.totalBadgeText}>{loc.cantidad_total}</Text>
-                  </View>
-                  <Icon
-                    source={expanded ? 'chevron-up' : 'chevron-down'}
-                    size={20}
-                    color="#888"
-                  />
-                </View>
-              </TouchableOpacity>
-
-              {expanded && (
-                <View style={styles.expandableContent}>
-                  {/* Estado chips */}
-                  {Object.keys(loc.por_estado).length > 0 && (
-                    <View style={styles.estadoChipsRow}>
-                      {Object.entries(loc.por_estado).map(([est, cnt]) => (
-                        <EstadoChip key={est} estado={est} cantidad={cnt} />
-                      ))}
-                    </View>
-                  )}
-                  {/* Articles */}
-                  {loc.articulos.map((art, artIdx) => (
-                    <ArticuloRow
-                      key={artIdx}
-                      nombre={art.nombre}
-                      estado={art.estado}
-                      cantidad={art.cantidad}
-                      prestamosActivos={art.prestamos_activos_count}
-                      extra={art.categoria_nombre}
-                    />
-                  ))}
-                </View>
-              )}
-            </View>
-          );
-        })
-      )}
-    </View>
-  );
-
-  // ─── Section: Por Categoría ─────────────────────────────────────────────────
-
-  const renderPorCategoria = () => (
-    <View style={styles.section}>
-      <SectionHeader title="Por categoría" />
-
-      {loadingCategoria ? (
-        <ActivityIndicator size="small" color={PANTONE_295C} style={styles.sectionLoader} />
-      ) : errorCategoria ? (
-        <View style={styles.sectionError}>
-          <Text style={styles.sectionErrorText}>{errorCategoria}</Text>
-          <TouchableOpacity onPress={() => loadAll()}>
-            <Text style={styles.retryLink}>Reintentar</Text>
-          </TouchableOpacity>
-        </View>
-      ) : porCategoria.length === 0 ? (
-        <View style={styles.sectionEmpty}>
-          <Icon source="folder-off-outline" size={32} color="#ccc" />
-          <Text style={styles.sectionEmptyText}>Sin datos de categoría</Text>
-        </View>
-      ) : (
-        porCategoria.map((cat, idx) => {
-          const key = `cat-${idx}`;
-          const expanded = !!expandedCategoria[key];
-          return (
-            <View key={key} style={styles.expandableCard}>
-              <TouchableOpacity
-                style={styles.expandableHeader}
-                onPress={() => toggleCategoria(key)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.expandableHeaderLeft}>
-                  <Icon source="folder-outline" size={18} color={PANTONE_295C} />
-                  <View>
-                    <Text style={styles.expandableTitle} numberOfLines={1}>
-                      {cat.categoria_nombre}
+                <View style={styles.cardHeaderLeft}>
+                  <Icon source="map-marker-outline" size={17} color={COLOR_UBICACION} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>{loc.ubicacion_nombre}</Text>
+                    <Text style={styles.cardSubtitle}>
+                      {activosLoc.length} activo(s) · {consumiblesLoc.length} tipo(s) insumo
                     </Text>
-                    <Text style={styles.expandableSubtitle}>{cat.tipo}</Text>
                   </View>
                 </View>
-                <View style={styles.expandableHeaderRight}>
-                  <View style={styles.totalBadge}>
-                    <Text style={styles.totalBadgeText}>{cat.cantidad_total}</Text>
-                  </View>
-                  <Icon
-                    source={expanded ? 'chevron-up' : 'chevron-down'}
-                    size={20}
-                    color="#888"
-                  />
+                <View style={styles.cardHeaderRight}>
+                  {prestadosLoc > 0 && (
+                    <View style={[styles.miniChip, { backgroundColor: '#FFF3E0' }]}>
+                      <Text style={{ fontSize: 11, color: '#E65100', fontWeight: '700' }}>
+                        {prestadosLoc} prest.
+                      </Text>
+                    </View>
+                  )}
+                  <Icon source={expanded ? 'chevron-up' : 'chevron-down'} size={18} color="#999" />
                 </View>
               </TouchableOpacity>
 
               {expanded && (
-                <View style={styles.expandableContent}>
-                  {Object.keys(cat.por_estado).length > 0 && (
-                    <View style={styles.estadoChipsRow}>
-                      {Object.entries(cat.por_estado).map(([est, cnt]) => (
-                        <EstadoChip key={est} estado={est} cantidad={cnt} />
-                      ))}
-                    </View>
+                <View style={styles.cardBody}>
+                  {/* Activos en ubicación */}
+                  {activosLoc.length > 0 && (
+                    <>
+                      <Text style={[styles.subGroupLabel, { color: COLOR_ACTIVOS }]}>
+                        📦 Activos ({activosLoc.length})
+                      </Text>
+                      {activosLoc.map((art, i) => {
+                        const m = ESTADO_META[art.estado] ?? { bg: '#F5F5F5', text: '#616161', label: art.estado };
+                        return (
+                          <View key={i} style={styles.itemRow}>
+                            <View style={[styles.itemDot, { backgroundColor: m.bg, borderColor: m.text }]} />
+                            <View style={styles.itemInfo}>
+                              <Text style={styles.itemNombre} numberOfLines={1}>{art.nombre}</Text>
+                              {art.codigo && <Text style={styles.itemCodigo}>{art.codigo}</Text>}
+                            </View>
+                            <View style={[styles.itemEstadoBadge, { backgroundColor: m.bg }]}>
+                              <Text style={[styles.itemEstadoText, { color: m.text }]}>{m.label}</Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </>
                   )}
-                  {cat.articulos.map((art, artIdx) => (
-                    <ArticuloRow
-                      key={artIdx}
-                      nombre={art.nombre}
-                      estado={art.estado}
-                      cantidad={art.cantidad}
-                      prestamosActivos={art.prestamos_activos_count}
-                      extra={art.ubicacion_nombre}
-                    />
-                  ))}
+
+                  {/* Consumibles en ubicación */}
+                  {consumiblesLoc.length > 0 && (
+                    <>
+                      <Text style={[styles.subGroupLabel, { color: COLOR_CONSUMIBLE, marginTop: activosLoc.length > 0 ? 12 : 0 }]}>
+                        🗂 Insumos ({consumiblesLoc.length})
+                      </Text>
+                      {consumiblesLoc.map((art, i) => (
+                        <View key={i} style={styles.itemRow}>
+                          <View style={[styles.itemDot, { backgroundColor: '#E8F5E9', borderColor: COLOR_CONSUMIBLE }]} />
+                          <View style={styles.itemInfo}>
+                            <Text style={styles.itemNombre} numberOfLines={1}>{art.nombre}</Text>
+                          </View>
+                          <Text style={[styles.stockCountSmall, art.cantidad < 10 ? { color: '#E53935' } : { color: '#388E3C' }]}>
+                            {art.cantidad} {art.unidad_medida ?? 'u.'}
+                          </Text>
+                        </View>
+                      ))}
+                    </>
+                  )}
+
+                  {activosLoc.length === 0 && consumiblesLoc.length === 0 && (
+                    <Text style={styles.emptyText}>Sin artículos en esta ubicación</Text>
+                  )}
                 </View>
               )}
             </View>
@@ -386,7 +498,16 @@ export default function ReportesScreen() {
     </View>
   );
 
-  // ─── Main render ────────────────────────────────────────────────────────────
+  // ─── Main render ──────────────────────────────────────────────────────────────
+
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={PANTONE_295C} />
+        <Text style={styles.loadingText}>Cargando reportes...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -401,16 +522,18 @@ export default function ReportesScreen() {
         />
       }
     >
-      {isAnyLoading && !refreshing && (
-        <View style={styles.globalLoader}>
-          <ActivityIndicator size="large" color={PANTONE_295C} />
-          <Text style={styles.globalLoaderText}>Cargando reportes...</Text>
+      {error ? (
+        <View style={styles.errorBox}>
+          <Icon source="alert-circle-outline" size={32} color="#E53935" />
+          <Text style={styles.errorText}>{error}</Text>
         </View>
+      ) : (
+        <>
+          {renderActivos()}
+          {renderConsumibles()}
+          {renderUbicaciones()}
+        </>
       )}
-
-      {renderStockBajo()}
-      {renderPorUbicacion()}
-      {renderPorCategoria()}
     </ScrollView>
   );
 }
@@ -424,113 +547,241 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
-  globalLoader: {
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
     gap: 12,
   },
-  globalLoaderText: {
+  loadingText: {
     color: '#888',
     fontSize: 14,
   },
-  // ── Sections ──
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
+  errorBox: {
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 10,
+    paddingVertical: 48,
+    gap: 12,
   },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: PANTONE_295C,
-  },
-  countBadge: {
-    backgroundColor: '#FFEBEE',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  countBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#B71C1C',
-  },
-  sectionLoader: {
-    marginVertical: 24,
-  },
-  sectionError: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    gap: 6,
-  },
-  sectionErrorText: {
+  errorText: {
     color: '#E53935',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  retryLink: {
-    color: PANTONE_295C,
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  sectionEmpty: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    gap: 8,
-  },
-  sectionEmptyText: {
-    color: '#aaa',
     fontSize: 14,
     textAlign: 'center',
+    paddingHorizontal: 24,
   },
-  // ── Stock bajo ──
-  stockList: {
-    gap: 10,
+  section: {
+    marginBottom: 28,
   },
-  stockItem: {
+  // ── Block header ──
+  blockHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderLeftWidth: 4,
+    paddingLeft: 10,
+    marginBottom: 12,
+    minHeight: 28,
+  },
+  blockHeaderText: {
+    fontSize: 16,
+    fontWeight: '800',
+    flex: 1,
+  },
+  blockBadge: {
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  blockBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  // ── Summary card ──
+  summaryCard: {
     backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 14,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 10,
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 3,
+    gap: 6,
   },
-  stockItemHeader: {
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 2,
   },
-  stockItemNombre: {
+  summaryLabel: {
+    fontSize: 13,
+    color: '#666',
+    flex: 1,
+  },
+  summaryValue: {
     fontSize: 14,
     fontWeight: '700',
     color: '#1A1A2E',
+  },
+  // ── Cards ──
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 8,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    gap: 8,
+  },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     flex: 1,
   },
-  stockItemCount: {
+  cardHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cardTitle: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#1A1A2E',
+  },
+  cardSubtitle: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 1,
+  },
+  cardBody: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    paddingTop: 10,
+  },
+  miniChip: {
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  // ── Estado chips ──
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
+  },
+  estadoChip: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  estadoChipText: {
+    fontSize: 12,
+  },
+  // ── Item rows (activos) ──
+  subGroupLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    gap: 8,
+  },
+  itemDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    flexShrink: 0,
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemNombre: {
+    fontSize: 13,
+    color: '#1A1A2E',
+    fontWeight: '600',
+  },
+  itemCodigo: {
+    fontSize: 11,
+    color: '#999',
+    fontFamily: 'monospace',
+  },
+  itemEstadoBadge: {
+    borderRadius: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  itemEstadoText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  // ── Stock items (consumibles) ──
+  stockItemCard: {
+    backgroundColor: '#F9FBF9',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#E8F5E9',
+  },
+  stockItemTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  stockItemNombre: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1A2E',
+  },
+  stockItemUnidad: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 1,
+  },
+  stockItemRight: {
+    alignItems: 'center',
     marginLeft: 8,
   },
-  stockItemCategoria: {
-    fontSize: 12,
+  stockCount: {
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 22,
+  },
+  stockUnit: {
+    fontSize: 10,
     color: '#888',
-    marginBottom: 8,
+  },
+  stockCountSmall: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   progressTrack: {
     height: 6,
     backgroundColor: '#E8E8E8',
     borderRadius: 3,
     overflow: 'hidden',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   progressFill: {
     height: 6,
@@ -539,124 +790,22 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: 11,
     fontWeight: '600',
-    textAlign: 'right',
   },
-  // ── Expandable cards ──
-  expandableCard: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    marginBottom: 8,
-    overflow: 'hidden',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
+  noMinimoLabel: {
+    fontSize: 11,
+    color: '#bbb',
+    fontStyle: 'italic',
   },
-  expandableHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-  },
-  expandableHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-    marginRight: 8,
-  },
-  expandableHeaderRight: {
+  // ── Empty states ──
+  emptyRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
   },
-  expandableTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1A2E',
-  },
-  expandableSubtitle: {
-    fontSize: 11,
-    color: '#888',
-    marginTop: 1,
-  },
-  totalBadge: {
-    backgroundColor: PANTONE_295C,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    minWidth: 28,
-    alignItems: 'center',
-  },
-  totalBadgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  expandableContent: {
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    padding: 12,
-    gap: 8,
-  },
-  estadoChipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 6,
-  },
-  estadoChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  estadoChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  // ── Article rows ──
-  articuloRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  articuloInfo: {
-    flex: 1,
-    marginRight: 8,
-  },
-  articuloNombre: {
+  emptyText: {
+    color: '#aaa',
     fontSize: 13,
-    fontWeight: '600',
-    color: '#1A1A2E',
-  },
-  articuloExtra: {
-    fontSize: 11,
-    color: '#999',
-    marginTop: 1,
-  },
-  articuloRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  articuloCantidad: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#444',
-    minWidth: 20,
-    textAlign: 'right',
-  },
-  articuloEstado: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  articuloEstadoText: {
-    fontSize: 10,
-    fontWeight: '700',
   },
 });
