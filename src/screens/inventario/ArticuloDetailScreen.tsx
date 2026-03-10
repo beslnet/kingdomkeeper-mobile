@@ -566,7 +566,7 @@ export default function ArticuloDetailScreen({ route }: { route: any }) {
                     </Text>
                     <Text style={styles.consumoResponsable} numberOfLines={1}>
                       {c.consumido_por_data
-                        ? `${c.consumido_por_data.primer_nombre} ${c.consumido_por_data.apellido_paterno}`
+                        ? `${c.consumido_por_data.nombre} ${c.consumido_por_data.apellidos}`
                         : 'Responsable'}
                     </Text>
                     {c.motivo && (

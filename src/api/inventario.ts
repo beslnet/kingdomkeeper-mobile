@@ -191,7 +191,7 @@ export interface ConsumoInventario {
   articulo_data?: ArticuloList;
   cantidad: number;
   consumido_por: number;
-  consumido_por_data?: { primer_nombre: string; apellido_paterno: string; apellido_materno?: string };
+  consumido_por_data?: { nombre: string; apellidos: string };
   grupo?: number | null;
   grupo_data?: { id: number; nombre: string } | null;
   fecha_consumo: string;
