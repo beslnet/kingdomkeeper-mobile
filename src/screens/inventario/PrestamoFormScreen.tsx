@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Icon } from 'react-native-paper';
@@ -51,11 +50,12 @@ function toISODateStr(date: Date): string {
 export default function PrestamoFormScreen() {
   const navigation = useNavigation<any>();
 
-  // Articles
-  const [articulosDisponibles, setArticulosDisponibles] = useState<ArticuloList[]>([]);
-  const [loadingArticulos, setLoadingArticulos] = useState(true);
-  const [selectedArticulo, setSelectedArticulo] = useState<ArticuloList | null>(null);
-  const [cantidadPrestada, setCantidadPrestada] = useState('1');
+  // Article search (like member search)
+  const [articuloSearch, setArticuloSearch]       = useState('');
+  const [articuloResults, setArticuloResults]     = useState<ArticuloList[]>([]);
+  const [loadingArticulos, setLoadingArticulos]   = useState(false);
+  const [selectedArticulo, setSelectedArticulo]   = useState<ArticuloList | null>(null);
+  const [cantidadPrestada, setCantidadPrestada]   = useState('1');
 
   // Member search
   const [miembroSearch, setMiembroSearch] = useState('');
@@ -74,24 +74,30 @@ export default function PrestamoFormScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ─── Load articles ───────────────────────────────────────────────────────────
+  // ─── Article search (debounced) ──────────────────────────────────────────────
 
-  const loadArticulos = useCallback(async () => {
-    setLoadingArticulos(true);
-    try {
-      const data = await listarArticulos({ page_size: 200 });
-      const prestables = data.results.filter(
-        (a) => a.estado === 'disponible' || (a.es_consumible && a.cantidad > 0),
-      );
-      setArticulosDisponibles(prestables);
-    } catch {
-      setArticulosDisponibles([]);
-    } finally {
-      setLoadingArticulos(false);
+  useEffect(() => {
+    if (articuloSearch.trim().length < 2) {
+      setArticuloResults([]);
+      return;
     }
-  }, []);
-
-  useEffect(() => { loadArticulos(); }, [loadArticulos]);
+    const timer = setTimeout(async () => {
+      setLoadingArticulos(true);
+      try {
+        const res = await listarArticulos({
+          buscar: articuloSearch.trim(),
+          estado: 'disponible',
+          page_size: 20,
+        });
+        setArticuloResults(res.results ?? []);
+      } catch {
+        setArticuloResults([]);
+      } finally {
+        setLoadingArticulos(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [articuloSearch]);
 
   // ─── Member search ───────────────────────────────────────────────────────────
 
@@ -113,32 +119,6 @@ export default function PrestamoFormScreen() {
     }, 300);
     return () => clearTimeout(timer);
   }, [miembroSearch]);
-
-  // ─── Article selector ────────────────────────────────────────────────────────
-
-  const selectArticulo = () => {
-    if (loadingArticulos) {
-      Alert.alert('Cargando', 'Espera mientras se cargan los artículos disponibles.');
-      return;
-    }
-    if (articulosDisponibles.length === 0) {
-      Alert.alert('Sin artículos', 'No hay artículos disponibles para préstamo.');
-      return;
-    }
-    Alert.alert(
-      'Seleccionar artículo',
-      'Artículos disponibles:',
-      [
-        ...articulosDisponibles.slice(0, 9).map((a) => ({
-          text: a.es_consumible
-            ? `${a.nombre}${a.codigo ? ` (${a.codigo})` : ''} — ${a.cantidad} disp.`
-            : `${a.nombre}${a.codigo ? ` (${a.codigo})` : ''}`,
-          onPress: () => { setSelectedArticulo(a); setCantidadPrestada('1'); },
-        })),
-        { text: 'Cancelar', style: 'cancel' as const },
-      ],
-    );
-  };
 
   // ─── Save ────────────────────────────────────────────────────────────────────
 
@@ -189,40 +169,76 @@ export default function PrestamoFormScreen() {
         {/* Artículo */}
         <View style={styles.section}>
           <FieldLabel label="Artículo" required />
-          <TouchableOpacity
-            style={[styles.selectButton, !selectedArticulo && styles.selectButtonEmpty]}
-            onPress={selectArticulo}
-          >
-            <View style={styles.selectButtonContent}>
-              {loadingArticulos ? (
-                <ActivityIndicator size="small" color={PANTONE_295C} />
-              ) : selectedArticulo ? (
-                <>
-                  <Icon source="package-variant" size={18} color={PANTONE_295C} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.selectButtonText} numberOfLines={1}>
-                      {selectedArticulo.nombre}
-                    </Text>
-                    {!!selectedArticulo.codigo && (
-                      <Text style={styles.selectButtonSubText}>
-                        Código: {selectedArticulo.codigo}
-                      </Text>
-                    )}
-                    {selectedArticulo.es_consumible && (
-                      <Text style={[styles.selectButtonSubText, { color: '#388E3C' }]}>
-                        Stock disponible: {selectedArticulo.cantidad} {selectedArticulo.unidad_medida}
-                      </Text>
-                    )}
-                  </View>
-                </>
-              ) : (
-                <Text style={styles.selectButtonPlaceholder}>
-                  Seleccionar artículo disponible
+          {selectedArticulo ? (
+            <View style={styles.selectedChip}>
+              <Icon source="package-variant" size={16} color={PANTONE_295C} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.selectedChipText} numberOfLines={1}>
+                  {selectedArticulo.nombre}
                 </Text>
-              )}
+                {!!selectedArticulo.codigo && (
+                  <Text style={styles.selectedChipSub}>Código: {selectedArticulo.codigo}</Text>
+                )}
+                {selectedArticulo.es_consumible ? (
+                  <Text style={[styles.selectedChipSub, { color: '#388E3C' }]}>
+                    Stock disponible: {selectedArticulo.cantidad} {selectedArticulo.unidad_medida}
+                  </Text>
+                ) : (
+                  <Text style={[styles.selectedChipSub, { color: '#888' }]}>
+                    Unidad individual · disponible
+                  </Text>
+                )}
+              </View>
+              <TouchableOpacity
+                onPress={() => { setSelectedArticulo(null); setArticuloSearch(''); setCantidadPrestada('1'); }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Icon source="close-circle" size={18} color="#999" />
+              </TouchableOpacity>
             </View>
-            <Icon source="chevron-down" size={20} color="#666" />
-          </TouchableOpacity>
+          ) : (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Buscar artículo disponible..."
+                placeholderTextColor="#999"
+                value={articuloSearch}
+                onChangeText={setArticuloSearch}
+              />
+              {articuloSearch.trim().length >= 2 && (
+                <View style={styles.suggestionList}>
+                  {loadingArticulos ? (
+                    <ActivityIndicator size="small" color={PANTONE_295C} style={{ padding: 10 }} />
+                  ) : articuloResults.length === 0 ? (
+                    <Text style={styles.noResults}>Sin artículos disponibles con ese nombre</Text>
+                  ) : (
+                    articuloResults.map((a) => (
+                      <TouchableOpacity
+                        key={a.id}
+                        style={styles.suggestionItem}
+                        onPress={() => { setSelectedArticulo(a); setArticuloSearch(''); setCantidadPrestada('1'); }}
+                        activeOpacity={0.7}
+                      >
+                        <Icon source={a.es_consumible ? 'layers-outline' : 'package-variant-closed'} size={16} color="#888" />
+                        <View style={styles.suggestionInfo}>
+                          <Text style={styles.suggestionName} numberOfLines={1}>{a.nombre}</Text>
+                          <Text style={styles.suggestionSub}>
+                            {a.codigo ? `Código: ${a.codigo}` : 'Sin código'}
+                            {a.ubicacion_nombre ? ` · ${a.ubicacion_nombre}` : ''}
+                          </Text>
+                          {a.es_consumible ? (
+                            <Text style={[styles.suggestionSub, { color: '#388E3C' }]}>
+                              Stock: {a.cantidad} {a.unidad_medida}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+              )}
+            </>
+          )}
         </View>
 
         {/* Cantidad — solo consumibles */}
@@ -247,9 +263,9 @@ export default function PrestamoFormScreen() {
         <View style={styles.section}>
           <FieldLabel label="Prestatario" required />
           {selectedMiembro ? (
-            <View style={styles.selectedChip}>
+            <View style={styles.memberChip}>
               <Icon source="account" size={16} color={PANTONE_295C} />
-              <Text style={styles.selectedChipText} numberOfLines={1}>
+              <Text style={styles.memberChipText} numberOfLines={1}>
                 {selectedMiembro.nombre}
               </Text>
               <TouchableOpacity
@@ -427,25 +443,7 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
-  // Article selector
-  selectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
-    minHeight: 46,
-  },
-  selectButtonEmpty: { borderStyle: 'dashed' },
-  selectButtonContent: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  selectButtonText: { fontSize: 15, fontWeight: '600', color: '#1A1A2E' },
-  selectButtonSubText: { fontSize: 12, color: '#888', marginTop: 2 },
-  selectButtonPlaceholder: { fontSize: 15, color: '#999' },
-  // Member chip (selected state)
+  // Article chip (selected state)
   selectedChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -458,6 +456,28 @@ const styles = StyleSheet.create({
     borderColor: '#C5D6F0',
   },
   selectedChipText: {
+    fontSize: 14,
+    color: PANTONE_295C,
+    fontWeight: '600',
+  },
+  selectedChipSub: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+  },
+  // Member chip (selected state)
+  memberChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EAF0FB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#C5D6F0',
+  },
+  memberChipText: {
     flex: 1,
     fontSize: 15,
     color: PANTONE_295C,
