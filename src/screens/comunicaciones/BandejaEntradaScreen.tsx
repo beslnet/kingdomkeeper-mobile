@@ -12,6 +12,7 @@ import { Icon } from 'react-native-paper';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { PANTONE_295C } from '../../theme/colors';
 import { getRecibidas, Comunicacion } from '../../api/comunicaciones';
+import { useBadgeStore } from '../../store/badgeStore';
 
 const TIPO_COLORS: Record<string, { bg: string; text: string }> = {
   urgente: { bg: '#FFEBEE', text: '#B71C1C' },
@@ -81,7 +82,7 @@ function MensajeItem({
 
 export default function BandejaEntradaScreen() {
   const navigation = useNavigation<any>();
-
+  const refreshBadge = useBadgeStore((s) => s.refresh);
   const [mensajes, setMensajes] = useState<Comunicacion[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -117,7 +118,8 @@ export default function BandejaEntradaScreen() {
   useFocusEffect(
     useCallback(() => {
       load(1, true);
-    }, [load])
+      refreshBadge();
+    }, [load, refreshBadge])
   );
 
   const handleRefresh = () => {

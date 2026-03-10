@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -6,30 +6,9 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import DashboardScreen from '../screens/Dashboard';
 import ProfileStack from './ProfileStack';
 import BandejaStack from './BandejaStack';
-import { getNoLeidasCount } from '../api/comunicaciones';
+import { useBadgeStore } from '../store/badgeStore';
 
 const Tab = createBottomTabNavigator();
-
-function useBadgeCount() {
-  const [count, setCount] = useState<number | undefined>(undefined);
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await getNoLeidasCount();
-      setCount(res.count > 0 ? res.count : undefined);
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    const interval = setInterval(refresh, 60000);
-    return () => clearInterval(interval);
-  }, [refresh]);
-
-  return { count, refresh };
-}
 
 const getScreenOptions = (route: { name: string }, badgeCount: number | undefined) => ({
   headerShown: false,
@@ -48,7 +27,15 @@ const getScreenOptions = (route: { name: string }, badgeCount: number | undefine
 });
 
 export default function MainTabs() {
-  const { count } = useBadgeCount();
+  const count = useBadgeStore((s) => s.count);
+  const refresh = useBadgeStore((s) => s.refresh);
+
+  // Initial load + polling every 60s
+  useEffect(() => {
+    refresh();
+    const interval = setInterval(refresh, 60000);
+    return () => clearInterval(interval);
+  }, [refresh]);
 
   return (
     <Tab.Navigator

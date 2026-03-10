@@ -11,6 +11,7 @@ import { Icon } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { PANTONE_295C } from '../../theme/colors';
 import { getDetalleRecibida, Comunicacion } from '../../api/comunicaciones';
+import { useBadgeStore } from '../../store/badgeStore';
 
 const TIPO_COLORS: Record<string, { bg: string; text: string }> = {
   notificacion: { bg: '#EAF0FB', text: PANTONE_295C },
@@ -39,7 +40,7 @@ function formatDate(dateStr: string | null | undefined): string {
 
 export default function BandejaDetailScreen({ route }: { route: any }) {
   const { id } = route.params as { id: number; titulo?: string };
-
+  const refreshBadge = useBadgeStore((s) => s.refresh);
   const [mensaje, setMensaje] = useState<Comunicacion | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +66,9 @@ export default function BandejaDetailScreen({ route }: { route: any }) {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+      // Refresh badge after viewing — backend marks message as read on load
+      return () => { refreshBadge(); };
+    }, [load, refreshBadge])
   );
 
   if (loading) {
