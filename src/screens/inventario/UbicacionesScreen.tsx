@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -68,6 +68,15 @@ export default function UbicacionesScreen() {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const flatListRef = useRef<FlatList>(null);
+
+  // Scroll to top when form opens so user always sees it
+  useEffect(() => {
+    if (showForm) {
+      setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 50);
+    }
+  }, [showForm]);
 
   // ─── Data loading ───────────────────────────────────────────────────────────
 
@@ -328,6 +337,7 @@ export default function UbicacionesScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <FlatList
+        ref={flatListRef}
         data={ubicaciones}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}

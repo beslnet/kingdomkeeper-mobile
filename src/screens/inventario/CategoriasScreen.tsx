@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -101,6 +101,14 @@ export default function CategoriasScreen() {
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    if (showForm) {
+      setTimeout(() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true }), 50);
+    }
+  }, [showForm]);
 
   // ─── Data loading ───────────────────────────────────────────────────────────
 
@@ -387,6 +395,7 @@ export default function CategoriasScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <FlatList
+        ref={flatListRef}
         data={categorias}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
