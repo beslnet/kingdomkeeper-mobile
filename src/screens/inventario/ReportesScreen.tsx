@@ -207,10 +207,11 @@ export default function ReportesScreen() {
         });
       }
       const g = map.get(key)!;
-      g.total += 1;
-      if (art.estado === 'disponible') g.disponibles += 1;
-      else if (art.estado === 'prestado') g.prestados += 1;
-      else g.otros += 1;
+      const units = art.cantidad > 0 ? art.cantidad : 1;
+      g.total += units;
+      if (art.estado === 'disponible') g.disponibles += units;
+      else if (art.estado === 'prestado') g.prestados += units;
+      else g.otros += units;
       if (!g.ubicaciones.includes(art.ubicacion_nombre)) g.ubicaciones.push(art.ubicacion_nombre);
       g.articulos.push(art);
     }
@@ -220,12 +221,13 @@ export default function ReportesScreen() {
   // Summary for current tab
   const summary = useMemo(() => {
     if (activeTab === 'activos') {
-      const disponibles  = filtered.filter((a) => a.estado === 'disponible').length;
-      const prestados    = filtered.filter((a) => a.estado === 'prestado').length;
-      const noDisp       = filtered.filter((a) =>
+      const totalUnidades = filtered.reduce((s, a) => s + (a.cantidad > 0 ? a.cantidad : 1), 0);
+      const disponibles   = filtered.filter((a) => a.estado === 'disponible').reduce((s, a) => s + (a.cantidad > 0 ? a.cantidad : 1), 0);
+      const prestados     = filtered.filter((a) => a.estado === 'prestado').reduce((s, a) => s + (a.cantidad > 0 ? a.cantidad : 1), 0);
+      const noDisp        = filtered.filter((a) =>
         ['mantenimiento', 'dañado', 'baja'].includes(a.estado),
-      ).length;
-      return { total: filtered.length, productos: groupedActivos.length, disponibles, prestados, noDisp };
+      ).reduce((s, a) => s + (a.cantidad > 0 ? a.cantidad : 1), 0);
+      return { total: totalUnidades, productos: groupedActivos.length, disponibles, prestados, noDisp };
     } else {
       const totalUnidades = filtered.reduce((s, a) => s + a.cantidad, 0);
       const stockBajoCount = filtered.filter(
