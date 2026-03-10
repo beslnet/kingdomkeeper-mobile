@@ -162,7 +162,7 @@ export default function PrestamoFormScreen() {
         condicion_entrega: condicionEntrega.trim(),
         notas: notas.trim(),
       });
-      navigation.navigate('Prestamos', { refresh: true });
+      navigation.goBack();
     } catch (err: unknown) {
       const e = err as { response?: { data?: Record<string, unknown> } };
       const detail =

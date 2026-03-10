@@ -112,7 +112,7 @@ export default function GrupoFormScreen() {
         await crearGrupo(payload);
       }
       // Go back and signal refresh
-      navigation.navigate('GruposList', { refresh: Date.now() });
+      navigation.goBack();
     } catch (err: any) {
       const data = err?.response?.data;
       const msg =

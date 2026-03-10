@@ -274,7 +274,7 @@ export default function MiembroFormScreen() {
       } else {
         await crearMiembro(payload);
       }
-      navigation.navigate('MiembrosList');
+      navigation.goBack();
     } catch (err) {
       setError(extractApiError(err));
     } finally {

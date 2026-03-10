@@ -72,7 +72,7 @@ export default function DevolucionFormScreen() {
         condicionDevolucion.trim(),
         notasDevolucion.trim() || undefined,
       );
-      navigation.navigate('Prestamos', { refresh: true });
+      navigation.goBack();
     } catch (err: unknown) {
       const e = err as { response?: { data?: Record<string, unknown> } };
       const detail =
