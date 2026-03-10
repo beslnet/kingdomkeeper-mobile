@@ -569,6 +569,11 @@ export default function ArticuloDetailScreen({ route }: { route: any }) {
                         ? `${c.consumido_por_data.nombre} ${c.consumido_por_data.apellidos}`
                         : 'Responsable'}
                     </Text>
+                    {c.grupo_data && (
+                      <Text style={styles.consumoGrupoInline} numberOfLines={1}>
+                        {c.grupo_data.nombre}
+                      </Text>
+                    )}
                     {c.motivo && (
                       <Text style={styles.consumoMotivo} numberOfLines={2}>
                         {c.motivo}
@@ -579,11 +584,6 @@ export default function ArticuloDetailScreen({ route }: { route: any }) {
                     <Text style={styles.consumoCantidad}>
                       {c.cantidad} {articulo.unidad_medida}
                     </Text>
-                    {c.grupo_data && (
-                      <Text style={styles.consumoGrupo} numberOfLines={1}>
-                        {c.grupo_data.nombre}
-                      </Text>
-                    )}
                   </View>
                 </View>
               ))
@@ -1005,5 +1005,10 @@ const styles = StyleSheet.create({
     color: '#7B1FA2',
     marginTop: 2,
     maxWidth: 100,
+  },
+  consumoGrupoInline: {
+    fontSize: 11,
+    color: '#7B1FA2',
+    marginTop: 2,
   },
 });

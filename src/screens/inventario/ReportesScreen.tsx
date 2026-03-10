@@ -702,6 +702,11 @@ export default function ReportesScreen() {
                             ? `${c.consumido_por_data.nombre} ${c.consumido_por_data.apellidos}`
                             : 'Responsable'}
                         </Text>
+                        {c.grupo_data && (
+                          <Text style={styles.consumoRecenteGrupo} numberOfLines={1}>
+                            {c.grupo_data.nombre}
+                          </Text>
+                        )}
                       </View>
                       <View style={{ alignItems: 'flex-end' }}>
                         <Text style={styles.consumoRecenteCantidad}>
@@ -930,6 +935,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#777',
     marginTop: 2,
+  },
+  consumoRecenteGrupo: {
+    fontSize: 11,
+    color: '#7B1FA2',
+    marginTop: 1,
   },
   consumoRecenteCantidad: {
     fontSize: 15,
