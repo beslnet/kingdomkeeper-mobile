@@ -8,7 +8,6 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
-  Switch,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -16,7 +15,7 @@ import {
 import { Icon } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import { usePermissionsStore } from '../../store/permissionsStore';
-import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
+import { PANTONE_295C } from '../../theme/colors';
 import {
   listarCategorias,
   crearCategoria,
@@ -61,16 +60,12 @@ type FormState = {
   nombre: string;
   descripcion: string;
   tipo: TipoCategoria;
-  es_consumible: boolean;
-  stock_minimo: string;
 };
 
 const INITIAL_FORM: FormState = {
   nombre: '',
   descripcion: '',
   tipo: 'equipo',
-  es_consumible: false,
-  stock_minimo: '',
 };
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -148,8 +143,6 @@ export default function CategoriasScreen() {
       nombre: cat.nombre,
       descripcion: cat.descripcion ?? '',
       tipo: cat.tipo,
-      es_consumible: cat.es_consumible,
-      stock_minimo: cat.stock_minimo !== null ? String(cat.stock_minimo) : '',
     });
     setFormError(null);
     setShowForm(true);
@@ -174,11 +167,6 @@ export default function CategoriasScreen() {
         nombre: form.nombre.trim(),
         descripcion: form.descripcion.trim(),
         tipo: form.tipo,
-        es_consumible: form.es_consumible,
-        stock_minimo:
-          form.es_consumible && form.stock_minimo.trim() !== ''
-            ? Number(form.stock_minimo)
-            : null,
       };
       if (editingId !== null) {
         await actualizarCategoria(editingId, payload);
@@ -278,34 +266,6 @@ export default function CategoriasScreen() {
         <Icon source="chevron-down" size={20} color="#666" />
       </TouchableOpacity>
 
-      <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Es consumible</Text>
-        <Switch
-          value={form.es_consumible}
-          onValueChange={(v) =>
-            setForm((f) => ({ ...f, es_consumible: v, stock_minimo: v ? f.stock_minimo : '' }))
-          }
-          trackColor={{ false: '#ccc', true: PANTONE_295C }}
-          thumbColor={form.es_consumible ? PANTONE_134C : '#f4f4f4'}
-        />
-      </View>
-
-      {form.es_consumible && (
-        <>
-          <FieldLabel label="Stock mínimo" />
-          <TextInput
-            style={styles.input}
-            value={form.stock_minimo}
-            onChangeText={(t) =>
-              setForm((f) => ({ ...f, stock_minimo: t.replace(/[^0-9]/g, '') }))
-            }
-            placeholder="Ej: 10"
-            placeholderTextColor="#999"
-            keyboardType="numeric"
-          />
-        </>
-      )}
-
       {formError ? <Text style={styles.formError}>{formError}</Text> : null}
 
       <View style={styles.formButtons}>
@@ -340,11 +300,6 @@ export default function CategoriasScreen() {
                 {TIPO_LABELS[item.tipo]}
               </Text>
             </View>
-            {item.es_consumible && (
-              <View style={styles.consumibleBadge}>
-                <Text style={styles.consumibleBadgeText}>Consumible</Text>
-              </View>
-            )}
           </View>
           {item.articulos_count !== undefined && (
             <Text style={styles.cardMeta}>{item.articulos_count} artículos</Text>

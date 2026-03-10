@@ -116,7 +116,7 @@ export default function DevolucionFormScreen() {
             </View>
           </View>
 
-          {(prestamo.cantidad_prestada > 1 || prestamo.articulo_data?.es_consumible) && (
+          {(prestamo.cantidad_prestada > 1 || prestamo.articulo_data?.tipo_articulo === 'consumible' || prestamo.articulo_data?.tipo_articulo === 'granel') && (
             <View style={styles.summaryRow}>
               <Icon source="package-variant-closed" size={16} color="#555" />
               <View style={{ flex: 1 }}>

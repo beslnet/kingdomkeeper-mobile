@@ -67,8 +67,8 @@ function ArticuloCard({ item, onPress }: { item: ArticuloList; onPress: () => vo
 
   // What to show in the stock row
   let stockLine: React.ReactNode;
-  if (item.es_consumible) {
-    // consumible: quantity IS the available stock
+  if (item.tipo_articulo === 'consumible' || item.tipo_articulo === 'granel') {
+    // consumible/granel: quantity IS the available stock
     stockLine = (
       <Text style={styles.cardMetaText}>
         {cantidadLabel}

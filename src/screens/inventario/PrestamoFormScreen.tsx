@@ -127,7 +127,7 @@ export default function PrestamoFormScreen() {
     if (!selectedMiembro) { setError('Debes seleccionar el prestatario.'); return; }
     const cantNum = parseInt(cantidadPrestada, 10);
     if (isNaN(cantNum) || cantNum < 1) { setError('La cantidad a prestar debe ser al menos 1.'); return; }
-    if (selectedArticulo.es_consumible && cantNum > selectedArticulo.cantidad) {
+    if (selectedArticulo.tipo_articulo !== 'individual' && cantNum > selectedArticulo.cantidad) {
       setError(`Stock insuficiente. Disponible: ${selectedArticulo.cantidad} ${selectedArticulo.unidad_medida}.`);
       return;
     }
@@ -176,16 +176,20 @@ export default function PrestamoFormScreen() {
                 <Text style={styles.selectedChipText} numberOfLines={1}>
                   {selectedArticulo.nombre}
                 </Text>
-                {!!selectedArticulo.codigo && (
-                  <Text style={styles.selectedChipSub}>Código: {selectedArticulo.codigo}</Text>
-                )}
-                {selectedArticulo.es_consumible ? (
-                  <Text style={[styles.selectedChipSub, { color: '#388E3C' }]}>
-                    Stock disponible: {selectedArticulo.cantidad} {selectedArticulo.unidad_medida}
-                  </Text>
+                {selectedArticulo.tipo_articulo === 'individual' ? (
+                  <>
+                    <Text style={[styles.selectedChipSub, { color: PANTONE_295C }]}>
+                      Unidad individual · disponible
+                    </Text>
+                    {!!selectedArticulo.codigo && (
+                      <Text style={styles.selectedChipSub}>
+                        Se prestará: {selectedArticulo.codigo}
+                      </Text>
+                    )}
+                  </>
                 ) : (
-                  <Text style={[styles.selectedChipSub, { color: '#888' }]}>
-                    Unidad individual · disponible
+                  <Text style={[styles.selectedChipSub, { color: selectedArticulo.tipo_articulo === 'granel' ? '#7B1FA2' : '#388E3C' }]}>
+                    {selectedArticulo.tipo_articulo === 'granel' ? 'A Granel' : 'Consumible'} · Stock disponible: {selectedArticulo.cantidad} {selectedArticulo.unidad_medida}
                   </Text>
                 )}
               </View>
@@ -219,15 +223,27 @@ export default function PrestamoFormScreen() {
                         onPress={() => { setSelectedArticulo(a); setArticuloSearch(''); setCantidadPrestada('1'); }}
                         activeOpacity={0.7}
                       >
-                        <Icon source={a.es_consumible ? 'layers-outline' : 'package-variant-closed'} size={16} color="#888" />
+                        <Icon
+                          source={
+                            a.tipo_articulo === 'individual'
+                              ? 'package-variant-closed'
+                              : a.tipo_articulo === 'granel'
+                              ? 'layers-outline'
+                              : 'beaker-outline'
+                          }
+                          size={16}
+                          color="#888"
+                        />
                         <View style={styles.suggestionInfo}>
                           <Text style={styles.suggestionName} numberOfLines={1}>{a.nombre}</Text>
                           <Text style={styles.suggestionSub}>
-                            {a.codigo ? `Código: ${a.codigo}` : 'Sin código'}
+                            {a.tipo_articulo === 'individual'
+                              ? (a.codigo ? `Código: ${a.codigo}` : 'Sin código')
+                              : (a.tipo_articulo === 'granel' ? 'A Granel' : 'Consumible')}
                             {a.ubicacion_nombre ? ` · ${a.ubicacion_nombre}` : ''}
                           </Text>
-                          {a.es_consumible ? (
-                            <Text style={[styles.suggestionSub, { color: '#388E3C' }]}>
+                          {a.tipo_articulo !== 'individual' ? (
+                            <Text style={[styles.suggestionSub, { color: a.tipo_articulo === 'granel' ? '#7B1FA2' : '#388E3C' }]}>
                               Stock: {a.cantidad} {a.unidad_medida}
                             </Text>
                           ) : null}
@@ -241,8 +257,8 @@ export default function PrestamoFormScreen() {
           )}
         </View>
 
-        {/* Cantidad — solo consumibles */}
-        {selectedArticulo?.es_consumible && (
+        {/* Cantidad — solo granel y consumible */}
+        {selectedArticulo && selectedArticulo.tipo_articulo !== 'individual' && (
           <View style={styles.section}>
             <FieldLabel
               label={`Cantidad a prestar (máx. ${selectedArticulo.cantidad} ${selectedArticulo.unidad_medida})`}

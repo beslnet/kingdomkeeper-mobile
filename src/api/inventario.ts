@@ -37,6 +37,8 @@ export type UnidadMedida =
 
 export type EstadoPrestamo = 'activo' | 'devuelto' | 'vencido' | 'cancelado';
 
+export type TipoArticulo = 'individual' | 'granel' | 'consumible';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface CategoriaInventario {
@@ -45,8 +47,6 @@ export interface CategoriaInventario {
   descripcion: string;
   tipo: TipoCategoria;
   tipo_display?: string;
-  es_consumible: boolean;
-  stock_minimo: number | null;
   articulos_count?: number;
 }
 
@@ -86,7 +86,7 @@ export interface ArticuloList {
   responsable_nombre: string | null;
   stock_bajo: boolean;
   foto_url: string | null;
-  es_consumible: boolean;
+  tipo_articulo: TipoArticulo;
   prestamos_activos_count: number;
 }
 
@@ -95,6 +95,7 @@ export interface Articulo {
   codigo: string;
   nombre: string;
   descripcion: string;
+  tipo_articulo: TipoArticulo;
   categoria: number;
   categoria_data?: CategoriaInventario;
   ubicacion: number | null;
@@ -115,6 +116,7 @@ export interface Articulo {
   stock_bajo: boolean;
   foto_url: string | null;
   notas: string;
+  prestamos_activos_count?: number;
   movimientos?: MovimientoInventario[];
 }
 
@@ -133,7 +135,7 @@ export interface MovimientoInventario {
 export interface Prestamo {
   id: number;
   articulo: number;
-  articulo_data?: { id: number; nombre: string; es_consumible?: boolean; cantidad?: number; unidad_medida?: string };
+  articulo_data?: { id: number; nombre: string; tipo_articulo?: TipoArticulo; cantidad?: number; unidad_medida?: string };
   prestatario: number;
   prestatario_data?: { id: number; nombre: string; apellidos: string };
   grupo: number | null;
@@ -169,7 +171,7 @@ export interface ReportePorUbicacion {
   cantidad_total: number;
   total_articulos: number;
   por_estado: Record<string, number>;
-  articulos: { id: number; codigo: string; nombre: string; categoria_nombre: string; cantidad: number; estado: string; es_consumible: boolean; unidad_medida?: string }[];
+  articulos: { id: number; codigo: string; nombre: string; categoria_nombre: string; cantidad: number; estado: string; tipo_articulo: TipoArticulo; unidad_medida?: string }[];
 }
 
 export interface ReportePorCategoria {
@@ -177,11 +179,10 @@ export interface ReportePorCategoria {
   categoria_nombre: string;
   categoria_tipo: string;
   tipo: string;
-  es_consumible: boolean;
   total_articulos: number;
   cantidad_total: number;
   por_estado: Record<string, number>;
-  articulos: { id: number; codigo: string; nombre: string; ubicacion_nombre: string; cantidad: number; estado: string; unidad_medida?: string }[];
+  articulos: { id: number; codigo: string; nombre: string; ubicacion_nombre: string; cantidad: number; estado: string; tipo_articulo: TipoArticulo; unidad_medida?: string; prestamos_activos_count?: number }[];
 }
 
 export interface PaginatedResponse<T> {
@@ -233,7 +234,6 @@ export const ajustarStock = async (id: number, cantidad: number, motivo: string)
 
 export const listarCategorias = async (params?: {
   tipo?: string;
-  es_consumible?: boolean;
 }): Promise<PaginatedResponse<CategoriaInventario>> => {
   const { data } = await api.get('/api/inventario/categorias/', { params });
   return data;

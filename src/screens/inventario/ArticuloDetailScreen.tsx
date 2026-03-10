@@ -242,6 +242,7 @@ export default function ArticuloDetailScreen({ route }: { route: any }) {
   }
 
   const estadoStyle = ESTADO_COLORS[articulo.estado] ?? { bg: '#F5F5F5', text: '#616161' };
+  const tipoArticulo = articulo.tipo_articulo;
   const tieneIdentificacion = !!(articulo.marca || articulo.modelo || articulo.numero_serie);
   const tieneAdquisicion = !!(
     articulo.valor_adquisicion ||
@@ -250,28 +251,72 @@ export default function ArticuloDetailScreen({ route }: { route: any }) {
   );
   const movimientos = articulo.movimientos ?? [];
 
+  // For consumible: stock progress
+  const stockPct =
+    tipoArticulo === 'consumible' && articulo.stock_minimo && articulo.stock_minimo > 0
+      ? Math.min((articulo.cantidad / articulo.stock_minimo) * 100, 200)
+      : null;
+  const stockBajoPct = stockPct !== null && stockPct < 100;
+
   return (
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header card */}
+      {/* ── Header card ─────────────────────────────────────────────────── */}
       <SectionCard>
         <View style={styles.headerRow}>
           <View style={styles.headerChips}>
-            <View style={[styles.chip, { backgroundColor: estadoStyle.bg }]}>
-              <Text style={[styles.chipText, { color: estadoStyle.text }]}>
-                {articulo.estado_display ?? articulo.estado.replace('_', ' ')}
+            {/* Tipo badge */}
+            <View
+              style={[
+                styles.chip,
+                {
+                  backgroundColor:
+                    tipoArticulo === 'individual'
+                      ? '#E3F2FD'
+                      : tipoArticulo === 'granel'
+                      ? '#F3E5F5'
+                      : '#E8F5E9',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  {
+                    color:
+                      tipoArticulo === 'individual'
+                        ? PANTONE_295C
+                        : tipoArticulo === 'granel'
+                        ? '#7B1FA2'
+                        : '#2E7D32',
+                  },
+                ]}
+              >
+                {tipoArticulo === 'individual'
+                  ? 'Individual'
+                  : tipoArticulo === 'granel'
+                  ? 'A Granel'
+                  : 'Consumible'}
               </Text>
             </View>
+            {/* Estado badge — prominente para individual */}
+            {tipoArticulo === 'individual' && (
+              <View style={[styles.chip, { backgroundColor: estadoStyle.bg }]}>
+                <Text style={[styles.chipText, { color: estadoStyle.text }]}>
+                  {articulo.estado_display ?? articulo.estado.replace('_', ' ')}
+                </Text>
+              </View>
+            )}
             {articulo.stock_bajo && (
               <View style={[styles.chip, { backgroundColor: '#FFF3E0' }]}>
                 <Text style={[styles.chipText, { color: '#E65100' }]}>⚠️ Stock bajo</Text>
               </View>
             )}
           </View>
-          {!!articulo.codigo && (
+          {tipoArticulo === 'individual' && !!articulo.codigo && (
             <View style={styles.codigoContainer}>
               <Icon source="barcode" size={14} color="#888" />
               <Text style={styles.codigoText}>{articulo.codigo}</Text>
@@ -284,42 +329,117 @@ export default function ArticuloDetailScreen({ route }: { route: any }) {
         )}
       </SectionCard>
 
-      {/* Clasificación */}
+      {/* ── Granel: stock summary bar ─────────────────────────────────── */}
+      {tipoArticulo === 'granel' && (
+        <SectionCard>
+          <SectionTitle title="Stock Disponible" icon="layers-outline" />
+          <View style={styles.granelSummaryRow}>
+            <View style={styles.granelSummaryItem}>
+              <Text style={[styles.granelSummaryNum, { color: '#7B1FA2' }]}>
+                {articulo.cantidad}
+              </Text>
+              <Text style={styles.granelSummaryLbl}>Disponibles</Text>
+            </View>
+            {(articulo.prestamos_activos_count ?? 0) > 0 && (
+              <>
+                <View style={styles.granelSummarySep} />
+                <View style={styles.granelSummaryItem}>
+                  <Text style={[styles.granelSummaryNum, { color: '#E65100' }]}>
+                    {articulo.prestamos_activos_count}
+                  </Text>
+                  <Text style={styles.granelSummaryLbl}>Préstamos activos</Text>
+                </View>
+              </>
+            )}
+          </View>
+          <InfoRow label="Unidad de Medida" value={articulo.unidad_medida} />
+          {articulo.stock_minimo !== null && (
+            <InfoRow label="Stock Mínimo" value={articulo.stock_minimo} />
+          )}
+        </SectionCard>
+      )}
+
+      {/* ── Consumible: stock bar ─────────────────────────────────────── */}
+      {tipoArticulo === 'consumible' && (
+        <SectionCard>
+          <SectionTitle title="Stock Actual" icon="beaker-outline" />
+          <View style={styles.consumibleStockRow}>
+            <Text
+              style={[
+                styles.consumibleStockNum,
+                { color: stockBajoPct ? '#E53935' : '#388E3C' },
+              ]}
+            >
+              {articulo.cantidad}
+            </Text>
+            <Text style={styles.consumibleStockUnit}>{articulo.unidad_medida}</Text>
+            {stockBajoPct && (
+              <View style={[styles.chip, { backgroundColor: '#FFEBEE', marginLeft: 'auto' }]}>
+                <Text style={[styles.chipText, { color: '#E53935' }]}>⚠ Por debajo del mínimo</Text>
+              </View>
+            )}
+          </View>
+          {stockPct !== null && articulo.stock_minimo !== null && (
+            <View style={{ marginTop: 8 }}>
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${Math.min(stockPct, 100)}%` as `${number}%`,
+                      backgroundColor: stockBajoPct ? '#E53935' : '#388E3C',
+                    },
+                  ]}
+                />
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 3 }}>
+                <Text style={[styles.progressLabel, { color: stockBajoPct ? '#E53935' : '#388E3C' }]}>
+                  {stockPct.toFixed(0)}% del mínimo
+                </Text>
+                <Text style={styles.progressLabel}>
+                  mín. {articulo.stock_minimo} {articulo.unidad_medida}
+                </Text>
+              </View>
+            </View>
+          )}
+        </SectionCard>
+      )}
+
+      {/* ── Clasificación ────────────────────────────────────────────── */}
       <SectionCard>
         <SectionTitle title="Clasificación" icon="tag-outline" />
         {articulo.categoria_data && (
           <>
             <InfoRow label="Categoría" value={articulo.categoria_data.nombre} />
             <InfoRow
-              label="Tipo"
+              label="Tipo categoría"
               value={articulo.categoria_data.tipo_display ?? articulo.categoria_data.tipo}
             />
           </>
         )}
         <InfoRow label="Ubicación" value={articulo.ubicacion_data?.nombre} />
-        <InfoRow label="Unidad de Medida" value={articulo.unidad_medida} />
+        {tipoArticulo !== 'granel' && tipoArticulo !== 'consumible' && (
+          <InfoRow label="Unidad de Medida" value={articulo.unidad_medida} />
+        )}
       </SectionCard>
 
-      {/* Inventario */}
-      <SectionCard>
-        <SectionTitle title="Inventario" icon="package-variant-closed" />
-        <InfoRow label="Cantidad" value={articulo.cantidad} />
-        <InfoRow
-          label="Stock Mínimo"
-          value={articulo.stock_minimo !== null ? articulo.stock_minimo : '—'}
-        />
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Estado</Text>
-          <View style={[styles.chip, { backgroundColor: estadoStyle.bg }]}>
-            <Text style={[styles.chipText, { color: estadoStyle.text }]}>
-              {articulo.estado_display ?? articulo.estado}
-            </Text>
+      {/* ── Individual: Inventario general ───────────────────────────── */}
+      {tipoArticulo === 'individual' && (
+        <SectionCard>
+          <SectionTitle title="Inventario" icon="package-variant-closed" />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Estado</Text>
+            <View style={[styles.chip, { backgroundColor: estadoStyle.bg }]}>
+              <Text style={[styles.chipText, { color: estadoStyle.text }]}>
+                {articulo.estado_display ?? articulo.estado}
+              </Text>
+            </View>
           </View>
-        </View>
-      </SectionCard>
+        </SectionCard>
+      )}
 
-      {/* Identificación */}
-      {tieneIdentificacion && (
+      {/* ── Identificación (individual) ──────────────────────────────── */}
+      {tipoArticulo === 'individual' && tieneIdentificacion && (
         <SectionCard>
           <SectionTitle title="Identificación" icon="information-outline" />
           <InfoRow label="Marca" value={articulo.marca} />
@@ -328,8 +448,8 @@ export default function ArticuloDetailScreen({ route }: { route: any }) {
         </SectionCard>
       )}
 
-      {/* Adquisición */}
-      {tieneAdquisicion && (
+      {/* ── Adquisición (individual only) ───────────────────────────── */}
+      {tipoArticulo === 'individual' && tieneAdquisicion && (
         <SectionCard>
           <SectionTitle title="Adquisición" icon="receipt" />
           <InfoRow label="Valor" value={formatCurrency(articulo.valor_adquisicion)} />
@@ -372,7 +492,31 @@ export default function ArticuloDetailScreen({ route }: { route: any }) {
         </SectionCard>
       )}
 
-      {/* Action buttons */}
+      {/* ── Tipo-specific action buttons ─────────────────────────────── */}
+      {(tipoArticulo === 'individual' || tipoArticulo === 'granel') && (
+        <TouchableOpacity
+          style={[styles.prestarBtn, { backgroundColor: tipoArticulo === 'granel' ? '#7B1FA2' : PANTONE_295C }]}
+          onPress={() => navigation.navigate('PrestamoForm')}
+          activeOpacity={0.8}
+        >
+          <Icon source="hand-pointing-right" size={18} color="#FFF" />
+          <Text style={styles.prestarBtnText}>
+            {tipoArticulo === 'granel' ? 'Prestar cantidad' : 'Prestar'}
+          </Text>
+        </TouchableOpacity>
+      )}
+      {tipoArticulo === 'consumible' && (
+        <TouchableOpacity
+          style={[styles.prestarBtn, { backgroundColor: '#388E3C' }]}
+          onPress={() => navigation.navigate('ArticuloForm', { articulo })}
+          activeOpacity={0.8}
+        >
+          <Icon source="pencil-outline" size={18} color="#FFF" />
+          <Text style={styles.prestarBtnText}>Registrar uso / Ajustar stock</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* ── Edit / Delete ────────────────────────────────────────────── */}
       {canManage && (
         <View style={styles.actionsRow}>
           <TouchableOpacity
@@ -628,6 +772,80 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 4,
+  },
+  prestarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    paddingVertical: 13,
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  prestarBtnText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  // ── Granel summary ──
+  granelSummaryRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  granelSummaryItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  granelSummaryNum: {
+    fontSize: 28,
+    fontWeight: '800',
+    lineHeight: 32,
+  },
+  granelSummaryLbl: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 2,
+  },
+  granelSummarySep: {
+    width: 1,
+    height: 36,
+    backgroundColor: '#EEE',
+    alignSelf: 'center',
+  },
+  // ── Consumible stock ──
+  consumibleStockRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
+  consumibleStockNum: {
+    fontSize: 36,
+    fontWeight: '800',
+    lineHeight: 40,
+  },
+  consumibleStockUnit: {
+    fontSize: 14,
+    color: '#888',
+    marginBottom: 4,
+  },
+  // ── Progress bar ──
+  progressTrack: {
+    height: 8,
+    backgroundColor: '#E8E8E8',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 8,
+    borderRadius: 4,
+  },
+  progressLabel: {
+    fontSize: 11,
+    color: '#888',
+    fontWeight: '600',
   },
   editBtn: {
     flex: 1,

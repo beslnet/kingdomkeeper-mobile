@@ -24,28 +24,57 @@ import {
   CategoriaInventario,
   Ubicacion,
   Proveedor,
-  EstadoArticulo,
   UnidadMedida,
+  TipoArticulo,
 } from '../../api/inventario';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ESTADOS_OPTIONS: { value: EstadoArticulo; label: string }[] = [
-  { value: 'disponible', label: 'Disponible' },
-  { value: 'en_uso', label: 'En uso' },
-  { value: 'mantenimiento', label: 'Mantenimiento' },
-  { value: 'dañado', label: 'Dañado' },
-  { value: 'baja', label: 'Baja' },
+const TIPO_ARTICULO_OPTIONS: {
+  value: TipoArticulo;
+  label: string;
+  subtitle: string;
+  icon: string;
+  color: string;
+}[] = [
+  {
+    value: 'individual',
+    label: 'Individual (Codificado)',
+    subtitle: 'Cada unidad física tiene código único. Ej: proyector, guitarra',
+    icon: 'package-variant-closed',
+    color: PANTONE_295C,
+  },
+  {
+    value: 'granel',
+    label: 'A Granel',
+    subtitle: 'Conjunto de unidades intercambiables sin código. Ej: 50 sillas, 30 biblias',
+    icon: 'layers-outline',
+    color: '#7B1FA2',
+  },
+  {
+    value: 'consumible',
+    label: 'Consumible',
+    subtitle: 'Se consume y no se devuelve. Ej: hojas, lapiceros, café',
+    icon: 'beaker-outline',
+    color: '#388E3C',
+  },
 ];
 
 const UNIDADES_OPTIONS: { value: UnidadMedida; label: string }[] = [
   { value: 'unidad', label: 'Unidad' },
   { value: 'par', label: 'Par' },
   { value: 'kg', label: 'Kilogramo (kg)' },
+  { value: 'gramo', label: 'Gramo' },
   { value: 'litro', label: 'Litro' },
+  { value: 'ml', label: 'Mililitro (ml)' },
   { value: 'metro', label: 'Metro' },
+  { value: 'cm', label: 'Centímetro (cm)' },
   { value: 'caja', label: 'Caja' },
   { value: 'paquete', label: 'Paquete' },
+  { value: 'bolsa', label: 'Bolsa' },
+  { value: 'rollo', label: 'Rollo' },
+  { value: 'resma', label: 'Resma' },
+  { value: 'galon', label: 'Galón' },
   { value: 'otro', label: 'Otro' },
 ];
 
@@ -60,8 +89,8 @@ function FieldLabel({ label, required }: { label: string; required?: boolean }) 
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
-  return <Text style={styles.sectionHeader}>{title}</Text>;
+function SectionHeader({ title, color }: { title: string; color?: string }) {
+  return <Text style={[styles.sectionHeader, color ? { color } : {}]}>{title}</Text>;
 }
 
 function InlineDropdown({
@@ -108,9 +137,7 @@ function InlineDropdown({
               >
                 {opt.label}
               </Text>
-              {value === opt.value && (
-                <Icon source="check" size={18} color={PANTONE_295C} />
-              )}
+              {value === opt.value && <Icon source="check" size={18} color={PANTONE_295C} />}
             </TouchableOpacity>
           ))}
         </View>
@@ -126,23 +153,22 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
   const articulo: Articulo | undefined = route.params?.articulo;
   const isEdit = !!articulo;
 
-  // ─── Form state ───────────────────────────────────────────────────────────
-  const [nombre, setNombre] = useState(articulo?.nombre ?? '');
-  const [codigo, setCodigo] = useState(articulo?.codigo ?? '');
-  const [descripcion, setDescripcion] = useState(articulo?.descripcion ?? '');
-  const [marca, setMarca] = useState(articulo?.marca ?? '');
-  const [modelo, setModelo] = useState(articulo?.modelo ?? '');
-  const [numeroSerie, setNumeroSerie] = useState(articulo?.numero_serie ?? '');
-  const [unidadMedida, setUnidadMedida] = useState<UnidadMedida>(
-    articulo?.unidad_medida ?? 'unidad'
+  // ─── Tipo artículo ────────────────────────────────────────────────────────
+  const [tipoArticulo, setTipoArticulo] = useState<TipoArticulo>(
+    articulo?.tipo_articulo ?? 'individual',
   );
+
+  // ─── Common fields ────────────────────────────────────────────────────────
+  const [nombre, setNombre] = useState(articulo?.nombre ?? '');
+  const [descripcion, setDescripcion] = useState(articulo?.descripcion ?? '');
+  const [notas, setNotas] = useState(articulo?.notas ?? '');
   const [selectedCategoria, setSelectedCategoria] = useState<{
     id: number;
     nombre: string;
   } | null>(
     articulo?.categoria_data
       ? { id: articulo.categoria, nombre: articulo.categoria_data.nombre }
-      : null
+      : null,
   );
   const [selectedUbicacion, setSelectedUbicacion] = useState<{
     id: number;
@@ -150,29 +176,38 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
   } | null>(
     articulo?.ubicacion_data && articulo.ubicacion !== null
       ? { id: articulo.ubicacion, nombre: articulo.ubicacion_data.nombre }
-      : null
-  );
-  const [cantidad, setCantidad] = useState(String(articulo?.cantidad ?? 1));
-  const [stockMinimo, setStockMinimo] = useState(
-    articulo?.stock_minimo != null ? String(articulo.stock_minimo) : ''
-  );
-  const [estado, setEstado] = useState<EstadoArticulo>(articulo?.estado ?? 'disponible');
-  const [valorAdquisicion, setValorAdquisicion] = useState(
-    articulo?.valor_adquisicion ?? ''
-  );
-  const [fechaAdquisicion, setFechaAdquisicion] = useState(
-    articulo?.fecha_adquisicion ?? ''
+      : null,
   );
   const [selectedProveedor, setSelectedProveedor] = useState<{
     id: number;
     nombre: string;
   } | null>(null);
-  const [notas, setNotas] = useState(articulo?.notas ?? '');
+
+  // ─── Individual fields ────────────────────────────────────────────────────
+  const [codigo, setCodigo] = useState(articulo?.codigo ?? '');
+  const [marca, setMarca] = useState(articulo?.marca ?? '');
+  const [modelo, setModelo] = useState(articulo?.modelo ?? '');
+  const [numeroSerie, setNumeroSerie] = useState(articulo?.numero_serie ?? '');
+  const [valorAdquisicion, setValorAdquisicion] = useState(
+    articulo?.valor_adquisicion ?? '',
+  );
+  const [fechaAdquisicion, setFechaAdquisicion] = useState(
+    articulo?.fecha_adquisicion ?? '',
+  );
+
+  // ─── Granel / Consumible fields ───────────────────────────────────────────
+  const [cantidad, setCantidad] = useState(
+    articulo?.cantidad != null ? String(articulo.cantidad) : '',
+  );
+  const [unidadMedida, setUnidadMedida] = useState<UnidadMedida>(
+    articulo?.unidad_medida ?? 'unidad',
+  );
+  const [stockMinimo, setStockMinimo] = useState(
+    articulo?.stock_minimo != null ? String(articulo.stock_minimo) : '',
+  );
 
   // ─── Dropdown visibility ──────────────────────────────────────────────────
   const [showUnidad, setShowUnidad] = useState(false);
-  const [showEstado, setShowEstado] = useState(false);
-  const [showAdquisicion, setShowAdquisicion] = useState(false);
 
   // ─── Lookup data ──────────────────────────────────────────────────────────
   const [categorias, setCategorias] = useState<CategoriaInventario[]>([]);
@@ -198,7 +233,6 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
         setUbicaciones(ubicData.results ?? []);
         const provList = provData.results ?? [];
         setProveedores(provList);
-
         if (articulo?.proveedor) {
           const prov = provList.find((p: Proveedor) => p.id === articulo.proveedor);
           if (prov) setSelectedProveedor({ id: prov.id, nombre: prov.nombre });
@@ -210,58 +244,47 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
       }
     };
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ─── Alert-based pickers ──────────────────────────────────────────────────
   const openCategoriaPicker = () => {
     if (loadingData) return;
-    const options: any[] = [
-      {
-        text: 'Sin categoría',
-        onPress: () => setSelectedCategoria(null),
-      },
+    Alert.alert('Seleccionar Categoría', '', [
+      { text: 'Sin categoría', onPress: () => setSelectedCategoria(null) },
       ...categorias.map((c) => ({
         text: c.nombre,
         onPress: () => setSelectedCategoria({ id: c.id, nombre: c.nombre }),
       })),
-      { text: 'Cancelar', style: 'cancel' },
-    ];
-    Alert.alert('Seleccionar Categoría', '', options);
+      { text: 'Cancelar', style: 'cancel' as const },
+    ]);
   };
 
   const openUbicacionPicker = () => {
     if (loadingData) return;
-    const options: any[] = [
-      {
-        text: 'Sin ubicación',
-        onPress: () => setSelectedUbicacion(null),
-      },
+    Alert.alert('Seleccionar Ubicación', '', [
+      { text: 'Sin ubicación', onPress: () => setSelectedUbicacion(null) },
       ...ubicaciones.map((u) => ({
         text: u.nombre,
         onPress: () => setSelectedUbicacion({ id: u.id, nombre: u.nombre }),
       })),
-      { text: 'Cancelar', style: 'cancel' },
-    ];
-    Alert.alert('Seleccionar Ubicación', '', options);
+      { text: 'Cancelar', style: 'cancel' as const },
+    ]);
   };
 
   const openProveedorPicker = () => {
     if (loadingData) return;
-    const options: any[] = [
-      {
-        text: 'Sin proveedor',
-        onPress: () => setSelectedProveedor(null),
-      },
+    Alert.alert('Seleccionar Proveedor', '', [
+      { text: 'Sin proveedor', onPress: () => setSelectedProveedor(null) },
       ...proveedores.map((p) => ({
         text: p.nombre,
         onPress: () => setSelectedProveedor({ id: p.id, nombre: p.nombre }),
       })),
-      { text: 'Cancelar', style: 'cancel' },
-    ];
-    Alert.alert('Seleccionar Proveedor', '', options);
+      { text: 'Cancelar', style: 'cancel' as const },
+    ]);
   };
 
-  // ─── Submit ───────────────────────────────────────────────────────────────
+  // ─── Validation & Submit ──────────────────────────────────────────────────
   const handleSave = async () => {
     setFormError(null);
 
@@ -273,32 +296,55 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
       setFormError('La categoría es obligatoria.');
       return;
     }
-    const cantidadNum = parseInt(cantidad, 10);
-    if (isNaN(cantidadNum) || cantidadNum < 1) {
-      setFormError('La cantidad debe ser mayor o igual a 1.');
+    if (tipoArticulo === 'individual' && !codigo.trim()) {
+      setFormError('El código es obligatorio para artículos individuales.');
       return;
+    }
+    if (tipoArticulo !== 'individual') {
+      const cantNum = parseInt(cantidad, 10);
+      if (isNaN(cantNum) || cantNum < 0) {
+        setFormError('La cantidad debe ser un número válido mayor o igual a 0.');
+        return;
+      }
+      if (tipoArticulo === 'consumible') {
+        if (!unidadMedida) {
+          setFormError('La unidad de medida es obligatoria para consumibles.');
+          return;
+        }
+        if (!stockMinimo.trim()) {
+          setFormError('El stock mínimo es obligatorio para consumibles.');
+          return;
+        }
+      }
     }
 
     setSaving(true);
     try {
       const payload: Partial<Articulo> = {
         nombre: nombre.trim(),
-        codigo: codigo.trim() || undefined,
         descripcion: descripcion.trim(),
-        marca: marca.trim(),
-        modelo: modelo.trim(),
-        numero_serie: numeroSerie.trim(),
-        unidad_medida: unidadMedida,
+        tipo_articulo: tipoArticulo,
         categoria: selectedCategoria.id,
         ubicacion: selectedUbicacion?.id ?? null,
-        cantidad: cantidadNum,
-        stock_minimo: stockMinimo ? parseInt(stockMinimo, 10) : null,
-        estado,
-        valor_adquisicion: valorAdquisicion.trim() || null,
-        fecha_adquisicion: fechaAdquisicion.trim() || null,
         proveedor: selectedProveedor?.id ?? null,
         notas: notas.trim(),
       };
+
+      if (tipoArticulo === 'individual') {
+        payload.codigo = codigo.trim() || undefined;
+        payload.marca = marca.trim();
+        payload.modelo = modelo.trim();
+        payload.numero_serie = numeroSerie.trim();
+        payload.valor_adquisicion = valorAdquisicion.trim() || null;
+        payload.fecha_adquisicion = fechaAdquisicion.trim() || null;
+        payload.cantidad = 1;
+        payload.unidad_medida = 'unidad';
+        payload.stock_minimo = null;
+      } else {
+        payload.cantidad = parseInt(cantidad, 10) || 0;
+        payload.unidad_medida = unidadMedida;
+        payload.stock_minimo = stockMinimo.trim() ? parseInt(stockMinimo, 10) : null;
+      }
 
       if (isEdit && articulo) {
         await actualizarArticulo(articulo.id, payload);
@@ -328,6 +374,8 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
     }
   };
 
+  const selectedTipoOpt = TIPO_ARTICULO_OPTIONS.find((t) => t.value === tipoArticulo)!;
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
@@ -340,8 +388,43 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Información Básica ─────────────────────────────────────────── */}
-        <SectionHeader title="Información Básica" />
+        {/* ── Tipo de Artículo ─────────────────────────────────────────── */}
+        <SectionHeader title="Tipo de Artículo" />
+        <View style={styles.sectionCard}>
+          {TIPO_ARTICULO_OPTIONS.map((opt) => {
+            const isSelected = tipoArticulo === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[
+                  styles.tipoCard,
+                  isSelected && { borderColor: opt.color, backgroundColor: opt.color + '12' },
+                ]}
+                onPress={() => {
+                  setTipoArticulo(opt.value);
+                  setShowUnidad(false);
+                }}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.tipoIconBox, { backgroundColor: opt.color + '20' }]}>
+                  <Icon source={opt.icon} size={22} color={opt.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.tipoLabel, isSelected && { color: opt.color }]}>
+                    {opt.label}
+                  </Text>
+                  <Text style={styles.tipoSubtitle} numberOfLines={2}>
+                    {opt.subtitle}
+                  </Text>
+                </View>
+                {isSelected && <Icon source="check-circle" size={20} color={opt.color} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* ── Información General ───────────────────────────────────────── */}
+        <SectionHeader title="Información General" />
         <View style={styles.sectionCard}>
           <FieldLabel label="Nombre" required />
           <TextInput
@@ -350,16 +433,6 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
             placeholderTextColor="#AAA"
             value={nombre}
             onChangeText={setNombre}
-          />
-
-          <FieldLabel label="Código (opcional)" />
-          <TextInput
-            style={styles.textInput}
-            placeholder="Código o número de inventario..."
-            placeholderTextColor="#AAA"
-            value={codigo}
-            onChangeText={setCodigo}
-            autoCapitalize="characters"
           />
 
           <FieldLabel label="Descripción" />
@@ -373,57 +446,7 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
             numberOfLines={3}
             textAlignVertical="top"
           />
-        </View>
 
-        {/* ── Detalles ───────────────────────────────────────────────────── */}
-        <SectionHeader title="Detalles" />
-        <View style={styles.sectionCard}>
-          <FieldLabel label="Marca" />
-          <TextInput
-            style={styles.textInput}
-            placeholder="Ej: Sony, Samsung, 3M..."
-            placeholderTextColor="#AAA"
-            value={marca}
-            onChangeText={setMarca}
-          />
-
-          <FieldLabel label="Modelo" />
-          <TextInput
-            style={styles.textInput}
-            placeholder="Ej: WH-1000XM4..."
-            placeholderTextColor="#AAA"
-            value={modelo}
-            onChangeText={setModelo}
-          />
-
-          <FieldLabel label="Número de Serie" />
-          <TextInput
-            style={styles.textInput}
-            placeholder="Número de serie..."
-            placeholderTextColor="#AAA"
-            value={numeroSerie}
-            onChangeText={setNumeroSerie}
-          />
-
-          <InlineDropdown
-            label="Unidad de Medida"
-            value={unidadMedida}
-            options={UNIDADES_OPTIONS}
-            show={showUnidad}
-            onToggle={() => {
-              setShowUnidad((v) => !v);
-              setShowEstado(false);
-            }}
-            onSelect={(v) => {
-              setUnidadMedida(v as UnidadMedida);
-              setShowUnidad(false);
-            }}
-          />
-        </View>
-
-        {/* ── Categoría y Ubicación ──────────────────────────────────────── */}
-        <SectionHeader title="Categoría y Ubicación" />
-        <View style={styles.sectionCard}>
           <FieldLabel label="Categoría" required />
           <TouchableOpacity
             style={styles.selectBtn}
@@ -459,100 +482,169 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
               </>
             )}
           </TouchableOpacity>
+
+          <FieldLabel label="Proveedor (opcional)" />
+          <TouchableOpacity
+            style={styles.selectBtn}
+            onPress={openProveedorPicker}
+            activeOpacity={0.75}
+          >
+            {loadingData ? (
+              <ActivityIndicator size="small" color={PANTONE_295C} />
+            ) : (
+              <>
+                <Text style={[styles.selectBtnText, !selectedProveedor && { color: '#AAA' }]}>
+                  {selectedProveedor?.nombre ?? 'Sin proveedor'}
+                </Text>
+                <Icon source="chevron-down" size={18} color="#888" />
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* ── Stock ─────────────────────────────────────────────────────── */}
-        <SectionHeader title="Stock" />
-        <View style={styles.sectionCard}>
-          <FieldLabel label="Cantidad" required />
-          <TextInput
-            style={styles.textInput}
-            placeholder="1"
-            placeholderTextColor="#AAA"
-            value={cantidad}
-            onChangeText={setCantidad}
-            keyboardType="numeric"
-          />
+        {/* ── Individual fields ─────────────────────────────────────────── */}
+        {tipoArticulo === 'individual' && (
+          <>
+            <SectionHeader title="Identificación del Equipo" color={PANTONE_295C} />
+            <View style={styles.sectionCard}>
+              <FieldLabel label="Código" required />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ej: PROY-EP-001"
+                placeholderTextColor="#AAA"
+                value={codigo}
+                onChangeText={setCodigo}
+                autoCapitalize="characters"
+              />
 
-          <FieldLabel label="Stock Mínimo (opcional)" />
-          <TextInput
-            style={styles.textInput}
-            placeholder="Ej: 5"
-            placeholderTextColor="#AAA"
-            value={stockMinimo}
-            onChangeText={setStockMinimo}
-            keyboardType="numeric"
-          />
+              <FieldLabel label="Marca" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ej: Sony, Samsung..."
+                placeholderTextColor="#AAA"
+                value={marca}
+                onChangeText={setMarca}
+              />
 
-          <InlineDropdown
-            label="Estado"
-            value={estado}
-            options={ESTADOS_OPTIONS}
-            show={showEstado}
-            onToggle={() => {
-              setShowEstado((v) => !v);
-              setShowUnidad(false);
-            }}
-            onSelect={(v) => {
-              setEstado(v as EstadoArticulo);
-              setShowEstado(false);
-            }}
-          />
-        </View>
+              <FieldLabel label="Modelo" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ej: WH-1000XM4"
+                placeholderTextColor="#AAA"
+                value={modelo}
+                onChangeText={setModelo}
+              />
 
-        {/* ── Adquisición (collapsible) ──────────────────────────────────── */}
-        <TouchableOpacity
-          style={styles.collapsibleHeader}
-          onPress={() => setShowAdquisicion((v) => !v)}
-          activeOpacity={0.75}
-        >
-          <Text style={styles.collapsibleHeaderText}>Adquisición (opcional)</Text>
-          <Icon
-            source={showAdquisicion ? 'chevron-up' : 'chevron-down'}
-            size={18}
-            color={PANTONE_295C}
-          />
-        </TouchableOpacity>
+              <FieldLabel label="Número de Serie" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Número de serie..."
+                placeholderTextColor="#AAA"
+                value={numeroSerie}
+                onChangeText={setNumeroSerie}
+              />
 
-        {showAdquisicion && (
-          <View style={styles.sectionCard}>
-            <FieldLabel label="Valor de Adquisición" />
-            <TextInput
-              style={styles.textInput}
-              placeholder="0.00"
-              placeholderTextColor="#AAA"
-              value={valorAdquisicion}
-              onChangeText={setValorAdquisicion}
-              keyboardType="decimal-pad"
-            />
+              <FieldLabel label="Valor de Adquisición" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="0.00"
+                placeholderTextColor="#AAA"
+                value={valorAdquisicion}
+                onChangeText={setValorAdquisicion}
+                keyboardType="decimal-pad"
+              />
 
-            <FieldLabel label="Fecha de Adquisición (YYYY-MM-DD)" />
-            <TextInput
-              style={styles.textInput}
-              placeholder="2024-01-15"
-              placeholderTextColor="#AAA"
-              value={fechaAdquisicion}
-              onChangeText={setFechaAdquisicion}
-            />
+              <FieldLabel label="Fecha de Adquisición (YYYY-MM-DD)" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="2024-01-15"
+                placeholderTextColor="#AAA"
+                value={fechaAdquisicion}
+                onChangeText={setFechaAdquisicion}
+              />
+            </View>
+          </>
+        )}
 
-            <FieldLabel label="Proveedor" />
-            <TouchableOpacity
-              style={styles.selectBtn}
-              onPress={openProveedorPicker}
-              activeOpacity={0.75}
-            >
-              {loadingData ? (
-                <ActivityIndicator size="small" color={PANTONE_295C} />
-              ) : (
-                <>
-                  <Text style={[styles.selectBtnText, !selectedProveedor && { color: '#AAA' }]}>
-                    {selectedProveedor?.nombre ?? 'Sin proveedor'}
-                  </Text>
-                  <Icon source="chevron-down" size={18} color="#888" />
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
+        {/* ── Granel fields ─────────────────────────────────────────────── */}
+        {tipoArticulo === 'granel' && (
+          <>
+            <SectionHeader title="Stock a Granel" color="#7B1FA2" />
+            <View style={styles.sectionCard}>
+              <FieldLabel label="Cantidad total" required />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ej: 50"
+                placeholderTextColor="#AAA"
+                value={cantidad}
+                onChangeText={(t) => setCantidad(t.replace(/[^0-9]/g, ''))}
+                keyboardType="numeric"
+              />
+
+              <InlineDropdown
+                label="Unidad de medida"
+                value={unidadMedida}
+                options={UNIDADES_OPTIONS}
+                show={showUnidad}
+                onToggle={() => setShowUnidad((v) => !v)}
+                onSelect={(v) => {
+                  setUnidadMedida(v as UnidadMedida);
+                  setShowUnidad(false);
+                }}
+              />
+
+              <FieldLabel label="Stock mínimo (opcional)" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ej: 5"
+                placeholderTextColor="#AAA"
+                value={stockMinimo}
+                onChangeText={(t) => setStockMinimo(t.replace(/[^0-9]/g, ''))}
+                keyboardType="numeric"
+              />
+            </View>
+          </>
+        )}
+
+        {/* ── Consumible fields ─────────────────────────────────────────── */}
+        {tipoArticulo === 'consumible' && (
+          <>
+            <SectionHeader title="Stock Consumible" color="#388E3C" />
+            <View style={styles.sectionCard}>
+              <FieldLabel label="Cantidad actual" required />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ej: 100"
+                placeholderTextColor="#AAA"
+                value={cantidad}
+                onChangeText={(t) => setCantidad(t.replace(/[^0-9]/g, ''))}
+                keyboardType="numeric"
+              />
+
+              <InlineDropdown
+                label="Unidad de medida"
+                value={unidadMedida}
+                options={UNIDADES_OPTIONS}
+                show={showUnidad}
+                onToggle={() => setShowUnidad((v) => !v)}
+                onSelect={(v) => {
+                  setUnidadMedida(v as UnidadMedida);
+                  setShowUnidad(false);
+                }}
+                required
+              />
+
+              <FieldLabel label="Stock mínimo" required />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Ej: 10"
+                placeholderTextColor="#AAA"
+                value={stockMinimo}
+                onChangeText={(t) => setStockMinimo(t.replace(/[^0-9]/g, ''))}
+                keyboardType="numeric"
+              />
+            </View>
+          </>
         )}
 
         {/* ── Notas ─────────────────────────────────────────────────────── */}
@@ -580,7 +672,11 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
 
         {/* Save button */}
         <TouchableOpacity
-          style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+          style={[
+            styles.saveBtn,
+            { backgroundColor: selectedTipoOpt.color },
+            saving && styles.saveBtnDisabled,
+          ]}
           onPress={handleSave}
           disabled={saving}
           activeOpacity={0.85}
@@ -610,16 +706,9 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  scroll: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  content: {
-    padding: 12,
-  },
+  flex: { flex: 1 },
+  scroll: { flex: 1, backgroundColor: '#F5F7FA' },
+  content: { padding: 12 },
   sectionHeader: {
     fontSize: 11,
     fontWeight: '700',
@@ -642,28 +731,38 @@ const styles = StyleSheet.create({
     elevation: 2,
     gap: 4,
   },
-  collapsibleHeader: {
+  // ── Tipo selector ──
+  tipoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
+    gap: 12,
+    borderWidth: 1.5,
+    borderColor: '#E8E8E8',
+    borderRadius: 10,
+    padding: 12,
     marginBottom: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: '#FAFAFA',
   },
-  collapsibleHeaderText: {
-    fontSize: 11,
+  tipoIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  tipoLabel: {
+    fontSize: 14,
     fontWeight: '700',
-    color: PANTONE_295C,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    color: '#1A1A2E',
+    marginBottom: 2,
   },
+  tipoSubtitle: {
+    fontSize: 12,
+    color: '#888',
+    lineHeight: 16,
+  },
+  // ── Inputs ──
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
@@ -719,17 +818,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
   },
-  selectOptionActive: {
-    backgroundColor: '#EAF2FF',
-  },
-  selectOptionText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  selectOptionTextActive: {
-    color: PANTONE_295C,
-    fontWeight: '600',
-  },
+  selectOptionActive: { backgroundColor: '#EAF2FF' },
+  selectOptionText: { fontSize: 14, color: '#333' },
+  selectOptionTextActive: { color: PANTONE_295C, fontWeight: '600' },
+  // ── Error / Save ──
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -739,30 +831,17 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 8,
   },
-  errorBannerText: {
-    flex: 1,
-    color: '#E53935',
-    fontSize: 13,
-  },
+  errorBannerText: { flex: 1, color: '#E53935', fontSize: 13 },
   saveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: PANTONE_295C,
     borderRadius: 12,
     paddingVertical: 15,
     gap: 8,
     marginTop: 4,
   },
-  saveBtnDisabled: {
-    opacity: 0.6,
-  },
-  saveBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  bottomSpacer: {
-    height: 32,
-  },
+  saveBtnDisabled: { opacity: 0.6 },
+  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  bottomSpacer: { height: 32 },
 });

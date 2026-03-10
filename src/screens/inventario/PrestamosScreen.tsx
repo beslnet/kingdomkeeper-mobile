@@ -159,8 +159,8 @@ export default function PrestamosScreen() {
           <Text style={styles.infoText}>{borrowerName}</Text>
         </View>
 
-        {/* Cantidad prestada — solo visible si es > 1 o es consumible */}
-        {(item.cantidad_prestada > 1 || item.articulo_data?.es_consumible) && (
+        {/* Cantidad prestada — solo visible si es > 1 o es granel/consumible */}
+        {(item.cantidad_prestada > 1 || item.articulo_data?.tipo_articulo === 'consumible' || item.articulo_data?.tipo_articulo === 'granel') && (
           <View style={styles.infoRow}>
             <Icon source="package-variant-closed" size={14} color="#888" />
             <Text style={styles.infoText}>

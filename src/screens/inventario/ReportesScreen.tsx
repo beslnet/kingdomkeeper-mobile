@@ -21,21 +21,13 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const COLOR_ACTIVOS    = PANTONE_295C;
-const COLOR_CONSUMIBLE = '#388E3C';
+const COLOR_INDIVIDUAL = PANTONE_295C;   // blue
+const COLOR_GRANEL     = '#7B1FA2';      // purple
+const COLOR_CONSUMIBLE = '#388E3C';      // green
 
-const ESTADO_META: Record<string, { bg: string; text: string; label: string }> = {
-  disponible:    { bg: '#E8F5E9', text: '#2E7D32', label: 'Disponible' },
-  en_uso:        { bg: '#E3F2FD', text: '#1565C0', label: 'En uso' },
-  prestado:      { bg: '#FFF3E0', text: '#E65100', label: 'Prestado' },
-  mantenimiento: { bg: '#FFF9C4', text: '#F57F17', label: 'Mantenimiento' },
-  dañado:        { bg: '#FFEBEE', text: '#B71C1C', label: 'Dañado' },
-  baja:          { bg: '#F5F5F5', text: '#616161', label: 'Baja' },
-};
+type ActiveTab = 'individual' | 'granel' | 'consumible';
 
-type ActiveTab = 'activos' | 'consumibles';
-
-// ─── Flat article types ───────────────────────────────────────────────────────
+// ─── Flat article type ────────────────────────────────────────────────────────
 
 type ArticuloFlat = {
   id: number;
@@ -46,8 +38,10 @@ type ArticuloFlat = {
   estado: string;
   cantidad: number;
   unidad_medida: string;
+  tipo_articulo: 'individual' | 'granel' | 'consumible';
   stock_minimo?: number | null;
   stock_porcentaje?: number | null;
+  prestamos_activos_count?: number | null;
 };
 
 type ProductoGroup = {
@@ -57,7 +51,7 @@ type ProductoGroup = {
   total: number;
   disponibles: number;
   prestados: number;
-  otros: number;        // mantenimiento / dañado / baja
+  otros: number;
   articulos: ArticuloFlat[];
 };
 
@@ -105,7 +99,7 @@ export default function ReportesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
-  const [activeTab, setActiveTab]           = useState<ActiveTab>('activos');
+  const [activeTab, setActiveTab]             = useState<ActiveTab>('individual');
   const [filterCategoria, setFilterCategoria] = useState('Todos');
   const [filterUbicacion, setFilterUbicacion] = useState('Todos');
 
@@ -131,7 +125,7 @@ export default function ReportesScreen() {
 
   // ─── Derived data ─────────────────────────────────────────────────────────
 
-  const { activosFlat, consumiblesFlat } = useMemo(() => {
+  const { individualesFlat, granelFlat, consumiblesFlat } = useMemo(() => {
     const sbMap = new Map(
       (stockBajo?.articulos ?? []).map((s) => [
         s.articulo.id,
@@ -139,12 +133,14 @@ export default function ReportesScreen() {
       ]),
     );
 
-    const activosFlat: ArticuloFlat[] = [];
+    const individualesFlat: ArticuloFlat[] = [];
+    const granelFlat: ArticuloFlat[] = [];
     const consumiblesFlat: ArticuloFlat[] = [];
 
     for (const cat of porCategoria) {
       for (const art of cat.articulos) {
         const sb = sbMap.get(art.id);
+        const tipo = art.tipo_articulo ?? 'individual';
         const item: ArticuloFlat = {
           id: art.id,
           codigo: art.codigo ?? '',
@@ -154,20 +150,27 @@ export default function ReportesScreen() {
           estado: art.estado,
           cantidad: art.cantidad,
           unidad_medida: art.unidad_medida ?? 'unidad',
+          tipo_articulo: tipo,
           stock_minimo: sb?.stock_minimo ?? null,
           stock_porcentaje: sb?.porcentaje ?? null,
+          prestamos_activos_count: art.prestamos_activos_count ?? null,
         };
-        if (cat.es_consumible) consumiblesFlat.push(item);
-        else activosFlat.push(item);
+        if (tipo === 'individual') individualesFlat.push(item);
+        else if (tipo === 'granel') granelFlat.push(item);
+        else consumiblesFlat.push(item);
       }
     }
 
-    return { activosFlat, consumiblesFlat };
+    return { individualesFlat, granelFlat, consumiblesFlat };
   }, [porCategoria, stockBajo]);
 
-  const currentFlat = activeTab === 'activos' ? activosFlat : consumiblesFlat;
+  const currentFlat = useMemo(() => {
+    if (activeTab === 'individual') return individualesFlat;
+    if (activeTab === 'granel') return granelFlat;
+    return consumiblesFlat;
+  }, [activeTab, individualesFlat, granelFlat, consumiblesFlat]);
 
-  // Unique filter options
+  // Filter options
   const categorias = useMemo(
     () => ['Todos', ...Array.from(new Set(currentFlat.map((a) => a.categoria_nombre))).sort()],
     [currentFlat],
@@ -188,9 +191,9 @@ export default function ReportesScreen() {
     [currentFlat, filterCategoria, filterUbicacion],
   );
 
-  // Group activos by product name for per-product stock view
-  const groupedActivos = useMemo<ProductoGroup[]>(() => {
-    if (activeTab !== 'activos') return [];
+  // Group individual by product name
+  const groupedIndividual = useMemo<ProductoGroup[]>(() => {
+    if (activeTab !== 'individual') return [];
     const map = new Map<string, ProductoGroup>();
     for (const art of filtered) {
       const key = `${art.nombre}||${art.categoria_nombre}`;
@@ -218,24 +221,24 @@ export default function ReportesScreen() {
     return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
   }, [filtered, activeTab]);
 
-  // Summary for current tab
+  // Summary per tab
   const summary = useMemo(() => {
-    if (activeTab === 'activos') {
+    if (activeTab === 'individual') {
       const totalUnidades = filtered.reduce((s, a) => s + (a.cantidad > 0 ? a.cantidad : 1), 0);
       const disponibles   = filtered.filter((a) => a.estado === 'disponible').reduce((s, a) => s + (a.cantidad > 0 ? a.cantidad : 1), 0);
       const prestados     = filtered.filter((a) => a.estado === 'prestado').reduce((s, a) => s + (a.cantidad > 0 ? a.cantidad : 1), 0);
-      const noDisp        = filtered.filter((a) =>
-        ['mantenimiento', 'dañado', 'baja'].includes(a.estado),
-      ).reduce((s, a) => s + (a.cantidad > 0 ? a.cantidad : 1), 0);
-      return { total: totalUnidades, productos: groupedActivos.length, disponibles, prestados, noDisp };
-    } else {
-      const totalUnidades = filtered.reduce((s, a) => s + a.cantidad, 0);
-      const stockBajoCount = filtered.filter(
-        (a) => a.stock_porcentaje !== null && (a.stock_porcentaje ?? 100) < 100,
-      ).length;
-      return { total: filtered.length, totalUnidades, stockBajoCount };
+      return { productos: groupedIndividual.length, total: totalUnidades, disponibles, prestados };
     }
-  }, [filtered, activeTab, groupedActivos]);
+    if (activeTab === 'granel') {
+      const totalDisponible = filtered.reduce((s, a) => s + a.cantidad, 0);
+      const totalPrestamos  = filtered.reduce((s, a) => s + (a.prestamos_activos_count ?? 0), 0);
+      return { total: filtered.length, totalDisponible, totalPrestamos };
+    }
+    // consumible
+    const totalUnidades  = filtered.reduce((s, a) => s + a.cantidad, 0);
+    const stockBajoCount = filtered.filter((a) => a.stock_porcentaje !== null && (a.stock_porcentaje ?? 100) < 100).length;
+    return { total: filtered.length, totalUnidades, stockBajoCount };
+  }, [filtered, activeTab, groupedIndividual]);
 
   // ─── Filter pickers ───────────────────────────────────────────────────────
 
@@ -265,13 +268,13 @@ export default function ReportesScreen() {
     setFilterUbicacion('Todos');
   };
 
-  // ─── Render: Producto group card (activos) ───────────────────────────────
+  // ─── Render: Individual (codificado) group card ───────────────────────────
 
-  const renderProductoGroupCard = (g: ProductoGroup, idx: number) => {
+  const renderIndividualGroupCard = (g: ProductoGroup, idx: number) => {
     const allDisp = g.prestados === 0 && g.otros === 0;
     const hasPrest = g.prestados > 0;
     return (
-      <View key={`pg-${g.nombre}-${idx}`} style={[styles.articleCard, hasPrest && styles.articleCardWarning]}>
+      <View key={`ig-${g.nombre}-${idx}`} style={[styles.articleCard, hasPrest && styles.articleCardWarning]}>
         <View style={styles.articleCardTop}>
           <View style={{ flex: 1 }}>
             <Text style={styles.articleNombre} numberOfLines={2}>{g.nombre}</Text>
@@ -280,14 +283,12 @@ export default function ReportesScreen() {
               <Text style={styles.metaText}>{g.categoria_nombre}</Text>
             </View>
           </View>
-          {/* Total badge */}
           <View style={styles.totalBadge}>
-            <Text style={styles.totalBadgeNum}>{g.total}</Text>
+            <Text style={[styles.totalBadgeNum, { color: COLOR_INDIVIDUAL }]}>{g.total}</Text>
             <Text style={styles.totalBadgeLbl}>unidades</Text>
           </View>
         </View>
 
-        {/* Stock mini-bar */}
         <View style={styles.stockIndicatorRow}>
           <View style={styles.stockIndicator}>
             <View style={[styles.stockDot, { backgroundColor: '#2E7D32' }]} />
@@ -312,32 +313,27 @@ export default function ReportesScreen() {
           )}
         </View>
 
-        {/* Visual progress bar: disponibles/total */}
         <View style={styles.progressTrack}>
           {g.disponibles > 0 && (
             <View style={[styles.progressFill, {
               width: `${(g.disponibles / g.total) * 100}%` as `${number}%`,
               backgroundColor: allDisp ? '#4CAF50' : '#66BB6A',
-              borderRadius: 4,
             }]} />
           )}
           {g.prestados > 0 && (
             <View style={[styles.progressFill, {
               width: `${(g.prestados / g.total) * 100}%` as `${number}%`,
               backgroundColor: '#FF7043',
-              borderRadius: 4,
             }]} />
           )}
           {g.otros > 0 && (
             <View style={[styles.progressFill, {
               width: `${(g.otros / g.total) * 100}%` as `${number}%`,
               backgroundColor: '#BDBDBD',
-              borderRadius: 4,
             }]} />
           )}
         </View>
 
-        {/* Ubicaciones */}
         {g.ubicaciones.length > 0 && (
           <View style={[styles.metaItem, { marginTop: 6 }]}>
             <Icon source="map-marker-outline" size={12} color="#aaa" />
@@ -350,7 +346,53 @@ export default function ReportesScreen() {
     );
   };
 
-  // ─── Render: Consumible card ───────────────────────────────────────────────
+  // ─── Render: Granel card ──────────────────────────────────────────────────
+
+  const renderGranelCard = (art: ArticuloFlat, idx: number) => {
+    const hasPrestamos = (art.prestamos_activos_count ?? 0) > 0;
+    const isBajo = art.stock_porcentaje !== null && (art.stock_porcentaje ?? 100) < 100;
+    return (
+      <View key={`g-${art.id}-${idx}`} style={[styles.articleCard, isBajo && styles.articleCardAlert]}>
+        <View style={styles.articleCardTop}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.articleNombre} numberOfLines={2}>{art.nombre}</Text>
+            <View style={styles.metaItem}>
+              <Icon source="folder-outline" size={12} color="#aaa" />
+              <Text style={styles.metaText}>{art.categoria_nombre}</Text>
+            </View>
+          </View>
+          <View style={[styles.totalBadge, { backgroundColor: '#F3E5F5' }]}>
+            <Text style={[styles.totalBadgeNum, { color: COLOR_GRANEL }]}>{art.cantidad}</Text>
+            <Text style={styles.totalBadgeLbl}>{art.unidad_medida}</Text>
+          </View>
+        </View>
+
+        <View style={styles.stockIndicatorRow}>
+          <View style={styles.stockIndicator}>
+            <View style={[styles.stockDot, { backgroundColor: COLOR_GRANEL }]} />
+            <Text style={[styles.stockIndicatorNum, { color: COLOR_GRANEL }]}>{art.cantidad}</Text>
+            <Text style={styles.stockIndicatorLbl}>Disponibles</Text>
+          </View>
+          {hasPrestamos && (
+            <View style={styles.stockIndicator}>
+              <View style={[styles.stockDot, { backgroundColor: '#E65100' }]} />
+              <Text style={[styles.stockIndicatorNum, { color: '#E65100' }]}>
+                {art.prestamos_activos_count}
+              </Text>
+              <Text style={[styles.stockIndicatorLbl, { color: '#E65100' }]}>En préstamo</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={[styles.metaItem, { marginTop: 4 }]}>
+          <Icon source="map-marker-outline" size={12} color="#aaa" />
+          <Text style={styles.metaText}>{art.ubicacion_nombre}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  // ─── Render: Consumible card ──────────────────────────────────────────────
 
   const renderConsumibleCard = (art: ArticuloFlat, idx: number) => {
     const hasBarra = art.stock_porcentaje !== null && art.stock_minimo !== null;
@@ -377,9 +419,7 @@ export default function ReportesScreen() {
         {hasBarra && pct !== null && (
           <View style={{ marginTop: 8 }}>
             <View style={styles.progressTrack}>
-              <View
-                style={[styles.progressFill, { width: `${pct}%` as `${number}%`, backgroundColor: color }]}
-              />
+              <View style={[styles.progressFill, { width: `${pct}%` as `${number}%`, backgroundColor: color }]} />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
               <Text style={[styles.progressLabel, { color }]}>
@@ -406,14 +446,18 @@ export default function ReportesScreen() {
 
   // ─── Summary bar ──────────────────────────────────────────────────────────
 
+  const accentColor =
+    activeTab === 'individual' ? COLOR_INDIVIDUAL :
+    activeTab === 'granel'     ? COLOR_GRANEL :
+                                 COLOR_CONSUMIBLE;
+
   const renderSummary = () => {
-    const color = activeTab === 'activos' ? COLOR_ACTIVOS : COLOR_CONSUMIBLE;
-    if (activeTab === 'activos') {
-      const s = summary as { total: number; productos: number; disponibles: number; prestados: number; noDisp: number };
+    if (activeTab === 'individual') {
+      const s = summary as { productos: number; total: number; disponibles: number; prestados: number };
       return (
-        <View style={[styles.summaryBar, { borderLeftColor: color }]}>
+        <View style={[styles.summaryBar, { borderLeftColor: accentColor }]}>
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryNum, { color }]}>{s.productos}</Text>
+            <Text style={[styles.summaryNum, { color: accentColor }]}>{s.productos}</Text>
             <Text style={styles.summaryLbl}>Productos</Text>
           </View>
           <View style={styles.summarySep} />
@@ -433,40 +477,54 @@ export default function ReportesScreen() {
             </Text>
             <Text style={styles.summaryLbl}>Prestados</Text>
           </View>
-          {s.noDisp > 0 && (
-            <>
-              <View style={styles.summarySep} />
-              <View style={styles.summaryItem}>
-                <Text style={[styles.summaryNum, { color: '#B71C1C' }]}>{s.noDisp}</Text>
-                <Text style={styles.summaryLbl}>No disp.</Text>
-              </View>
-            </>
-          )}
         </View>
       );
-    } else {
-      const s = summary as { total: number; totalUnidades: number; stockBajoCount: number };
+    }
+    if (activeTab === 'granel') {
+      const s = summary as { total: number; totalDisponible: number; totalPrestamos: number };
       return (
-        <View style={[styles.summaryBar, { borderLeftColor: color }]}>
+        <View style={[styles.summaryBar, { borderLeftColor: accentColor }]}>
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryNum, { color }]}>{s.total}</Text>
+            <Text style={[styles.summaryNum, { color: accentColor }]}>{s.total}</Text>
             <Text style={styles.summaryLbl}>Artículos</Text>
           </View>
           <View style={styles.summarySep} />
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryNum, { color }]}>{s.totalUnidades}</Text>
-            <Text style={styles.summaryLbl}>Unidades</Text>
+            <Text style={[styles.summaryNum, { color: '#888' }]}>{s.totalDisponible}</Text>
+            <Text style={styles.summaryLbl}>Disponibles</Text>
           </View>
           <View style={styles.summarySep} />
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryNum, { color: s.stockBajoCount > 0 ? '#E53935' : '#2E7D32' }]}>
-              {s.stockBajoCount > 0 ? `⚠ ${s.stockBajoCount}` : '✓ 0'}
+            <Text style={[styles.summaryNum, { color: s.totalPrestamos > 0 ? '#E65100' : '#888' }]}>
+              {s.totalPrestamos}
             </Text>
-            <Text style={styles.summaryLbl}>Stock bajo</Text>
+            <Text style={styles.summaryLbl}>En préstamo</Text>
           </View>
         </View>
       );
     }
+    // consumible
+    const s = summary as { total: number; totalUnidades: number; stockBajoCount: number };
+    return (
+      <View style={[styles.summaryBar, { borderLeftColor: accentColor }]}>
+        <View style={styles.summaryItem}>
+          <Text style={[styles.summaryNum, { color: accentColor }]}>{s.total}</Text>
+          <Text style={styles.summaryLbl}>Artículos</Text>
+        </View>
+        <View style={styles.summarySep} />
+        <View style={styles.summaryItem}>
+          <Text style={[styles.summaryNum, { color: '#888' }]}>{s.totalUnidades}</Text>
+          <Text style={styles.summaryLbl}>Unidades totales</Text>
+        </View>
+        <View style={styles.summarySep} />
+        <View style={styles.summaryItem}>
+          <Text style={[styles.summaryNum, { color: s.stockBajoCount > 0 ? '#E53935' : '#2E7D32' }]}>
+            {s.stockBajoCount > 0 ? `⚠ ${s.stockBajoCount}` : '✓ 0'}
+          </Text>
+          <Text style={styles.summaryLbl}>Stock bajo</Text>
+        </View>
+      </View>
+    );
   };
 
   // ─── Main render ──────────────────────────────────────────────────────────
@@ -480,47 +538,68 @@ export default function ReportesScreen() {
     );
   }
 
-  const accentColor = activeTab === 'activos' ? COLOR_ACTIVOS : COLOR_CONSUMIBLE;
-
   return (
     <View style={styles.container}>
       {/* ── Tabs ── */}
       <View style={styles.tabBar}>
+        {/* Codificados */}
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'activos' && styles.tabActive]}
-          onPress={() => switchTab('activos')}
+          style={[styles.tab, activeTab === 'individual' && { borderBottomColor: COLOR_INDIVIDUAL }]}
+          onPress={() => switchTab('individual')}
           activeOpacity={0.75}
         >
           <Icon
             source="package-variant-closed"
-            size={16}
-            color={activeTab === 'activos' ? COLOR_ACTIVOS : '#999'}
+            size={15}
+            color={activeTab === 'individual' ? COLOR_INDIVIDUAL : '#999'}
           />
-          <Text style={[styles.tabText, activeTab === 'activos' && { color: COLOR_ACTIVOS }]}>
-            Activos
+          <Text style={[styles.tabText, activeTab === 'individual' && { color: COLOR_INDIVIDUAL }]}>
+            Codificados
           </Text>
-          <View style={[styles.tabCount, activeTab === 'activos' && { backgroundColor: COLOR_ACTIVOS }]}>
-            <Text style={[styles.tabCountText, activeTab === 'activos' && { color: '#fff' }]}>
-              {activosFlat.length}
+          <View style={[styles.tabCount, activeTab === 'individual' && { backgroundColor: COLOR_INDIVIDUAL }]}>
+            <Text style={[styles.tabCountText, activeTab === 'individual' && { color: '#fff' }]}>
+              {individualesFlat.length}
             </Text>
           </View>
         </TouchableOpacity>
 
+        {/* A Granel */}
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'consumibles' && styles.tabActiveGreen]}
-          onPress={() => switchTab('consumibles')}
+          style={[styles.tab, activeTab === 'granel' && { borderBottomColor: COLOR_GRANEL }]}
+          onPress={() => switchTab('granel')}
           activeOpacity={0.75}
         >
           <Icon
             source="layers-outline"
-            size={16}
-            color={activeTab === 'consumibles' ? COLOR_CONSUMIBLE : '#999'}
+            size={15}
+            color={activeTab === 'granel' ? COLOR_GRANEL : '#999'}
           />
-          <Text style={[styles.tabText, activeTab === 'consumibles' && { color: COLOR_CONSUMIBLE }]}>
-            Insumos
+          <Text style={[styles.tabText, activeTab === 'granel' && { color: COLOR_GRANEL }]}>
+            A Granel
           </Text>
-          <View style={[styles.tabCount, activeTab === 'consumibles' && { backgroundColor: COLOR_CONSUMIBLE }]}>
-            <Text style={[styles.tabCountText, activeTab === 'consumibles' && { color: '#fff' }]}>
+          <View style={[styles.tabCount, activeTab === 'granel' && { backgroundColor: COLOR_GRANEL }]}>
+            <Text style={[styles.tabCountText, activeTab === 'granel' && { color: '#fff' }]}>
+              {granelFlat.length}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Consumibles */}
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'consumible' && { borderBottomColor: COLOR_CONSUMIBLE }]}
+          onPress={() => switchTab('consumible')}
+          activeOpacity={0.75}
+        >
+          <Icon
+            source="beaker-outline"
+            size={15}
+            color={activeTab === 'consumible' ? COLOR_CONSUMIBLE : '#999'}
+          />
+          <Text style={[styles.tabText, activeTab === 'consumible' && { color: COLOR_CONSUMIBLE }]}>
+            Consumibles
+          </Text>
+          <View style={[styles.tabCount, activeTab === 'consumible' && { backgroundColor: COLOR_CONSUMIBLE }]}>
+            <Text style={[styles.tabCountText, activeTab === 'consumible' && { color: '#fff' }]}>
               {consumiblesFlat.length}
             </Text>
           </View>
@@ -532,17 +611,13 @@ export default function ReportesScreen() {
         <FilterPill
           label="Categoría"
           value={filterCategoria}
-          onPress={filterCategoria !== 'Todos'
-            ? () => setFilterCategoria('Todos')
-            : pickCategoria}
+          onPress={filterCategoria !== 'Todos' ? () => setFilterCategoria('Todos') : pickCategoria}
           color={accentColor}
         />
         <FilterPill
           label="Ubicación"
           value={filterUbicacion}
-          onPress={filterUbicacion !== 'Todos'
-            ? () => setFilterUbicacion('Todos')
-            : pickUbicacion}
+          onPress={filterUbicacion !== 'Todos' ? () => setFilterUbicacion('Todos') : pickUbicacion}
           color={accentColor}
         />
         {(filterCategoria !== 'Todos' || filterUbicacion !== 'Todos') && (
@@ -585,12 +660,14 @@ export default function ReportesScreen() {
               <Icon source="magnify-close" size={40} color="#ccc" />
               <Text style={styles.emptyText}>
                 {currentFlat.length === 0
-                  ? `No hay ${activeTab === 'activos' ? 'activos' : 'insumos'} registrados`
+                  ? `No hay ${activeTab === 'individual' ? 'artículos codificados' : activeTab === 'granel' ? 'artículos a granel' : 'consumibles'} registrados`
                   : 'Sin resultados para los filtros aplicados'}
               </Text>
             </View>
-          ) : activeTab === 'activos' ? (
-            groupedActivos.map((g, idx) => renderProductoGroupCard(g, idx))
+          ) : activeTab === 'individual' ? (
+            groupedIndividual.map((g, idx) => renderIndividualGroupCard(g, idx))
+          ) : activeTab === 'granel' ? (
+            filtered.map((art, idx) => renderGranelCard(art, idx))
           ) : (
             filtered.map((art, idx) => renderConsumibleCard(art, idx))
           )}
@@ -603,16 +680,8 @@ export default function ReportesScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
+  container: { flex: 1, backgroundColor: '#F5F7FA' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   loadingText: { color: '#888', fontSize: 14 },
   // ── Tabs ──
   tabBar: {
@@ -620,39 +689,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#ECECEC',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 4,
+    paddingHorizontal: 8,
+    paddingTop: 10,
+    gap: 2,
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
     paddingVertical: 10,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  tabActive: {
-    borderBottomColor: PANTONE_295C,
-  },
-  tabActiveGreen: {
-    borderBottomColor: '#388E3C',
-  },
   tabText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#999',
   },
   tabCount: {
     borderRadius: 10,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
     backgroundColor: '#ECECEC',
   },
   tabCountText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: '#666',
   },
@@ -679,19 +742,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
     maxWidth: 160,
   },
-  filterPillText: {
-    fontSize: 13,
-    color: '#666',
-    flexShrink: 1,
-  },
-  clearBtn: {
-    marginLeft: 'auto',
-  },
-  clearBtnText: {
-    fontSize: 13,
-    color: '#E53935',
-    fontWeight: '600',
-  },
+  filterPillText: { fontSize: 13, color: '#666', flexShrink: 1 },
+  clearBtn: { marginLeft: 'auto' },
+  clearBtnText: { fontSize: 13, color: '#E53935', fontWeight: '600' },
   // ── Summary bar ──
   summaryBar: {
     flexDirection: 'row',
@@ -710,31 +763,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 3,
   },
-  summaryItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  summaryNum: {
-    fontSize: 22,
-    fontWeight: '800',
-    lineHeight: 26,
-  },
-  summaryLbl: {
-    fontSize: 10,
-    color: '#888',
-    marginTop: 1,
-  },
-  summarySep: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#EEE',
-  },
+  summaryItem: { flex: 1, alignItems: 'center' },
+  summaryNum: { fontSize: 22, fontWeight: '800', lineHeight: 26 },
+  summaryLbl: { fontSize: 10, color: '#888', marginTop: 1 },
+  summarySep: { width: 1, height: 30, backgroundColor: '#EEE' },
   // ── Article cards ──
-  listContent: {
-    padding: 16,
-    paddingBottom: 48,
-    gap: 8,
-  },
+  listContent: { padding: 16, paddingBottom: 48, gap: 8 },
   articleCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -745,14 +779,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 3,
   },
-  articleCardAlert: {
-    borderLeftWidth: 3,
-    borderLeftColor: '#E53935',
-  },
-  articleCardWarning: {
-    borderLeftWidth: 3,
-    borderLeftColor: '#FF7043',
-  },
+  articleCardAlert: { borderLeftWidth: 3, borderLeftColor: '#E53935' },
+  articleCardWarning: { borderLeftWidth: 3, borderLeftColor: '#FF7043' },
   articleCardTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -764,39 +792,9 @@ const styles = StyleSheet.create({
     color: '#1A1A2E',
     lineHeight: 18,
   },
-  articleCodigo: {
-    fontSize: 11,
-    color: '#999',
-    fontFamily: 'monospace',
-    marginTop: 2,
-  },
-  estadoBadge: {
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignSelf: 'flex-start',
-    flexShrink: 0,
-  },
-  estadoBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  articleMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 8,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  metaText: {
-    fontSize: 11,
-    color: '#888',
-  },
-  // ── Stock indicators (activos grouped) ──
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  metaText: { fontSize: 11, color: '#888' },
+  // ── Total badge ──
   totalBadge: {
     alignItems: 'center',
     flexShrink: 0,
@@ -805,56 +803,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  totalBadgeNum: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: PANTONE_295C,
-    lineHeight: 26,
-  },
-  totalBadgeLbl: {
-    fontSize: 9,
-    color: '#888',
-    marginTop: 1,
-  },
+  totalBadgeNum: { fontSize: 22, fontWeight: '800', lineHeight: 26 },
+  totalBadgeLbl: { fontSize: 9, color: '#888', marginTop: 1 },
+  // ── Stock indicators ──
   stockIndicatorRow: {
     flexDirection: 'row',
     gap: 16,
     marginTop: 10,
     marginBottom: 6,
   },
-  stockIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  stockDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  stockIndicatorNum: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#444',
-  },
-  stockIndicatorLbl: {
-    fontSize: 11,
-    color: '#888',
-  },
+  stockIndicator: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  stockDot: { width: 8, height: 8, borderRadius: 4 },
+  stockIndicatorNum: { fontSize: 14, fontWeight: '700', color: '#444' },
+  stockIndicatorLbl: { fontSize: 11, color: '#888' },
   // ── Stock (consumibles) ──
-  stockBox: {
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  stockCount: {
-    fontSize: 26,
-    fontWeight: '800',
-    lineHeight: 28,
-  },
-  stockUnit: {
-    fontSize: 10,
-    color: '#888',
-  },
+  stockBox: { alignItems: 'center', flexShrink: 0 },
+  stockCount: { fontSize: 26, fontWeight: '800', lineHeight: 28 },
+  stockUnit: { fontSize: 10, color: '#888' },
   progressTrack: {
     height: 6,
     backgroundColor: '#E8E8E8',
@@ -862,46 +827,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     flexDirection: 'row',
   },
-  progressFill: {
-    height: 6,
-    borderRadius: 3,
-  },
-  progressLabel: {
-    fontSize: 11,
-    color: '#888',
-    fontWeight: '600',
-  },
-  noMinimoLabel: {
-    fontSize: 11,
-    color: '#bbb',
-    fontStyle: 'italic',
-    marginTop: 6,
-  },
+  progressFill: { height: 6, borderRadius: 3 },
+  progressLabel: { fontSize: 11, color: '#888', fontWeight: '600' },
+  noMinimoLabel: { fontSize: 11, color: '#bbb', fontStyle: 'italic', marginTop: 6 },
   // ── Empty / Error ──
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    gap: 12,
-  },
-  emptyText: {
-    color: '#aaa',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  errorBox: {
-    alignItems: 'center',
-    paddingVertical: 48,
-    gap: 12,
-  },
-  errorText: {
-    color: '#E53935',
-    fontSize: 14,
-    textAlign: 'center',
-    paddingHorizontal: 24,
-  },
-  retryLink: {
-    color: PANTONE_295C,
-    fontWeight: '700',
-    fontSize: 14,
-  },
+  emptyState: { alignItems: 'center', paddingVertical: 60, gap: 12 },
+  emptyText: { color: '#aaa', fontSize: 14, textAlign: 'center' },
+  errorBox: { alignItems: 'center', paddingVertical: 48, gap: 12 },
+  errorText: { color: '#E53935', fontSize: 14, textAlign: 'center', paddingHorizontal: 24 },
+  retryLink: { color: PANTONE_295C, fontWeight: '700', fontSize: 14 },
 });
