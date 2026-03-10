@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Icon } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { PANTONE_295C } from '../../theme/colors';
@@ -19,8 +20,9 @@ import {
   crearPrestamo,
   ArticuloList,
 } from '../../api/inventario';
+import { listarMiembros, Miembro } from '../../api/miembros';
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
   return (
@@ -31,30 +33,52 @@ function FieldLabel({ label, required }: { label: string; required?: boolean }) 
   );
 }
 
+function formatDateDisplay(date: Date): string {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return `${d}/${m}/${date.getFullYear()}`;
+}
+
+function toISODateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PrestamoFormScreen() {
   const navigation = useNavigation<any>();
 
+  // Articles
   const [articulosDisponibles, setArticulosDisponibles] = useState<ArticuloList[]>([]);
   const [loadingArticulos, setLoadingArticulos] = useState(true);
-
   const [selectedArticulo, setSelectedArticulo] = useState<ArticuloList | null>(null);
   const [cantidadPrestada, setCantidadPrestada] = useState('1');
-  const [prestatarioId, setPrestatarioId] = useState('');
-  const [fechaDevolucion, setFechaDevolucion] = useState('');
+
+  // Member search
+  const [miembroSearch, setMiembroSearch] = useState('');
+  const [miembros, setMiembros] = useState<Miembro[]>([]);
+  const [loadingMiembros, setLoadingMiembros] = useState(false);
+  const [selectedMiembro, setSelectedMiembro] = useState<{ id: number; nombre: string } | null>(null);
+
+  // Date picker
+  const [fechaDevolucion, setFechaDevolucion] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Other fields
   const [condicionEntrega, setCondicionEntrega] = useState('');
   const [notas, setNotas] = useState('');
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ─── Load available articles ─────────────────────────────────────────────────
+  // ─── Load articles ───────────────────────────────────────────────────────────
 
   const loadArticulos = useCallback(async () => {
     setLoadingArticulos(true);
     try {
-      // Load all and filter: disponibles or consumibles with stock > 0
       const data = await listarArticulos({ page_size: 200 });
       const prestables = data.results.filter(
         (a) => a.estado === 'disponible' || (a.es_consumible && a.cantidad > 0),
@@ -67,11 +91,30 @@ export default function PrestamoFormScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadArticulos();
-  }, [loadArticulos]);
+  useEffect(() => { loadArticulos(); }, [loadArticulos]);
 
-  // ─── Handlers ───────────────────────────────────────────────────────────────
+  // ─── Member search ───────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (miembroSearch.trim().length < 2) {
+      setMiembros([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setLoadingMiembros(true);
+      try {
+        const res = await listarMiembros({ search: miembroSearch.trim(), page_size: 10 });
+        setMiembros(res.results ?? []);
+      } catch {
+        setMiembros([]);
+      } finally {
+        setLoadingMiembros(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [miembroSearch]);
+
+  // ─── Article selector ────────────────────────────────────────────────────────
 
   const selectArticulo = () => {
     if (loadingArticulos) {
@@ -90,31 +133,20 @@ export default function PrestamoFormScreen() {
           text: a.es_consumible
             ? `${a.nombre}${a.codigo ? ` (${a.codigo})` : ''} — ${a.cantidad} disp.`
             : `${a.nombre}${a.codigo ? ` (${a.codigo})` : ''}`,
-          onPress: () => {
-            setSelectedArticulo(a);
-            setCantidadPrestada('1');
-          },
+          onPress: () => { setSelectedArticulo(a); setCantidadPrestada('1'); },
         })),
         { text: 'Cancelar', style: 'cancel' as const },
       ],
     );
   };
 
+  // ─── Save ────────────────────────────────────────────────────────────────────
+
   const handleSave = async () => {
-    if (!selectedArticulo) {
-      setError('Debes seleccionar un artículo.');
-      return;
-    }
-    const prestatarioNum = parseInt(prestatarioId, 10);
-    if (!prestatarioId.trim() || isNaN(prestatarioNum)) {
-      setError('El ID del prestatario es requerido y debe ser un número válido.');
-      return;
-    }
+    if (!selectedArticulo) { setError('Debes seleccionar un artículo.'); return; }
+    if (!selectedMiembro) { setError('Debes seleccionar el prestatario.'); return; }
     const cantNum = parseInt(cantidadPrestada, 10);
-    if (isNaN(cantNum) || cantNum < 1) {
-      setError('La cantidad a prestar debe ser al menos 1.');
-      return;
-    }
+    if (isNaN(cantNum) || cantNum < 1) { setError('La cantidad a prestar debe ser al menos 1.'); return; }
     if (selectedArticulo.es_consumible && cantNum > selectedArticulo.cantidad) {
       setError(`Stock insuficiente. Disponible: ${selectedArticulo.cantidad} ${selectedArticulo.unidad_medida}.`);
       return;
@@ -124,9 +156,9 @@ export default function PrestamoFormScreen() {
     try {
       await crearPrestamo({
         articulo: selectedArticulo.id,
-        prestatario: prestatarioNum,
+        prestatario: selectedMiembro.id,
         cantidad_prestada: cantNum,
-        fecha_devolucion_esperada: fechaDevolucion.trim() || null,
+        fecha_devolucion_esperada: fechaDevolucion ? toISODateStr(fechaDevolucion) : null,
         condicion_entrega: condicionEntrega.trim(),
         notas: notas.trim(),
       });
@@ -143,7 +175,7 @@ export default function PrestamoFormScreen() {
     }
   };
 
-  // ─── Main render ────────────────────────────────────────────────────────────
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <KeyboardAvoidingView
@@ -193,10 +225,13 @@ export default function PrestamoFormScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Cantidad a prestar — solo para consumibles */}
+        {/* Cantidad — solo consumibles */}
         {selectedArticulo?.es_consumible && (
           <View style={styles.section}>
-            <FieldLabel label={`Cantidad a prestar (máx. ${selectedArticulo.cantidad} ${selectedArticulo.unidad_medida})`} required />
+            <FieldLabel
+              label={`Cantidad a prestar (máx. ${selectedArticulo.cantidad} ${selectedArticulo.unidad_medida})`}
+              required
+            />
             <TextInput
               style={styles.input}
               value={cantidadPrestada}
@@ -208,30 +243,98 @@ export default function PrestamoFormScreen() {
           </View>
         )}
 
-        {/* Prestatario */}
+        {/* Prestatario — member search */}
         <View style={styles.section}>
-          <FieldLabel label="ID del prestatario (miembro)" required />
-          <TextInput
-            style={styles.input}
-            value={prestatarioId}
-            onChangeText={(t) => setPrestatarioId(t.replace(/[^0-9]/g, ''))}
-            placeholder="ID numérico del miembro"
-            placeholderTextColor="#999"
-            keyboardType="numeric"
-          />
-          <Text style={styles.hint}>Ingresa el ID numérico del miembro prestatario.</Text>
+          <FieldLabel label="Prestatario" required />
+          {selectedMiembro ? (
+            <View style={styles.selectedChip}>
+              <Icon source="account" size={16} color={PANTONE_295C} />
+              <Text style={styles.selectedChipText} numberOfLines={1}>
+                {selectedMiembro.nombre}
+              </Text>
+              <TouchableOpacity
+                onPress={() => { setSelectedMiembro(null); setMiembroSearch(''); }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Icon source="close-circle" size={18} color="#999" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Buscar por nombre..."
+                placeholderTextColor="#999"
+                value={miembroSearch}
+                onChangeText={setMiembroSearch}
+              />
+              {miembroSearch.trim().length >= 2 && (
+                <View style={styles.suggestionList}>
+                  {loadingMiembros ? (
+                    <ActivityIndicator size="small" color={PANTONE_295C} style={{ padding: 10 }} />
+                  ) : miembros.length === 0 ? (
+                    <Text style={styles.noResults}>Sin resultados</Text>
+                  ) : (
+                    miembros.map((m) => (
+                      <TouchableOpacity
+                        key={m.id}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          setSelectedMiembro({ id: m.id, nombre: `${m.nombre} ${m.apellidos}` });
+                          setMiembroSearch('');
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Icon source="account-outline" size={16} color="#888" />
+                        <View style={styles.suggestionInfo}>
+                          <Text style={styles.suggestionName}>{m.nombre} {m.apellidos}</Text>
+                          {m.email && <Text style={styles.suggestionSub}>{m.email}</Text>}
+                        </View>
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+              )}
+            </>
+          )}
         </View>
 
-        {/* Fecha de devolución */}
+        {/* Fecha de devolución — native date picker */}
         <View style={styles.section}>
           <FieldLabel label="Fecha de devolución esperada" />
-          <TextInput
-            style={styles.input}
-            value={fechaDevolucion}
-            onChangeText={setFechaDevolucion}
-            placeholder="YYYY-MM-DD (opcional)"
-            placeholderTextColor="#999"
-          />
+          <View style={styles.dateRow}>
+            <TouchableOpacity
+              style={[styles.dateButton, { flex: 1 }]}
+              onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.75}
+            >
+              <Icon source="calendar-outline" size={18} color="#666" />
+              <Text style={[styles.dateButtonText, !fechaDevolucion && { color: '#999' }]}>
+                {fechaDevolucion ? formatDateDisplay(fechaDevolucion) : 'Sin fecha (opcional)'}
+              </Text>
+            </TouchableOpacity>
+            {fechaDevolucion && (
+              <TouchableOpacity
+                style={styles.dateClearBtn}
+                onPress={() => setFechaDevolucion(null)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Icon source="close-circle" size={18} color="#999" />
+              </TouchableOpacity>
+            )}
+          </View>
+          {showDatePicker && (
+            <DateTimePicker
+              value={fechaDevolucion ?? new Date()}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              minimumDate={new Date()}
+              onChange={(_e, date) => {
+                setShowDatePicker(Platform.OS === 'ios');
+                if (date) setFechaDevolucion(date);
+              }}
+            />
+          )}
         </View>
 
         {/* Condición de entrega */}
@@ -262,7 +365,6 @@ export default function PrestamoFormScreen() {
 
         {error ? <Text style={styles.formError}>{error}</Text> : null}
 
-        {/* Buttons */}
         <View style={styles.formButtons}>
           <TouchableOpacity
             style={styles.cancelButton}
@@ -291,17 +393,9 @@ export default function PrestamoFormScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  section: {
-    marginBottom: 4,
-  },
+  container: { flex: 1, backgroundColor: '#F5F7FA' },
+  scrollContent: { padding: 16, paddingBottom: 40 },
+  section: { marginBottom: 4 },
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
@@ -323,11 +417,7 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
-  hint: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 4,
-  },
+  // Article selector
   selectButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -340,29 +430,78 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     minHeight: 46,
   },
-  selectButtonEmpty: {
-    borderStyle: 'dashed',
-  },
-  selectButtonContent: {
+  selectButtonEmpty: { borderStyle: 'dashed' },
+  selectButtonContent: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  selectButtonText: { fontSize: 15, fontWeight: '600', color: '#1A1A2E' },
+  selectButtonSubText: { fontSize: 12, color: '#888', marginTop: 2 },
+  selectButtonPlaceholder: { fontSize: 15, color: '#999' },
+  // Member chip (selected state)
+  selectedChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    backgroundColor: '#EAF0FB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#C5D6F0',
+  },
+  selectedChipText: {
     flex: 1,
-  },
-  selectButtonText: {
     fontSize: 15,
+    color: PANTONE_295C,
     fontWeight: '600',
-    color: '#1A1A2E',
   },
-  selectButtonSubText: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
+  // Member suggestions dropdown
+  suggestionList: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    marginTop: 4,
+    overflow: 'hidden',
   },
-  selectButtonPlaceholder: {
-    fontSize: 15,
+  noResults: {
+    padding: 12,
+    fontSize: 13,
     color: '#999',
+    textAlign: 'center',
   },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  suggestionInfo: { flex: 1 },
+  suggestionName: { fontSize: 14, fontWeight: '600', color: '#1A1A2E' },
+  suggestionSub: { fontSize: 12, color: '#888', marginTop: 2 },
+  // Date picker
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  dateButtonText: { fontSize: 15, color: '#1A1A2E' },
+  dateClearBtn: {
+    padding: 2,
+  },
+  // Form
   formError: {
     color: '#E53935',
     fontSize: 13,
@@ -373,11 +512,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#E53935',
   },
-  formButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
-  },
+  formButtons: { flexDirection: 'row', gap: 12, marginTop: 24 },
   cancelButton: {
     flex: 1,
     borderWidth: 1,
@@ -387,11 +522,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
   },
-  cancelButtonText: {
-    color: '#666',
-    fontWeight: '600',
-    fontSize: 15,
-  },
+  cancelButtonText: { color: '#666', fontWeight: '600', fontSize: 15 },
   saveButton: {
     flex: 2,
     backgroundColor: PANTONE_295C,
@@ -399,9 +530,5 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  saveButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
+  saveButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
