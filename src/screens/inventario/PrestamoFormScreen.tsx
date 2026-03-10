@@ -324,16 +324,26 @@ export default function PrestamoFormScreen() {
             )}
           </View>
           {showDatePicker && (
-            <DateTimePicker
-              value={fechaDevolucion ?? new Date()}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              minimumDate={new Date()}
-              onChange={(_e, date) => {
-                setShowDatePicker(Platform.OS === 'ios');
-                if (date) setFechaDevolucion(date);
-              }}
-            />
+            <View>
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity
+                  style={styles.iosPickerDoneBtn}
+                  onPress={() => setShowDatePicker(false)}
+                >
+                  <Text style={styles.iosPickerDoneText}>Listo ✓</Text>
+                </TouchableOpacity>
+              )}
+              <DateTimePicker
+                value={fechaDevolucion ?? new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                minimumDate={new Date()}
+                onChange={(_e, date) => {
+                  if (Platform.OS === 'android') setShowDatePicker(false);
+                  if (date) setFechaDevolucion(date);
+                }}
+              />
+            </View>
           )}
         </View>
 
@@ -500,6 +510,20 @@ const styles = StyleSheet.create({
   dateButtonText: { fontSize: 15, color: '#1A1A2E' },
   dateClearBtn: {
     padding: 2,
+  },
+  iosPickerDoneBtn: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: PANTONE_295C,
+    borderRadius: 6,
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  iosPickerDoneText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
   },
   // Form
   formError: {
