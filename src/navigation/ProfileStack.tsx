@@ -3,6 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import ProfileScreen from '../screens/Profile';
 import ChangePasswordScreen from '../screens/ChangePassword';
 import FamilyRelationshipsScreen from '../screens/FamilyRelationships';
+import DeleteAccountScreen from '../screens/DeleteAccount';
 import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 
 const Stack = createStackNavigator();
@@ -30,6 +31,11 @@ export default function ProfileStack() {
         name="FamilyRelationships"
         component={FamilyRelationshipsScreen}
         options={{ title: 'Relaciones Familiares' }}
+      />
+      <Stack.Screen
+        name="DeleteAccount"
+        component={DeleteAccountScreen}
+        options={{ title: 'Eliminar Cuenta' }}
       />
     </Stack.Navigator>
   );

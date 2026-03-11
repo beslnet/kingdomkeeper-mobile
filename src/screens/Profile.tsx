@@ -581,6 +581,15 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
+          style={styles.deleteAccountLink}
+          onPress={() => navigation.navigate('DeleteAccount')}
+          activeOpacity={0.7}
+        >
+          <Icon source="account-remove-outline" size={18} color="#C0392B" />
+          <Text style={styles.deleteAccountText}>Eliminar mi cuenta</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.logoutButton, loggingOut && { opacity: 0.6 }]}
           onPress={handleLogout}
           disabled={loggingOut}
@@ -747,6 +756,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   changePasswordText: { color: PANTONE_295C, fontWeight: '600', fontSize: 15 },
+  deleteAccountLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+    marginBottom: 12,
+  },
+  deleteAccountText: { color: '#C0392B', fontWeight: '600', fontSize: 15 },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -26,3 +26,25 @@ export const solicitarRestablecerPassword = async (email: string) => {
   const res = await api.post('/api/core/usuarios/solicitar-restablecer-password/', { email });
   return res.data;
 };
+
+export interface IglesiaAdministrada {
+  id: number;
+  nombre: string;
+  otros_admins: number;
+}
+
+export interface VerificarEliminacionResponse {
+  puede_eliminar: boolean;
+  iglesias_administradas: IglesiaAdministrada[];
+  mensaje: string;
+}
+
+export const verificarEliminacion = async (): Promise<VerificarEliminacionResponse> => {
+  const res = await api.post('/api/auth/verificar-eliminacion/');
+  return res.data;
+};
+
+export const eliminarCuenta = async (password: string) => {
+  const res = await api.post('/api/auth/eliminar-cuenta/', { password });
+  return res.data;
+};
