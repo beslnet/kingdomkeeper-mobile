@@ -13,6 +13,7 @@ const LOGO_SIZE = Math.round(SCREEN_WIDTH * 0.45);
 
 export default function LoginScreen() {
     const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+    const passwordRef = React.useRef<any>(null);
     const [username, setUsername] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [usernameError, setUsernameError] = React.useState('');
@@ -124,6 +125,8 @@ export default function LoginScreen() {
                     autoCorrect={false}
                     keyboardType="default"
                     dense
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordRef.current?.focus()}
                     onBlur={() => setUsernameTouched(true)}
                 />
                 {showUsernameError && (
@@ -135,6 +138,7 @@ export default function LoginScreen() {
                 )}
 
                 <TextInput
+                    ref={passwordRef}
                     label="Contraseña"
                     value={password}
                     onChangeText={text => {
@@ -163,6 +167,8 @@ export default function LoginScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                     dense
+                    returnKeyType="go"
+                    onSubmitEditing={handleLogin}
                     onBlur={() => setPasswordTouched(true)}
                 />
                 {showPasswordError && (
