@@ -421,7 +421,10 @@ export default function CasoDetailScreen({ route }: { route: any }) {
                   {caso.responsable.nombre_completo ||
                     `${caso.responsable.nombre} ${caso.responsable.apellidos}`}
                 </Text>
-                <Text style={styles.responsableEmail}>{caso.responsable.email}</Text>
+                {caso.responsable.email &&
+                  !caso.responsable.email.includes('@removed.kingdomkeeper.church') && (
+                  <Text style={styles.responsableEmail}>{caso.responsable.email}</Text>
+                )}
               </View>
             </View>
           ) : (
