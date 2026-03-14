@@ -158,7 +158,7 @@ export const obtenerLogs = async (id: number): Promise<LogCasoPastoral[]> => {
 // ─── User listing (for responsable search) ───────────────────────────────────
 
 export const listarUsuarios = async (): Promise<Usuario[]> => {
-  const { data } = await api.get('/api/auth/usuarios/', {
+  const { data } = await api.get('/api/core/usuarios/', {
     params: { estado: 'activo', page_size: 100 },
   });
   return Array.isArray(data) ? data : (data.results ?? []);
