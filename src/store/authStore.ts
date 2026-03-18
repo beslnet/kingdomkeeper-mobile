@@ -22,6 +22,7 @@ export type AuthState = {
   checkAuth: () => Promise<void>;
   checkTerms: () => Promise<void>;
   setTermsAccepted: () => void;
+  setUser: (user: any) => void;
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -115,6 +116,10 @@ export const useAuthStore = create<AuthState>()(
 
       setTermsAccepted: () => {
         set({ termsAccepted: true, pendingDocuments: [] });
+      },
+
+      setUser: (user: any) => {
+        set({ user });
       },
     }),
     {

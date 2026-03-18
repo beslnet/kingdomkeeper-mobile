@@ -47,6 +47,7 @@ const GENEROS = [
 export default function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const setUser = useAuthStore((state) => state.setUser);
   const iglesiaNombre = useIglesiaStore((state) => state.iglesiaNombre);
   const navigation = useNavigation<any>();
 
@@ -151,7 +152,21 @@ export default function ProfileScreen() {
         name: fileName,
       } as any);
       const result = await uploadProfilePhoto(formData);
-      if (result.foto_perfil_url) setFotoUrl(result.foto_perfil_url);
+      if (result.foto_perfil_url) {
+        const url = result.foto_perfil_url;
+        const cacheBustedUrl = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+        setFotoUrl(cacheBustedUrl);
+        // Actualiza el store global para refrescar el avatar en otros componentes
+        if (user) {
+          setUser({
+            ...user,
+            miembro_asociado: {
+              ...(user.miembro_asociado ?? {}),
+              foto_perfil_url: url,
+            },
+          });
+        }
+      }
     } catch (err: any) {
       const status = err?.response?.status;
       if (status === 400) {
