@@ -33,6 +33,7 @@ const ESTADO_OPTIONS = [
 
 function MiembroCard({ item, onPress }: { item: Miembro; onPress: () => void }) {
   const estadoColor = getEstadoMembresiaColor(item.estado_membresia);
+  const enEliminacion = item.usuario_asociado?.cuenta_en_eliminacion === true;
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
       <View style={styles.cardLeft}>
@@ -51,6 +52,12 @@ function MiembroCard({ item, onPress }: { item: Miembro; onPress: () => void }) 
             </Text>
           </View>
         </View>
+        {enEliminacion && (
+          <View style={styles.deletionWarningRow}>
+            <Icon source="account-remove-outline" size={12} color="#E53935" />
+            <Text style={styles.deletionWarningText}>Cuenta en proceso de eliminación</Text>
+          </View>
+        )}
         <View style={styles.cardMeta}>
           {item.documento_identidad ? (
             <View style={styles.metaRow}>
@@ -409,6 +416,13 @@ const styles = StyleSheet.create({
   cardMeta: { gap: 2 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { fontSize: 12, color: '#666' },
+  deletionWarningRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  deletionWarningText: { fontSize: 11, color: '#E53935', fontWeight: '500' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyContainer: { flexGrow: 1 },
   emptyText: { fontSize: 14, color: '#999', marginTop: 8, textAlign: 'center' },

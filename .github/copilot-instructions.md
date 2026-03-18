@@ -1,4 +1,20 @@
-# Copilot Instructions – KingdomKeeper Mobile
+# KingdomKeeper Mobile — Copilot Instructions
+
+## Specs canónicas
+
+Los documentos en `../kingdomkeeper-docs/specs/` son la **fuente única de verdad** del proyecto. Para mobile, revisar en particular:
+
+| Spec | Cuándo leer |
+|------|-------------|
+| `00_ARQUITECTURA.md` | Estructura y convenciones generales |
+| `00_SISTEMA_PERMISOS.md` | Sistema de permisos, roles, jerarquía de validación |
+| `02_TESTING.md` | Antes de escribir cualquier test |
+| `specs/modules/12_MOBILE.md` | Roadmap y requisitos específicos del módulo mobile |
+| `specs/modules/` | Spec del módulo de negocio a trabajar |
+
+---
+
+
 
 ## Commands
 

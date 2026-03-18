@@ -26,6 +26,7 @@ export interface Miembro {
     id: number;
     email: string;
     estado: 'activo' | 'pendiente_activacion' | 'suspendido' | 'bloqueado';
+    cuenta_en_eliminacion: boolean;
     email_pendiente?: string;
   } | null;
 }
@@ -49,6 +50,7 @@ export interface RelacionFamiliar {
   miembro_relacionado_id: number;
   miembro_relacionado_nombre: string;
   tipo_relacion: string;
+  es_contacto_emergencia?: boolean;
 }
 
 export interface FamiliaResponse {

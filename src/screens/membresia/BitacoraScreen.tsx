@@ -91,7 +91,7 @@ function EntradaCard({
 
 export default function BitacoraScreen() {
   const route = useRoute<any>();
-  const { miembroId } = route.params;
+  const { miembroId, cuentaEnEliminacion } = route.params;
 
   const hasPermission = usePermissionsStore((s) => s.hasPermission);
   const isSuperAdmin = usePermissionsStore((s) => s.isSuperAdmin);
@@ -223,132 +223,127 @@ export default function BitacoraScreen() {
         />
       )}
 
-      {canCreate && (
+      {canCreate && !cuentaEnEliminacion && (
         <TouchableOpacity style={styles.fab} onPress={openModal} activeOpacity={0.85}>
           <Icon source="plus" size={28} color="#FFF" />
         </TouchableOpacity>
       )}
 
-      {/* Add entry modal */}
+      {/* Add entry modal — full screen to keep close button always accessible */}
       <Modal
         visible={modalVisible}
-        transparent
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}
       >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setModalVisible(false)}
+        <SafeAreaView style={styles.modalContainer}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Nueva entrada</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Icon source="close" size={22} color="#888" />
+              </TouchableOpacity>
+            </View>
+
             <ScrollView
-              style={styles.modalSheet}
+              style={styles.modalBody}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <TouchableOpacity activeOpacity={1}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Nueva entrada</Text>
-                  <TouchableOpacity onPress={() => setModalVisible(false)}>
-                    <Icon source="close" size={22} color="#888" />
-                  </TouchableOpacity>
+              {formError && (
+                <View style={styles.errorBanner}>
+                  <Text style={styles.errorBannerText}>{formError}</Text>
                 </View>
+              )}
 
-                {formError && (
-                  <View style={styles.errorBanner}>
-                    <Text style={styles.errorBannerText}>{formError}</Text>
-                  </View>
-                )}
-
-                <Text style={styles.fieldLabel}>Tipo</Text>
-                <TouchableOpacity
-                  style={styles.selectBtn}
-                  onPress={() => setTipoSelector((v) => !v)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={styles.selectBtnText}>{tipoLabel}</Text>
-                  <Icon source={tipoSelector ? 'chevron-up' : 'chevron-down'} size={18} color="#888" />
-                </TouchableOpacity>
-                {tipoSelector && (
-                  <View style={styles.inlineDropdown}>
-                    {TIPOS_BITACORA.map((opt) => (
-                      <TouchableOpacity
-                        key={opt.value}
-                        style={[styles.selectOption, tipo === opt.value && styles.selectOptionActive]}
-                        onPress={() => {
-                          setTipo(opt.value);
-                          setTipoSelector(false);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            styles.selectOptionText,
-                            tipo === opt.value && styles.selectOptionTextActive,
-                          ]}
-                        >
-                          {opt.label}
-                        </Text>
-                        {tipo === opt.value && <Icon source="check" size={18} color={PANTONE_295C} />}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-
-                <Text style={styles.fieldLabel}>Título *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={titulo}
-                  onChangeText={setTitulo}
-                  placeholder="Título de la entrada"
-                  placeholderTextColor="#AAA"
-                />
-
-                <Text style={styles.fieldLabel}>Contenido *</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={contenido}
-                  onChangeText={setContenido}
-                  placeholder="Describe el evento o nota..."
-                  placeholderTextColor="#AAA"
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                />
-
-                <TouchableOpacity
-                  style={styles.privadoRow}
-                  onPress={() => setEsPrivado((v) => !v)}
-                  activeOpacity={0.7}
-                >
-                  <Icon
-                    source={esPrivado ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                    size={22}
-                    color={esPrivado ? PANTONE_295C : '#888'}
-                  />
-                  <Text style={styles.privadoLabel}>Entrada privada (solo admins)</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-                  onPress={handleCreate}
-                  disabled={saving}
-                  activeOpacity={0.85}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <Text style={styles.saveBtnText}>Guardar entrada</Text>
-                  )}
-                </TouchableOpacity>
+              <Text style={styles.fieldLabel}>Tipo</Text>
+              <TouchableOpacity
+                style={styles.selectBtn}
+                onPress={() => setTipoSelector((v) => !v)}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.selectBtnText}>{tipoLabel}</Text>
+                <Icon source={tipoSelector ? 'chevron-up' : 'chevron-down'} size={18} color="#888" />
               </TouchableOpacity>
+              {tipoSelector && (
+                <View style={styles.inlineDropdown}>
+                  {TIPOS_BITACORA.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[styles.selectOption, tipo === opt.value && styles.selectOptionActive]}
+                      onPress={() => {
+                        setTipo(opt.value);
+                        setTipoSelector(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.selectOptionText,
+                          tipo === opt.value && styles.selectOptionTextActive,
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                      {tipo === opt.value && <Icon source="check" size={18} color={PANTONE_295C} />}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              <Text style={styles.fieldLabel}>Título *</Text>
+              <TextInput
+                style={styles.input}
+                value={titulo}
+                onChangeText={setTitulo}
+                placeholder="Título de la entrada"
+                placeholderTextColor="#AAA"
+              />
+
+              <Text style={styles.fieldLabel}>Contenido *</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={contenido}
+                onChangeText={setContenido}
+                placeholder="Describe el evento o nota..."
+                placeholderTextColor="#AAA"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+
+              <TouchableOpacity
+                style={styles.privadoRow}
+                onPress={() => setEsPrivado((v) => !v)}
+                activeOpacity={0.7}
+              >
+                <Icon
+                  source={esPrivado ? 'checkbox-marked' : 'checkbox-blank-outline'}
+                  size={22}
+                  color={esPrivado ? PANTONE_295C : '#888'}
+                />
+                <Text style={styles.privadoLabel}>Entrada privada (solo admins)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+                onPress={handleCreate}
+                disabled={saving}
+                activeOpacity={0.85}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Guardar entrada</Text>
+                )}
+              </TouchableOpacity>
+
+              <View style={{ height: 24 }} />
             </ScrollView>
-          </TouchableOpacity>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
@@ -418,25 +413,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
-  modalOverlay: {
+  modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
     backgroundColor: '#FFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 36,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
   },
   modalTitle: { fontSize: 16, fontWeight: '700', color: '#222' },
+  modalBody: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
   fieldLabel: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 4, marginTop: 10 },
   input: {
     backgroundColor: '#F5F5F5',

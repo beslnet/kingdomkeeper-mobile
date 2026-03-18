@@ -71,7 +71,7 @@ function RelacionItem({
 
 export default function FamilyMiembroScreen() {
   const route = useRoute<any>();
-  const { miembroId } = route.params;
+  const { miembroId, cuentaEnEliminacion } = route.params;
 
   const hasPermission = usePermissionsStore((s) => s.hasPermission);
   const isSuperAdmin = usePermissionsStore((s) => s.isSuperAdmin);
@@ -257,7 +257,7 @@ export default function FamilyMiembroScreen() {
         />
       )}
 
-      {canEdit && (
+      {canEdit && !cuentaEnEliminacion && (
         <TouchableOpacity style={styles.fab} onPress={openAddModal} activeOpacity={0.85}>
           <Icon source="account-plus-outline" size={26} color="#FFF" />
         </TouchableOpacity>

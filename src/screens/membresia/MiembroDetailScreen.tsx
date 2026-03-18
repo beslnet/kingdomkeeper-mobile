@@ -181,6 +181,7 @@ export default function MiembroDetailScreen() {
   const nombreCompleto = `${miembro.nombre} ${miembro.apellidos}`;
 
   const usuarioEstado = miembro.usuario_asociado?.estado;
+  const enEliminacion = miembro.usuario_asociado?.cuenta_en_eliminacion === true;
   const showConvertirBtn = !miembro.usuario_asociado;
   const showReenviarBtn = usuarioEstado === 'pendiente_activacion';
 
@@ -200,12 +201,27 @@ export default function MiembroDetailScreen() {
           </View>
         </View>
 
+        {/* Deletion warning banner */}
+        {enEliminacion && (
+          <View style={styles.deletionBanner}>
+            <Icon source="account-remove-outline" size={18} color="#B71C1C" />
+            <Text style={styles.deletionBannerText}>
+              Este usuario tiene una solicitud de eliminación de cuenta pendiente.
+            </Text>
+          </View>
+        )}
+
         {/* Action buttons */}
         <View style={styles.actionsRow}>
           {canEdit && (
-            <TouchableOpacity style={styles.actionBtn} onPress={handleEdit} activeOpacity={0.75}>
-              <Icon source="pencil-outline" size={20} color={PANTONE_295C} />
-              <Text style={styles.actionBtnText}>Editar</Text>
+            <TouchableOpacity
+              style={[styles.actionBtn, enEliminacion && styles.actionBtnDisabled]}
+              onPress={handleEdit}
+              disabled={enEliminacion}
+              activeOpacity={0.75}
+            >
+              <Icon source="pencil-outline" size={20} color={enEliminacion ? '#CCC' : PANTONE_295C} />
+              <Text style={[styles.actionBtnText, enEliminacion && styles.actionBtnTextDisabled]}>Editar</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -214,6 +230,7 @@ export default function MiembroDetailScreen() {
               navigation.navigate('FamilyMiembro', {
                 miembroId: miembro.id,
                 miembroNombre: nombreCompleto,
+                cuentaEnEliminacion: enEliminacion,
               })
             }
             activeOpacity={0.75}
@@ -227,6 +244,7 @@ export default function MiembroDetailScreen() {
               navigation.navigate('BitacoraMiembro', {
                 miembroId: miembro.id,
                 miembroNombre: nombreCompleto,
+                cuentaEnEliminacion: enEliminacion,
               })
             }
             activeOpacity={0.75}
@@ -320,7 +338,9 @@ export default function MiembroDetailScreen() {
                 icon="shield-check-outline"
                 label="Estado cuenta"
                 value={
-                  miembro.usuario_asociado.estado === 'activo'
+                  enEliminacion
+                    ? 'En proceso de eliminación'
+                    : miembro.usuario_asociado.estado === 'activo'
                     ? 'Activo'
                     : miembro.usuario_asociado.estado === 'pendiente_activacion'
                     ? 'Pendiente de activación'
@@ -329,7 +349,7 @@ export default function MiembroDetailScreen() {
                     : miembro.usuario_asociado.estado
                 }
               />
-              {showReenviarBtn && (
+              {showReenviarBtn && !enEliminacion && (
                 <TouchableOpacity
                   style={styles.userActionBtn}
                   onPress={handleReenviarInvitacion}
@@ -491,7 +511,8 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 12,
   },
-  actionBtnDisabled: { opacity: 0.5 },
+  actionBtnDisabled: { opacity: 0.4 },
+  actionBtnTextDisabled: { color: '#CCC' },
   actionBtnText: { fontSize: 11, color: PANTONE_295C, fontWeight: '500' },
   sectionTitle: {
     fontSize: 13,
@@ -526,6 +547,19 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 11, color: '#999', marginBottom: 1 },
   infoValue: { fontSize: 15, color: '#222' },
   noDataText: { fontSize: 14, color: '#AAA', textAlign: 'center', paddingVertical: 12 },
+  deletionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFEBEE',
+    borderLeftWidth: 4,
+    borderLeftColor: '#E53935',
+    marginHorizontal: 12,
+    marginTop: 12,
+    borderRadius: 8,
+    padding: 12,
+  },
+  deletionBannerText: { flex: 1, fontSize: 13, color: '#B71C1C', lineHeight: 18 },
   userActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
