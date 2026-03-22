@@ -76,3 +76,11 @@ yarn-error.log
 
 # Google Maps config (contains API key - never commit)
 src/config/maps.ts
+
+# Firebase config files (contain API keys)
+android/app/google-services.json
+ios/kingdomkeeperMobile/GoogleService-Info.plist
+
+# Firebase service account key
+firebase-service-account.json
+*.p8

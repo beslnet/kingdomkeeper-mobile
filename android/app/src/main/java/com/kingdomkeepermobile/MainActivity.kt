@@ -1,4 +1,4 @@
-package com.kingdomkeepermobile
+package com.kingdomkeeper.mobile
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

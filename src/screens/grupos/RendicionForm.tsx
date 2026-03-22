@@ -15,7 +15,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Icon } from 'react-native-paper';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
-import { pickSingle, types as DocTypes } from 'react-native-document-picker';
+import { pick, types as DocTypes } from '@react-native-documents/picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PANTONE_295C } from '../../theme/colors';
@@ -89,7 +89,7 @@ export default function RendicionForm() {
         text: 'Documento (PDF u otro)',
         onPress: async () => {
           try {
-            const doc = await pickSingle({ type: [DocTypes.pdf, DocTypes.doc, DocTypes.docx, DocTypes.images] });
+            const [doc] = await pick({ type: [DocTypes.pdf, DocTypes.doc, DocTypes.docx, DocTypes.images] });
             setArchivo({ uri: doc.uri, type: doc.type ?? 'application/pdf', name: doc.name ?? 'documento' });
           } catch (e: any) {
             if (!e?.message?.includes('cancelled')) {

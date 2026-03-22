@@ -1,6 +1,9 @@
-package com.kingdomkeepermobile
+package com.kingdomkeeper.mobile
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Application
+import android.os.Build
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -33,6 +36,22 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    createDefaultNotificationChannel()
     loadReactNative(this)
+  }
+
+  private fun createDefaultNotificationChannel() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      val channel = NotificationChannel(
+        "kingdomkeeper_default",
+        "General",
+        NotificationManager.IMPORTANCE_HIGH
+      ).apply {
+        description = "Notificaciones generales de KingdomKeeper"
+      }
+
+      val manager = getSystemService(NotificationManager::class.java)
+      manager?.createNotificationChannel(channel)
+    }
   }
 }

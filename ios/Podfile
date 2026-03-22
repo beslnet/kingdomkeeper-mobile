@@ -14,6 +14,9 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
+# Firebase Swift pods need modular headers (but NOT globally — that breaks RN 0.80)
+$RNFirebaseAsStaticFramework = true
+
 target 'kingdomkeeperMobile' do
   config = use_native_modules!
 
@@ -24,6 +27,16 @@ target 'kingdomkeeperMobile' do
   )
 
   pod 'RNReanimated', :path => '../node_modules/react-native-reanimated'
+
+  # Firebase dependencies that need modular headers
+  pod 'FirebaseCore', :modular_headers => true
+  pod 'FirebaseCoreInternal', :modular_headers => true
+  pod 'FirebaseMessaging', :modular_headers => true
+  pod 'FirebaseCoreExtension', :modular_headers => true
+  pod 'FirebaseInstallations', :modular_headers => true
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'GoogleDataTransport', :modular_headers => true
+  pod 'nanopb', :modular_headers => true
 
   post_install do |installer|
     # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202

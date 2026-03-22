@@ -53,6 +53,10 @@ export const useAuthStore = create<AuthState>()(
             // If terms check fails, allow navigation (non-blocking)
           }
           set({ isLoggedIn: true, loading: false, user, iglesias: iglesias ?? [], termsAccepted, pendingDocuments });
+          // Register push token in background (non-blocking)
+          import('../services/pushNotifications').then(({ initializePushNotifications }) => {
+            initializePushNotifications().catch(() => {});
+          });
         } catch (error: any) {
           set({ loading: false });
           // Translate HTTP errors to user-friendly messages
@@ -73,6 +77,8 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
+        const { unregisterPushDevice } = await import('../services/pushNotifications');
+        await unregisterPushDevice();
         await AsyncStorage.removeItem('access_token');
         await AsyncStorage.removeItem('refresh_token');
         const { useIglesiaStore } = await import('./iglesiaStore');
