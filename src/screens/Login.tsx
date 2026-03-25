@@ -4,7 +4,7 @@ import { TextInput, Button, HelperText, Text } from 'react-native-paper';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { PANTONE_134C, PANTONE_295C } from '../theme/colors';
-import { TERMS_URL, PRIVACY_URL } from '../constants/urls';
+import { TERMS_URL, PRIVACY_URL, WHATSAPP_URL } from '../constants/urls';
 import { useAuthStore, AuthState } from '../store/authStore';
 import { useIglesiaStore } from '../store/iglesiaStore';
 
@@ -70,9 +70,8 @@ export default function LoginScreen() {
     const showPasswordError = (passwordTouched || submitAttempted) && !!passwordError;
 
     const openWhatsApp = () => {
-        const phoneNumber = '56912345678'; // Cambia por tu número real
         const message = 'Hola, necesito ayuda con Kingdom Keeper';
-        const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+        const url = `${WHATSAPP_URL}?text=${encodeURIComponent(message)}`;
         Linking.openURL(url);
     };
 

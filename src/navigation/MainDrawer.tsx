@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore';
 import { useIglesiaStore } from '../store/iglesiaStore';
 import { usePermissionsStore } from '../store/permissionsStore';
 import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
+import { WHATSAPP_URL } from '../constants/urls';
 
 // Pantallas principales
 import MainTabs from './MainTabs';
@@ -197,7 +198,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       <View style={drawerStyles.footer}>
         <TouchableOpacity
           style={drawerStyles.logoutItem}
-          onPress={() => Linking.openURL('https://wa.me/56973798921')}
+          onPress={() => Linking.openURL(WHATSAPP_URL)}
           activeOpacity={0.7}
         >
           <View style={drawerStyles.menuIconWrapper}>
