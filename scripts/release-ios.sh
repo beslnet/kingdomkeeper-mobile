@@ -27,8 +27,8 @@ APP_VER_FILE="$ROOT/src/utils/appVersion.ts"
 # Configura estas variables en tu entorno o en ~/.zshrc:
 #   export iOS_API_KEY_ID="XXXXXXXXXX"
 #   export iOS_API_ISSUER="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-API_KEY="${iOS_API_KEY_ID:-}"
-API_ISSUER="${iOS_API_ISSUER:-}"
+API_KEY="${iOS_API_KEY_ID:-NMDP7FPJG9}"
+API_ISSUER="${iOS_API_ISSUER:-c2fc44ae-c581-4b31-b153-1eb4a9ab80f9}"
 
 if [[ -z "$API_KEY" || -z "$API_ISSUER" ]]; then
   echo ""
