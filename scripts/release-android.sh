@@ -24,13 +24,18 @@ APP_VER_FILE="$ROOT/src/utils/appVersion.ts"
 AAB="$ROOT/android/app/build/outputs/bundle/release/app-release.aab"
 
 # ── Verificar firma ───────────────────────────────────────────────────────────
-if [[ -z "${ANDROID_KEYSTORE_PATH:-}" ]]; then
+# Las propiedades se leen desde ~/.gradle/gradle.properties automáticamente.
+# Sólo si no están ahí, mostramos advertencia.
+GRADLE_GLOBAL="$HOME/.gradle/gradle.properties"
+HAS_SIGNING=false
+if grep -q "KINGDOMKEEPER_UPLOAD_STORE_FILE" "$GRADLE_GLOBAL" 2>/dev/null; then
+  HAS_SIGNING=true
+fi
+
+if [[ "$HAS_SIGNING" == "false" ]]; then
   echo ""
-  echo "⚠️  Variables de firma no configuradas. Para release firmado, exporta en tu shell:"
-  echo "   export ANDROID_KEYSTORE_PATH='/ruta/al/kingdomkeeper.jks'"
-  echo "   export ANDROID_KEY_ALIAS='kingdomkeeper'"
-  echo "   export ANDROID_KEYSTORE_PASS='tu_password'"
-  echo "   export ANDROID_KEY_PASS='tu_key_password'"
+  echo "⚠️  Firma no configurada en $GRADLE_GLOBAL"
+  echo "   Sigue los pasos en scripts/README-release.md para configurarla."
   echo ""
   read -r -p "¿Continuar de todas formas (build sin firma, NO válido para Play Store)? (S/n): " skip_sign
   [[ "$skip_sign" =~ ^[nN]$ ]] && exit 0
@@ -86,10 +91,10 @@ cd "$ROOT/android"
 
 if [[ -n "${ANDROID_KEYSTORE_PATH:-}" ]]; then
   ./gradlew bundleRelease \
-    -PANDROID_KEYSTORE_PATH="$ANDROID_KEYSTORE_PATH" \
-    -PANDROID_KEY_ALIAS="$ANDROID_KEY_ALIAS" \
-    -PANDROID_KEYSTORE_PASS="$ANDROID_KEYSTORE_PASS" \
-    -PANDROID_KEY_PASS="$ANDROID_KEY_PASS"
+    -PKINGDOMKEEPER_UPLOAD_STORE_FILE="$ANDROID_KEYSTORE_PATH" \
+    -PKINGDOMKEEPER_UPLOAD_KEY_ALIAS="$ANDROID_KEY_ALIAS" \
+    -PKINGDOMKEEPER_UPLOAD_STORE_PASSWORD="$ANDROID_KEYSTORE_PASS" \
+    -PKINGDOMKEEPER_UPLOAD_KEY_PASSWORD="$ANDROID_KEY_PASS"
 else
   ./gradlew bundleRelease
 fi
