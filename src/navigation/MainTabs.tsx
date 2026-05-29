@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 
 // Pantallas principales
 import DashboardScreen from '../screens/Dashboard';
 import ProfileStack from './ProfileStack';
 import BandejaStack from './BandejaStack';
-import NotificacionesScreen from '../screens/notificaciones/NotificacionesScreen';
+import NotificacionesStack from './NotificacionesStack';
 import { useBadgeStore } from '../store/badgeStore';
 
 const Tab = createBottomTabNavigator();
@@ -52,11 +53,7 @@ export default function MainTabs() {
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Bandeja" component={BandejaStack} />
-      <Tab.Screen
-        name="Notificaciones"
-        component={NotificacionesScreen}
-        options={{ headerShown: true, title: 'Notificaciones' }}
-      />
+      <Tab.Screen name="Notificaciones" component={NotificacionesStack} />
       <Tab.Screen name="Perfil" component={ProfileStack} options={{ headerShown: false }} />
     </Tab.Navigator>
   );

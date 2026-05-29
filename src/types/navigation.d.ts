@@ -1,3 +1,10 @@
+import { Notificacion } from '../api/notificaciones';
+
+export type NotificacionesStackParamList = {
+  NotificacionesList: undefined;
+  NotificacionDetail: { notificacion: Notificacion };
+};
+
 export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
@@ -25,6 +32,7 @@ export type MembresiaStackParamList = {
   BitacoraMiembro: { miembroId: number; miembroNombre: string };
   FamilyMiembro: { miembroId: number; miembroNombre: string };
   MiembrosArchivados: undefined;
+  RegistrarVisita: undefined;
 };
 
 export type FinanzasStackParamList = {

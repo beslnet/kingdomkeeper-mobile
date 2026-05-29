@@ -21,6 +21,7 @@ import {
   CasoPastoral,
   TipoCaso,
 } from '../../api/pastoral';
+import { useRefreshOnRestore } from '../../hooks/useRefreshOnRestore';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -229,6 +230,8 @@ export default function CasosListScreen() {
       load({ tabKey: tab, tipo: tipoFiltro, searchText: search, pageNum: 1, replace: true });
     }, [tab])
   );
+
+  useRefreshOnRestore(() => load({ replace: true }));
 
   const handleTabChange = (newTab: TabKey) => {
     setTab(newTab);

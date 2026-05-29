@@ -22,6 +22,7 @@ import {
   getEstadoLabel,
   formatMonto,
 } from '../../api/finanzas';
+import { useRefreshOnRestore } from '../../hooks/useRefreshOnRestore';
 
 const PAGE_SIZE = 20;
 
@@ -128,6 +129,8 @@ export default function TransaccionesListScreen() {
       fetchTransacciones({ replace: true });
     }, [fetchTransacciones])
   );
+
+  useRefreshOnRestore(() => fetchTransacciones({ replace: true }));
 
   const handleRefresh = () => {
     setRefreshing(true);

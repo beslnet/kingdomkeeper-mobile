@@ -15,6 +15,7 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { usePermissionsStore } from '../../store/permissionsStore';
 import { listarGrupos } from '../../api/grupos';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
+import { useRefreshOnRestore } from '../../hooks/useRefreshOnRestore';
 
 function getEstadoColor(estado: string): { bg: string; text: string } {
   switch (estado) {
@@ -85,6 +86,8 @@ export default function GruposListScreen() {
       setError('No se pudo cargar los grupos. Toca para reintentar.');
     }
   }, []);
+
+  useRefreshOnRestore(() => load());
 
   useEffect(() => {
     setLoading(true);

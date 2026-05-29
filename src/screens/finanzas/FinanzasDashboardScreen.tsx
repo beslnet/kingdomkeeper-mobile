@@ -12,6 +12,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { usePermissionsStore } from '../../store/permissionsStore';
 import { PANTONE_295C } from '../../theme/colors';
 import { obtenerResumen, formatMonto, ResumenFinanzas } from '../../api/finanzas';
+import { useRefreshOnRestore } from '../../hooks/useRefreshOnRestore';
 
 export default function FinanzasDashboardScreen() {
   const navigation = useNavigation<any>();
@@ -45,6 +46,8 @@ export default function FinanzasDashboardScreen() {
       setLoading(false);
     }
   }, []);
+
+  useRefreshOnRestore(loadData);
 
   useFocusEffect(
     useCallback(() => {

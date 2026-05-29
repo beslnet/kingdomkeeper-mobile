@@ -11,6 +11,7 @@ import MiembroFormScreen from '../screens/membresia/MiembroFormScreen';
 import BitacoraScreen from '../screens/membresia/BitacoraScreen';
 import FamilyMiembroScreen from '../screens/membresia/FamilyMiembroScreen';
 import ArchivedMiembrosScreen from '../screens/membresia/ArchivedMiembrosScreen';
+import RegistrarVisitaScreen from '../screens/membresia/RegistrarVisitaScreen';
 
 const Stack = createStackNavigator();
 
@@ -74,6 +75,11 @@ export default function MembresiaStack() {
         name="MiembrosArchivados"
         component={ArchivedMiembrosScreen}
         options={{ title: 'Miembros archivados' }}
+      />
+      <Stack.Screen
+        name="RegistrarVisita"
+        component={RegistrarVisitaScreen}
+        options={{ title: 'Registrar visita' }}
       />
     </Stack.Navigator>
   );

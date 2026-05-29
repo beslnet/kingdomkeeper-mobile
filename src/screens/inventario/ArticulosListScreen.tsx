@@ -24,6 +24,7 @@ import {
   Ubicacion,
   EstadoArticulo,
 } from '../../api/inventario';
+import { useRefreshOnRestore } from '../../hooks/useRefreshOnRestore';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -258,6 +259,8 @@ export default function ArticulosListScreen() {
       load({ pageNum: 1, replace: true });
     }, [])
   );
+
+  useRefreshOnRestore(() => load({ pageNum: 1, replace: true }));
 
   const handleEstadoSelect = (value: EstadoArticulo | '') => {
     setEstadoFiltro(value);

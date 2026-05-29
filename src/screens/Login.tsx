@@ -7,6 +7,7 @@ import { PANTONE_134C, PANTONE_295C } from '../theme/colors';
 import { TERMS_URL, PRIVACY_URL, WHATSAPP_URL } from '../constants/urls';
 import { useAuthStore, AuthState } from '../store/authStore';
 import { useIglesiaStore } from '../store/iglesiaStore';
+import { APP_VERSION_LABEL } from '../utils/appVersion';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const LOGO_SIZE = Math.round(SCREEN_WIDTH * 0.45);
@@ -21,6 +22,7 @@ export default function LoginScreen() {
     const [usernameTouched, setUsernameTouched] = React.useState(false);
     const [passwordTouched, setPasswordTouched] = React.useState(false);
     const [submitAttempted, setSubmitAttempted] = React.useState(false);
+    const [showPassword, setShowPassword] = React.useState(false);
 
     // Zustand store con tipado explícito para evitar el error de TS
     const login = useAuthStore((state: AuthState) => state.login);
@@ -144,11 +146,18 @@ export default function LoginScreen() {
                         setPassword(text);
                         if (!passwordTouched) setPasswordTouched(true);
                     }}
-                    secureTextEntry
+                    secureTextEntry={!showPassword}
                     mode="outlined"
                     placeholder="Mínimo 3 caracteres"
                     placeholderTextColor="#B0B0B0"
                     left={<TextInput.Icon icon="lock-outline" color={PANTONE_295C} />}
+                    right={
+                        <TextInput.Icon
+                            icon={showPassword ? 'eye-off' : 'eye'}
+                            color="#888"
+                            onPress={() => setShowPassword(v => !v)}
+                        />
+                    }
                     error={showPasswordError}
                     theme={{
                         colors: {
@@ -205,6 +214,7 @@ export default function LoginScreen() {
                 <TouchableOpacity onPress={openWhatsApp} style={{marginTop: 12}}>
                     <Text style={styles.whatsappText}>Soporte por WhatsApp</Text>
                 </TouchableOpacity>
+                <Text style={styles.versionLabel}>{APP_VERSION_LABEL}</Text>
             </View>
         </KeyboardAvoidingView>
     );
@@ -288,5 +298,11 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 15,
         textDecorationLine: 'underline',
+    },
+    versionLabel: {
+        textAlign: 'center',
+        fontSize: 11,
+        color: '#BBB',
+        marginTop: 12,
     },
 });

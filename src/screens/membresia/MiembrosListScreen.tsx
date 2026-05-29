@@ -10,6 +10,7 @@ import {
   RefreshControl,
   Modal,
   SafeAreaView,
+  Animated,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -21,7 +22,7 @@ import {
   getEstadoMembresiaLabel,
 } from '../../api/miembros';
 import { PANTONE_295C } from '../../theme/colors';
-
+import { useRefreshOnRestore } from '../../hooks/useRefreshOnRestore';
 const PAGE_SIZE = 20;
 
 const ESTADO_OPTIONS = [
@@ -104,6 +105,8 @@ export default function MiembrosListScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState('activo');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+  const fabAnimation = React.useRef(new Animated.Value(0)).current;
 
   const canLoadMore = miembros.length < totalCount;
 
@@ -131,6 +134,8 @@ export default function MiembrosListScreen() {
     },
     [page, searchQuery, estadoFiltro],
   );
+
+  useRefreshOnRestore(() => load({ reset: true }));
 
   useEffect(() => {
     setLoading(true);
@@ -282,15 +287,65 @@ export default function MiembrosListScreen() {
         <Text style={styles.archivedBtnText}>Ver miembros archivados</Text>
       </TouchableOpacity>
 
-      {/* FAB add */}
+      {/* FAB Speed Dial */}
       {canCreate && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate('MiembroForm', {})}
-          activeOpacity={0.85}
-        >
-          <Icon source="plus" size={28} color="#FFF" />
-        </TouchableOpacity>
+        <>
+          {/* Overlay closes the dial when tapping outside */}
+          {fabOpen && (
+            <TouchableOpacity
+              style={styles.fabOverlay}
+              activeOpacity={1}
+              onPress={() => setFabOpen(false)}
+            />
+          )}
+          {fabOpen && (
+            <View style={styles.fabActions}>
+              {/* Option 2: Registrar visita */}
+              <TouchableOpacity
+                style={styles.fabActionItem}
+                onPress={() => {
+                  setFabOpen(false);
+                  navigation.navigate('RegistrarVisita');
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.fabActionLabel}>Registrar visita</Text>
+                <View style={styles.fabMini}>
+                  <Icon source="account-heart" size={22} color="#FFF" />
+                </View>
+              </TouchableOpacity>
+              {/* Option 1: Nuevo miembro */}
+              <TouchableOpacity
+                style={styles.fabActionItem}
+                onPress={() => {
+                  setFabOpen(false);
+                  navigation.navigate('MiembroForm', {});
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.fabActionLabel}>Nuevo miembro</Text>
+                <View style={styles.fabMini}>
+                  <Icon source="account-plus" size={22} color="#FFF" />
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={() => setFabOpen(o => !o)}
+            activeOpacity={0.85}
+          >
+            <Animated.View style={{
+              transform: [{
+                rotate: fabOpen
+                  ? '45deg'
+                  : '0deg',
+              }],
+            }}>
+              <Icon source="plus" size={28} color="#FFF" />
+            </Animated.View>
+          </TouchableOpacity>
+        </>
       )}
 
       {/* Filter modal */}
@@ -453,6 +508,51 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+  },
+  fabOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    zIndex: 10,
+  },
+  fabActions: {
+    position: 'absolute',
+    bottom: 136,
+    right: 20,
+    alignItems: 'flex-end',
+    zIndex: 20,
+    gap: 14,
+  },
+  fabActionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  fabActionLabel: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: PANTONE_295C,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+  },
+  fabMini: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: PANTONE_295C,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   modalOverlay: {
     flex: 1,

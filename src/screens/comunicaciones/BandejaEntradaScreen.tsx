@@ -13,7 +13,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { PANTONE_295C } from '../../theme/colors';
 import { getRecibidas, Comunicacion } from '../../api/comunicaciones';
 import { useBadgeStore } from '../../store/badgeStore';
-
+import { useRefreshOnRestore } from '../../hooks/useRefreshOnRestore';
 const TIPO_COLORS: Record<string, { bg: string; text: string }> = {
   urgente: { bg: '#FFEBEE', text: '#B71C1C' },
   alerta: { bg: '#FFEBEE', text: '#B71C1C' },
@@ -114,6 +114,8 @@ export default function BandejaEntradaScreen() {
       setLoadingMore(false);
     }
   }, []);
+
+  useRefreshOnRestore(() => load(1, true));
 
   useFocusEffect(
     useCallback(() => {

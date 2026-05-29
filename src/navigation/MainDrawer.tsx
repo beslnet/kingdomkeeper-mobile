@@ -7,6 +7,7 @@ import { useIglesiaStore } from '../store/iglesiaStore';
 import { usePermissionsStore } from '../store/permissionsStore';
 import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
 import { WHATSAPP_URL } from '../constants/urls';
+import { APP_VERSION_LABEL } from '../utils/appVersion';
 
 // Pantallas principales
 import MainTabs from './MainTabs';
@@ -212,6 +213,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
           </View>
           <Text style={drawerStyles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
+        <Text style={drawerStyles.versionText}>{APP_VERSION_LABEL}</Text>
       </View>
     </View>
   );
@@ -292,7 +294,7 @@ export default function MainDrawer() {
       drawerContent={CustomDrawerContent}
       screenOptions={{ headerShown: true }}
     >
-      <Drawer.Screen name="Inicio" component={MainTabs} />
+      <Drawer.Screen name="Inicio" component={MainTabs} options={{ headerShown: false }} />
       <Drawer.Screen name="GruposCelulas" component={GruposStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Membresía" component={MembresiaStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Finanzas" component={FinanzasStack} options={{ headerShown: false }} />

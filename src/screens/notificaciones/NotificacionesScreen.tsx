@@ -7,8 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Linking,
-  Alert,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
@@ -20,7 +18,7 @@ import {
   Notificacion,
 } from '../../api/notificaciones';
 import { useBadgeStore } from '../../store/badgeStore';
-
+import { useRefreshOnRestore } from '../../hooks/useRefreshOnRestore';
 function formatRelative(dateStr: string): string {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -81,7 +79,7 @@ function NotificacionItem({
   );
 }
 
-export default function NotificacionesScreen() {
+export default function NotificacionesScreen({ navigation }: { navigation: any }) {
   const [items, setItems] = useState<Notificacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -103,6 +101,8 @@ export default function NotificacionesScreen() {
     }
   }, []);
 
+  useRefreshOnRestore(load);
+
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
@@ -120,36 +120,14 @@ export default function NotificacionesScreen() {
   };
 
   const handlePress = async (item: Notificacion) => {
+    // Marcar como leída (optimistic update)
     if (!item.leida) {
       await marcarLeida(item.id).catch(() => {});
       setItems(prev => prev.map(n => n.id === item.id ? { ...n, leida: true } : n));
       refresh();
     }
-
-    if (item.payload?.action === 'download_export') {
-      const url: string | undefined = item.payload?.url_descarga;
-      if (url) {
-        Alert.alert(
-          'Descargar respaldo',
-          'Se abrirá el enlace en tu navegador para descargar el archivo ZIP.',
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-              text: 'Abrir descarga',
-              onPress: async () => {
-                try {
-                  await Linking.openURL(url);
-                } catch (err: any) {
-                  Alert.alert('Error', err?.message ?? 'No se pudo abrir el enlace de descarga.');
-                }
-              },
-            },
-          ],
-        );
-      } else {
-        Alert.alert('Enlace no disponible', 'El enlace de descarga ha expirado o no está disponible.');
-      }
-    }
+    // Navegar al detalle en todos los casos
+    navigation.navigate('NotificacionDetail', { notificacion: { ...item, leida: true } });
   };
 
   const handleMarcarTodas = async () => {

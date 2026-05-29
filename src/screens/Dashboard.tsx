@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { DrawerActions } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { useIglesiaStore } from '../store/iglesiaStore';
 import { PANTONE_134C, PANTONE_295C } from '../theme/colors';
 import { getDashboard } from '../api/dashboard';
+import { useRefreshOnRestore } from '../hooks/useRefreshOnRestore';
 
 // --- helpers ---
 
@@ -110,6 +112,8 @@ export default function DashboardScreen() {
     }
   }, []);
 
+  useRefreshOnRestore(load);
+
   useEffect(() => {
     setLoading(true);
     load().finally(() => setLoading(false));
@@ -171,6 +175,13 @@ export default function DashboardScreen() {
     >
       {/* 1. Saludo personalizado */}
       <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
+          style={styles.hamburgerBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Icon source="menu" size={26} color={PANTONE_295C} />
+        </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.greeting}>{greeting}, {nombre}!</Text>
           <Text style={styles.subGreeting}>Que tengas un excelente día</Text>
@@ -355,6 +366,10 @@ const styles = StyleSheet.create({
     backgroundColor: PANTONE_295C,
     padding: 24,
     paddingTop: 28,
+    gap: 12,
+  },
+  hamburgerBtn: {
+    paddingTop: 2,
   },
   greeting: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
   subGreeting: { fontSize: 13, color: PANTONE_134C, marginTop: 4 },

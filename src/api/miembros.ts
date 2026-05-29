@@ -182,6 +182,20 @@ export const reenviarInvitacion = async (email: string): Promise<void> => {
   await api.post('/api/auth/reenviar-codigo/', { email });
 };
 
+// ─── Visita ──────────────────────────────────────────────────────────────────
+
+export interface RegistrarVisitaInput {
+  nombre: string;
+  apellidos: string;
+  telefono?: string;
+  email?: string;
+}
+
+export const registrarVisita = async (data: RegistrarVisitaInput): Promise<{ id: string }> => {
+  const { data: res } = await api.post('/api/miembros/registrar-visita/', data);
+  return res;
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function getEstadoMembresiaColor(estado: string): { bg: string; text: string } {

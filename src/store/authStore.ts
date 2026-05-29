@@ -12,6 +12,7 @@ export type Iglesia = {
 
 export type AuthState = {
   isLoggedIn: boolean | null;
+  _hasHydrated: boolean;
   user: any | null;
   iglesias: Iglesia[];
   loading: boolean;
@@ -29,6 +30,7 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       isLoggedIn: null,
+      _hasHydrated: false,
       user: null,
       iglesias: [],
       loading: false,
@@ -103,8 +105,13 @@ export const useAuthStore = create<AuthState>()(
               // Non-blocking
             }
             set({ isLoggedIn: true, user, iglesias: iglesias ?? [], termsAccepted, pendingDocuments });
-          } catch {
-            set({ isLoggedIn: false, user: null, iglesias: [] });
+          } catch (error: any) {
+            // Only clear session on 401 (token truly invalid).
+            // Network / connectivity errors must NOT log the user out.
+            if (error?.response?.status === 401) {
+              set({ isLoggedIn: false, user: null, iglesias: [] });
+            }
+            // Otherwise keep the persisted state — user stays logged in
           }
         } else {
           set({ isLoggedIn: false });
@@ -131,7 +138,10 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-store',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({ isLoggedIn: state.isLoggedIn, user: state.user }),
+      partialize: (state) => ({ isLoggedIn: state.isLoggedIn, user: state.user, iglesias: state.iglesias }),
+      onRehydrateStorage: () => () => {
+        useAuthStore.setState({ _hasHydrated: true });
+      },
     }
   )
 );
