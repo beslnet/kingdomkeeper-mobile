@@ -27,7 +27,7 @@ APP_VER_FILE="$ROOT/src/utils/appVersion.ts"
 # Configura estas variables en tu entorno o en ~/.zshrc:
 #   export iOS_API_KEY_ID="XXXXXXXXXX"
 #   export iOS_API_ISSUER="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-API_KEY="${iOS_API_KEY_ID:-NMDP7FPJG9}"
+API_KEY="${iOS_API_KEY_ID:-S2WQKUX5M8}"
 API_ISSUER="${iOS_API_ISSUER:-c2fc44ae-c581-4b31-b153-1eb4a9ab80f9}"
 
 if [[ -z "$API_KEY" || -z "$API_ISSUER" ]]; then
@@ -144,16 +144,18 @@ echo "  IPA: $IPA ($(du -sh "$IPA" | cut -f1))"
 if [[ "$SKIP_UPLOAD" == "false" ]]; then
   echo ""
   echo "Subiendo a App Store Connect..."
+  P8_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${API_KEY}.p8"
   xcrun altool \
     --upload-app \
     -f "$IPA" \
     -t ios \
     --apiKey "$API_KEY" \
-    --apiIssuer "$API_ISSUER"
+    --api-issuer "$API_ISSUER" \
+    --p8-file-path "$P8_PATH"
 else
   echo ""
   echo "⚠️  Upload omitido (credenciales no configuradas)."
-  echo "   Para subir manualmente: xcrun altool --upload-app -f \"$IPA\" -t ios --apiKey TU_KEY --apiIssuer TU_ISSUER"
+  echo "   Para subir manualmente: xcrun altool --upload-app -f \"$IPA\" -t ios --apiKey S2WQKUX5M8 --api-issuer c2fc44ae-c581-4b31-b153-1eb4a9ab80f9 --p8-file-path ~/.appstoreconnect/private_keys/AuthKey_S2WQKUX5M8.p8"
 fi
 
 # ── Commit + Git tag ──────────────────────────────────────────────────────────
