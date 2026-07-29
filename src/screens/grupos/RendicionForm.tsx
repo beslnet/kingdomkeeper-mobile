@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Icon } from 'react-native-paper';
-import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import { takePhoto, pickPhotoFromLibrary } from '../../utils/imagePicker';
 import { pick, types as DocTypes } from '@react-native-documents/picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -67,23 +67,21 @@ export default function RendicionForm() {
     Alert.alert('Adjuntar comprobante', 'Seleccionar desde:', [
       {
         text: 'Cámara',
-        onPress: () =>
-          launchCamera({ mediaType: 'photo', quality: 0.8 }, (res) => {
-            if (!res.didCancel && res.assets?.[0]) {
-              const a = res.assets[0];
-              setArchivo({ uri: a.uri!, type: a.type ?? 'image/jpeg', name: a.fileName ?? 'comprobante.jpg' });
-            }
-          }),
+        onPress: async () => {
+          const a = await takePhoto({ mediaType: 'photo', quality: 0.8 });
+          if (a?.uri) {
+            setArchivo({ uri: a.uri, type: a.type ?? 'image/jpeg', name: a.fileName ?? 'comprobante.jpg' });
+          }
+        },
       },
       {
         text: 'Galería de fotos',
-        onPress: () =>
-          launchImageLibrary({ mediaType: 'photo', quality: 0.8 }, (res) => {
-            if (!res.didCancel && res.assets?.[0]) {
-              const a = res.assets[0];
-              setArchivo({ uri: a.uri!, type: a.type ?? 'image/jpeg', name: a.fileName ?? 'comprobante.jpg' });
-            }
-          }),
+        onPress: async () => {
+          const a = await pickPhotoFromLibrary({ mediaType: 'photo', quality: 0.8 });
+          if (a?.uri) {
+            setArchivo({ uri: a.uri, type: a.type ?? 'image/jpeg', name: a.fileName ?? 'comprobante.jpg' });
+          }
+        },
       },
       {
         text: 'Documento (PDF u otro)',

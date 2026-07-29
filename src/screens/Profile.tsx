@@ -16,7 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { Icon, Divider } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { takePhoto, pickPhotoFromLibrary } from '../utils/imagePicker';
 import DeviceInfo from 'react-native-device-info';
 import { useAuthStore } from '../store/authStore';
 import { useIglesiaStore } from '../store/iglesiaStore';
@@ -179,30 +179,18 @@ export default function ProfileScreen() {
     }
   };
 
-  const openCamera = () => {
-    launchCamera(
-      { mediaType: 'photo', quality: 0.8, maxWidth: 800, maxHeight: 800 },
-      (response) => {
-        if (response.didCancel || response.errorCode) return;
-        const asset = response.assets?.[0];
-        if (asset?.uri) {
-          uploadPhoto(asset.uri, asset.type ?? 'image/jpeg', asset.fileName ?? 'photo.jpg');
-        }
-      }
-    );
+  const openCamera = async () => {
+    const asset = await takePhoto({ mediaType: 'photo', quality: 0.8, maxWidth: 800, maxHeight: 800 });
+    if (asset?.uri) {
+      uploadPhoto(asset.uri, asset.type ?? 'image/jpeg', asset.fileName ?? 'photo.jpg');
+    }
   };
 
-  const openGallery = () => {
-    launchImageLibrary(
-      { mediaType: 'photo', quality: 0.8, maxWidth: 800, maxHeight: 800 },
-      (response) => {
-        if (response.didCancel || response.errorCode) return;
-        const asset = response.assets?.[0];
-        if (asset?.uri) {
-          uploadPhoto(asset.uri, asset.type ?? 'image/jpeg', asset.fileName ?? 'photo.jpg');
-        }
-      }
-    );
+  const openGallery = async () => {
+    const asset = await pickPhotoFromLibrary({ mediaType: 'photo', quality: 0.8, maxWidth: 800, maxHeight: 800 });
+    if (asset?.uri) {
+      uploadPhoto(asset.uri, asset.type ?? 'image/jpeg', asset.fileName ?? 'photo.jpg');
+    }
   };
 
   const handleSave = async () => {
