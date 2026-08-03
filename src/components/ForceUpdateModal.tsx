@@ -25,7 +25,7 @@ export function ForceUpdateModal({ visible, storeUrl }: Props) {
     Linking.openURL(url).catch(() => {
       const fallback =
         Platform.OS === 'ios'
-          ? 'itms-apps://itunes.apple.com/app/id0000000000'
+          ? 'itms-apps://itunes.apple.com/app/id6760925086'
           : 'market://details?id=com.kingdomkeeper.mobile';
       Linking.openURL(fallback);
     });
