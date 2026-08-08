@@ -3,7 +3,7 @@
 #
 # Uso interno (llamado por release-android.sh y release-ios.sh):
 #   source scripts/changelog.sh
-#   generate_changelog "$VERSION"
+#   generate_changelog "$VERSION" [ios|android]
 #
 # También ejecutable directamente para preview:
 #   ./scripts/changelog.sh 1.0.2
@@ -27,28 +27,50 @@ _clean_prefix() {
 
 generate_changelog() {
   local version="${1:-}"
+  local platform="${2:-}"   # ios | android — opcional, pero recomendado
   local root
   root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-  # Desde el último tag publicado; si no hay, últimos 40 commits
+  # Desde el último release DE ESTA PLATAFORMA.
+  # Antes se tomaba el tag más reciente sin mirar la plataforma: al publicar iOS y
+  # Android seguidos, el segundo arrancaba desde el tag del primero y salía vacío
+  # ("Mejoras generales de estabilidad"), tragándose los cambios reales.
   local since_ref
-  since_ref=$(git --no-pager tag --sort=-creatordate 2>/dev/null | head -1)
+  if [[ -n "$platform" ]]; then
+    since_ref=$(git --no-pager tag --list "${platform}/v*" --sort=-creatordate 2>/dev/null | head -1)
+  fi
+  if [[ -z "$since_ref" ]]; then
+    since_ref=$(git --no-pager tag --sort=-creatordate 2>/dev/null | head -1)
+  fi
   if [[ -z "$since_ref" ]]; then
     since_ref=$(git --no-pager log --skip=2 --max-count=1 --format='%H' -- src/utils/appVersion.ts 2>/dev/null)
   fi
 
   local raw_commits
   if [[ -n "$since_ref" ]]; then
-    raw_commits=$(git --no-pager log "${since_ref}..HEAD" --format='%s' 2>/dev/null)
+    raw_commits=$(git --no-pager log "${since_ref}..HEAD" --format='%H%x1f%s' 2>/dev/null)
   else
-    raw_commits=$(git --no-pager log --max-count=40 --format='%s' 2>/dev/null)
+    raw_commits=$(git --no-pager log --max-count=40 --format='%H%x1f%s' 2>/dev/null)
   fi
 
   local feats=() fixes=() security=()
 
-  while IFS= read -r line; do
-    [[ -z "$line" ]] && continue
+  while IFS= read -r entry; do
+    [[ -z "$entry" ]] && continue
+    local hash line
+    hash="${entry%%$'\x1f'*}"
+    line="${entry#*$'\x1f'}"
     if echo "$line" | grep -qiE '^(chore|docs|test|ci|build|revert)\b|bump version|bump build|auto-bumped|changelog|release.script'; then
+      continue
+    fi
+
+    # Descarta lo que nunca llega al usuario. Filtrar por el texto del commit no
+    # basta: los scripts de release se tocan con "feat(mobile):"/"fix(mobile):" y
+    # se colaban en las novedades de la tienda. Se mira qué archivos cambió: si
+    # ninguno es de la app, fuera.
+    local files
+    files=$(git --no-pager show --pretty=format: --name-only "$hash" 2>/dev/null | grep -vE '^[[:space:]]*$')
+    if [[ -n "$files" ]] && ! echo "$files" | grep -qvE '(^|/)(scripts|docs)/|^\.github/|^backend/'; then
       continue
     fi
 
@@ -105,7 +127,13 @@ generate_changelog() {
 
   local out_dir="$root/build/changelogs"
   mkdir -p "$out_dir"
-  CHANGELOG_FILE_PATH="$out_dir/v${version}.txt"
+  # Un archivo por plataforma: compartir v<version>.txt hacía que el segundo
+  # release del día sobrescribiera el changelog del primero.
+  if [[ -n "$platform" ]]; then
+    CHANGELOG_FILE_PATH="$out_dir/v${version}-${platform}.txt"
+  else
+    CHANGELOG_FILE_PATH="$out_dir/v${version}.txt"
+  fi
 
   {
     echo "════════════════════════════════════════"
@@ -135,9 +163,9 @@ generate_changelog() {
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   VERSION="${1:-}"
   if [[ -z "$VERSION" ]]; then
-    echo "Uso: $0 <version>  (ej: $0 1.0.2)"
+    echo "Uso: $0 <version> [ios|android]  (ej: $0 1.1.3 android)"
     exit 1
   fi
   cd "$(dirname "$0")/.."
-  generate_changelog "$VERSION"
+  generate_changelog "$VERSION" "${2:-}"
 fi

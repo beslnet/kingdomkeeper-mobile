@@ -74,7 +74,8 @@ VERSION_CODE="$NEXT_CODE"
 
 # ── Generar changelog ─────────────────────────────────────────────────────────
 source "$ROOT/scripts/changelog.sh"
-generate_changelog "$VERSION"
+source "$ROOT/scripts/version-check.sh"
+generate_changelog "$VERSION" android
 
 # ── Bump versión en archivos ──────────────────────────────────────────────────
 echo "Actualizando build.gradle y appVersion.ts..."
@@ -118,3 +119,5 @@ echo "  3. Pegar novedades de GOOGLE PLAY (guardado en ${CHANGELOG_FILE_PATH:-bu
 echo "  4. Cuando Play Store acepte: git push origin main && git push origin ${TAG}"
 echo ""
 open -R "$AAB" 2>/dev/null || true
+
+warn_platform_drift "$ROOT"

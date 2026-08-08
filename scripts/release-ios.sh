@@ -85,7 +85,8 @@ IPA="$EXPORT_DIR/kingdomkeeperMobile.ipa"
 
 # ── Generar changelog ─────────────────────────────────────────────────────────
 source "$ROOT/scripts/changelog.sh"
-generate_changelog "$VERSION"
+source "$ROOT/scripts/version-check.sh"
+generate_changelog "$VERSION" ios
 
 # ── Bump versión en archivos ──────────────────────────────────────────────────
 echo "Actualizando project.pbxproj y appVersion.ts..."
@@ -173,3 +174,5 @@ echo "  1. Esperar ~15-30 min a que procese en App Store Connect"
 echo "  2. https://appstoreconnect.apple.com → TestFlight → enviar a revisión"
 echo "  3. Pegar el changelog de APP STORE en 'What's New' (guardado en ${CHANGELOG_FILE_PATH:-build/changelogs/})"
 echo "  4. Cuando Apple acepte: git push origin main && git push origin ${TAG}"
+
+warn_platform_drift "$ROOT"
