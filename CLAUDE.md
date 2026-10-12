@@ -44,15 +44,41 @@ y ese AAB **no sirve** para Play Store.
 
 ## ⚠️ Cosas a saber antes de tocar esto
 
-### 1. Pushear a `main` del BACKEND es desplegar a producción
+### 1. El deploy lo corre SIEMPRE el usuario — y pushear ya NO despliega
 
-`kingdomkeeper-backend/.github/workflows/deploy.yml` corre con
-`on: push: branches: [main]` y entra por SSH al droplet de DigitalOcean.
-No hay comando de deploy local. **Este repo (mobile) no tiene workflows**, así que
-pushear acá no despliega nada — pero no confundas los dos.
+Desde el 2026-10-01, backend (Django) y frontend (React) se despliegan con **Kamal** al
+droplet `apps-nexoit` (`24.199.65.173`), con el `config/deploy.yml` de cada repo.
+**Primero el frontend, después el backend:** comparten `app.kingdomkeeper.church` por
+rutas y kamal-proxy exige que el TLS lo declare el servicio de la raíz (el frontend); el
+backend tiene `ssl: false` a propósito.
 
-Vale la regla del workspace: el deploy lo ejecuta SIEMPRE el usuario. En este proyecto
-eso significa que **el push al backend también**.
+```bash
+cd ~/beslnet-labs/kingdomkeeper/kingdomkeeper-frontend
+source .env.kamal
+kamal deploy
+```
+
+```bash
+cd ~/beslnet-labs/kingdomkeeper/kingdomkeeper-backend
+source .env.kamal
+kamal deploy
+```
+
+Los `.github/workflows/deploy.yml` del backend y del frontend quedaron solo con
+`workflow_dispatch`: apuntan al droplet anterior y sus secrets se borraron. Así que
+**pushear a `main` no despliega en ninguno de los tres repos** (este no tiene workflows)
+y vale la regla general del workspace: agrupar pushes.
+
+Regla del workspace: el agente deja el commit (y el push, solo si se autorizó) y le
+pasa al usuario el comando exacto. Nunca `kamal deploy` ni nada que reinicie
+producción; un "ok" general no autoriza el deploy.
+
+**Lo que toca a la app:** el force-update lo decide el backend. `MINIMUM_APP_VERSION`
+está en `env.clear` de `kingdomkeeper-backend/config/deploy.yml` (hoy `1.1.0`);
+`core/middleware/app_version.py` lo compara con el header `X-App-Version` que manda
+`src/api/api.ts` y responde 426, que abre `ForceUpdateModal`. Subir ese mínimo es un
+deploy del backend, y deja fuera a quien no haya actualizado: antes, confirma que la
+versión nueva esté publicada en las DOS tiendas (ver punto 3).
 
 ### 2. `src/config/maps.ts` NO se versiona
 
@@ -62,9 +88,26 @@ build falla por import faltante. **No lo agregues a git.**
 
 ### 3. La app está publicada hace meses
 
-iOS `1.1.0` en App Store, Android `1.1.2` (versionCode 6). No es un proyecto en
-desarrollo inicial: cualquier cambio en force-update, permisos o navegación afecta a
-usuarios reales. Verifica contra la versión publicada antes de asumir el estado.
+iOS y Android en **`1.1.3` (build/versionCode 7)** (tags `ios/v1.1.3-7` y
+`android/v1.1.3-7`, del 7–8 de agosto). Contrastado el 2026-10-12: el lookup del App Store
+devuelve `1.1.3` con fecha 2026-08-08 y la ficha pública de Play muestra `1.1.3` (el
+versionCode no se ve desde afuera y no se miró Play Console). El mínimo que exige
+producción es `1.1.0`: `1.0.9` recibe 426, `1.1.0` pasa.
+
+No es un proyecto en desarrollo inicial: cualquier cambio en force-update, permisos o
+navegación afecta a usuarios reales. Verifica contra la versión publicada antes de
+asumir el estado (el `t=` esquiva la caché del lookup):
+
+```bash
+curl -s "https://itunes.apple.com/lookup?id=6760925086&country=cl&t=$(date +%s)"
+```
+
+Play no tiene un lookup público equivalente: Play Console.
+
+Las plataformas ya se desalinearon una vez: iOS se quedó en `1.1.0` desde el 2026-05-29
+hasta el 1.1.3 de agosto, mientras Android pasaba por `1.1.1` y `1.1.2`. Desde
+`1660d16`, `scripts/version-check.sh` avisa al terminar cada release si
+`MARKETING_VERSION` y `versionName` difieren.
 
 ### 4. Ramas `copilot/*` sin integrar
 
