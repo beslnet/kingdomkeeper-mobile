@@ -107,7 +107,7 @@ export default function ComunicacionDetailScreen({ route }: { route: any }) {
     Alert.alert(
       'Confirmar envío',
       `¿Enviar "${comunicacion.titulo}"?\n\n${textoLlegara(llegan)}` +
-        (conGrupoCuenta ? '\nSolo la reciben los hermanos que tienen cuenta en la app.' : ''),
+        (conGrupoCuenta ? '\nLos miembros sin cuenta no la recibirán.' : ''),
       [
         { text: 'Cancelar', style: 'cancel' },
         {
