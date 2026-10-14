@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,55 +8,116 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { TextInput, Button } from 'react-native-paper';
+import { TextInput, Button, Checkbox, Chip, Divider } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import { registrarVisita } from '../../api/miembros';
+import {
+  registrarVisita,
+  listarMiembros,
+  COMO_LLEGO,
+  QUIERE_CONTACTO,
+} from '../../api/miembros';
+import { listarUsuarios } from '../../api/pastoral';
+import { useIglesiaStore } from '../../store/iglesiaStore';
+import PersonaPicker, { PersonaOpcion } from '../../components/PersonaPicker';
+import {
+  INITIAL_VISITA,
+  VisitaFields,
+  validarVisita,
+  armarVisita,
+  mensajeDeErrorVisita,
+  enEliminacion,
+} from '../../utils/fichaVisita';
 import { PANTONE_134C, PANTONE_295C } from '../../theme/colors';
 
-const INITIAL_FIELDS = { nombre: '', apellidos: '', telefono: '', email: '' };
+const nombreDe = (p: any): string =>
+  p?.nombre_completo || `${p?.nombre ?? ''} ${p?.apellidos ?? ''}`.trim() || p?.email || '';
+
+/** Fila de opciones de elección única; tocar la elegida la deselecciona. */
+function Opciones<T extends string>({
+  label,
+  opciones,
+  value,
+  onChange,
+}: {
+  label: string;
+  opciones: { value: T; label: string }[];
+  value: T | '';
+  onChange: (v: T | '') => void;
+}) {
+  return (
+    <View style={styles.group}>
+      <Text style={styles.groupLabel}>{label}</Text>
+      <View style={styles.chips}>
+        {opciones.map(o => (
+          <Chip
+            key={o.value}
+            selected={value === o.value}
+            showSelectedOverlay
+            onPress={() => onChange(value === o.value ? '' : o.value)}
+            style={[styles.chip, value === o.value && styles.chipActive]}
+            textStyle={value === o.value ? styles.chipTextActive : undefined}
+          >
+            {o.label}
+          </Chip>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function RegistrarVisitaScreen() {
   const navigation = useNavigation<any>();
-  const [fields, setFields] = useState(INITIAL_FIELDS);
+  const iglesiaId = useIglesiaStore(st => st.iglesiaId);
+  const [fields, setFields] = useState<VisitaFields>(INITIAL_VISITA);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [hermanos, setHermanos] = useState<PersonaOpcion[]>([]);
+  const [usuarios, setUsuarios] = useState<PersonaOpcion[]>([]);
 
-  const validate = () => {
-    const errs: Record<string, string> = {};
-    if (!fields.nombre || fields.nombre.trim().length < 2) {
-      errs.nombre = 'El nombre debe tener al menos 2 caracteres.';
-    }
-    if (!fields.apellidos || fields.apellidos.trim().length < 2) {
-      errs.apellidos = 'Los apellidos deben tener al menos 2 caracteres.';
-    }
-    if (fields.email && !fields.email.includes('@')) {
-      errs.email = 'Ingresa un email válido.';
-    }
-    return errs;
-  };
+  // Si una lista no se puede cargar (p. ej. un rol sin acceso a usuarios), ese campo
+  // simplemente no aparece: la visita se registra igual.
+  useEffect(() => {
+    let vivo = true;
+    listarMiembros({ estado: 'activo', page_size: 200 })
+      .then(d => {
+        if (!vivo) return;
+        setHermanos(
+          (d.results ?? [])
+            .filter(m => !enEliminacion(m))
+            .map(m => ({ id: m.id, nombre: nombreDe(m), detalle: m.email })),
+        );
+      })
+      .catch(() => vivo && setHermanos([]));
+    listarUsuarios(iglesiaId)
+      .then(lista => {
+        if (!vivo) return;
+        setUsuarios(
+          lista.filter(u => !enEliminacion(u)).map(u => ({ id: u.id, nombre: nombreDe(u), detalle: u.email })),
+        );
+      })
+      .catch(() => vivo && setUsuarios([]));
+    return () => {
+      vivo = false;
+    };
+  }, [iglesiaId]);
 
-  const handleChange = (name: string, value: string) => {
+  const handleChange = <K extends keyof VisitaFields>(name: K, value: VisitaFields[K]) => {
     setFields(prev => ({ ...prev, [name]: value }));
     setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const handleSubmit = async () => {
-    const errs = validate();
+    const errs = validarVisita(fields);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
     setSubmitting(true);
     try {
-      await registrarVisita({
-        nombre: fields.nombre.trim(),
-        apellidos: fields.apellidos.trim(),
-        telefono: fields.telefono.trim() || undefined,
-        email: fields.email.trim() || undefined,
-      });
+      await registrarVisita(armarVisita(fields));
       Alert.alert('Visita registrada', 'El visitante ha sido registrado exitosamente.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'No se pudo registrar la visita. Intenta de nuevo.');
+      Alert.alert('Error', mensajeDeErrorVisita(err));
     } finally {
       setSubmitting(false);
     }
@@ -77,8 +138,8 @@ export default function RegistrarVisitaScreen() {
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.description}>
-          Registra los datos básicos del visitante. El sistema generará un identificador
-          interno automáticamente.
+          La ficha del comité de bienvenida. Solo son obligatorios el nombre, los apellidos y la
+          autorización de la visita; lo demás ayuda a acompañarla después.
         </Text>
 
         <TextInput
@@ -137,6 +198,89 @@ export default function RegistrarVisitaScreen() {
         />
         {!!errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
+        <TextInput
+          label="Comuna (opcional)"
+          value={fields.ciudad}
+          onChangeText={t => handleChange('ciudad', t)}
+          mode="outlined"
+          style={styles.input}
+          theme={inputTheme}
+          outlineColor="#D3D6DB"
+          activeOutlineColor={PANTONE_295C}
+          autoCapitalize="words"
+        />
+
+        <Opciones
+          label="¿Cómo llegó?"
+          opciones={COMO_LLEGO}
+          value={fields.como_llego}
+          onChange={v => handleChange('como_llego', v)}
+        />
+        {fields.como_llego === 'invitado' && hermanos.length > 0 && (
+          <PersonaPicker
+            label="¿Quién lo invitó? (opcional)"
+            opciones={hermanos}
+            value={fields.invitado_por_id}
+            onChange={id => handleChange('invitado_por_id', id)}
+          />
+        )}
+
+        <Opciones
+          label="¿Quiere que lo contacten?"
+          opciones={QUIERE_CONTACTO}
+          value={fields.quiere_contacto}
+          onChange={v => handleChange('quiere_contacto', v)}
+        />
+        {usuarios.length > 0 && (
+          <PersonaPicker
+            label="Seguimiento a cargo de"
+            ayuda="Le llega un aviso al teléfono"
+            opciones={usuarios}
+            value={fields.responsable_id}
+            onChange={id => handleChange('responsable_id', id)}
+          />
+        )}
+
+        <TextInput
+          label="Petición de oración (opcional)"
+          value={fields.peticion}
+          onChangeText={t => handleChange('peticion', t)}
+          mode="outlined"
+          style={[styles.input, styles.multiline]}
+          theme={inputTheme}
+          outlineColor="#D3D6DB"
+          activeOutlineColor={PANTONE_295C}
+          multiline
+        />
+        <Text style={styles.helper}>Queda privada en Peticiones de oración</Text>
+
+        <TextInput
+          label="Notas (opcional)"
+          value={fields.notas}
+          onChangeText={t => handleChange('notas', t)}
+          mode="outlined"
+          style={[styles.input, styles.multiline]}
+          theme={inputTheme}
+          outlineColor="#D3D6DB"
+          activeOutlineColor={PANTONE_295C}
+          multiline
+        />
+
+        <Divider style={styles.divider} />
+        <Checkbox.Item
+          label="La visita aceptó que la iglesia guarde estos datos para contactarla"
+          status={fields.consentimiento ? 'checked' : 'unchecked'}
+          onPress={() => handleChange('consentimiento', !fields.consentimiento)}
+          position="leading"
+          // En iOS, Paper dibuja la casilla sin marcar como nada: el consentimiento tiene que verse.
+          mode="android"
+          color={PANTONE_295C}
+          uncheckedColor="#666"
+          labelStyle={styles.consentLabel}
+          style={styles.consent}
+        />
+        {!!errors.consentimiento && <Text style={styles.errorText}>{errors.consentimiento}</Text>}
+
         <Button
           mode="contained"
           onPress={handleSubmit}
@@ -174,6 +318,17 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   input: { marginBottom: 4, backgroundColor: '#fff' },
+  multiline: { minHeight: 80 },
+  helper: { fontSize: 12, color: '#777', marginBottom: 8, marginLeft: 4 },
+  group: { marginTop: 16 },
+  groupLabel: { fontSize: 13, fontWeight: '600', color: '#444', marginBottom: 8 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#D3D6DB' },
+  chipActive: { backgroundColor: '#E8EEF7', borderColor: PANTONE_295C },
+  chipTextActive: { color: PANTONE_295C, fontWeight: '600' },
+  divider: { marginTop: 20, marginBottom: 4 },
+  consent: { paddingHorizontal: 0 },
+  consentLabel: { textAlign: 'left', fontSize: 14, color: '#333' },
   errorText: { color: '#D32F2F', fontSize: 12, marginBottom: 10, marginLeft: 4 },
   button: {
     backgroundColor: PANTONE_295C,

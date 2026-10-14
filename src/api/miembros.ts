@@ -184,11 +184,46 @@ export const reenviarInvitacion = async (email: string): Promise<void> => {
 
 // ─── Visita ──────────────────────────────────────────────────────────────────
 
+// Los mismos valores que FichaVisita en el backend (iglesia/models/ficha_visita.py).
+export type ComoLlego = 'invitado' | 'redes' | 'cerca' | 'otra_iglesia' | 'otro';
+export type QuiereContacto = 'whatsapp' | 'llamada' | 'visita' | 'no';
+
+export const COMO_LLEGO: { value: ComoLlego; label: string }[] = [
+  { value: 'invitado', label: 'Lo invitó alguien' },
+  { value: 'redes', label: 'Redes sociales o internet' },
+  { value: 'cerca', label: 'Vive o pasaba cerca' },
+  { value: 'otra_iglesia', label: 'Viene de otra iglesia' },
+  { value: 'otro', label: 'Otro' },
+];
+
+export const QUIERE_CONTACTO: { value: QuiereContacto; label: string }[] = [
+  { value: 'whatsapp', label: 'Por WhatsApp' },
+  { value: 'llamada', label: 'Que lo llamen' },
+  { value: 'visita', label: 'Que lo visiten' },
+  { value: 'no', label: 'Prefiere que no lo contacten' },
+];
+
+export interface FichaVisitaInput {
+  /** Obligatorio: sin la autorización de la visita el backend responde 400. */
+  consentimiento: true;
+  como_llego: ComoLlego | '';
+  /** Id de Miembro; solo tiene sentido si como_llego es 'invitado'. */
+  invitado_por_id: number | null;
+  quiere_contacto: QuiereContacto | '';
+  /** Queda como petición de oración privada. */
+  peticion: string;
+  /** Id de Usuario con acceso a la iglesia: se le abre un caso de seguimiento con push. */
+  responsable_id: number | null;
+  notas: string;
+}
+
 export interface RegistrarVisitaInput {
   nombre: string;
   apellidos: string;
   telefono?: string;
   email?: string;
+  ciudad?: string;
+  ficha: FichaVisitaInput;
 }
 
 export const registrarVisita = async (data: RegistrarVisitaInput): Promise<{ id: string }> => {
