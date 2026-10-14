@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Alert, View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking } from 'react-native';
 import { createDrawerNavigator, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { Icon } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
 import { useIglesiaStore } from '../store/iglesiaStore';
 import { usePermissionsStore } from '../store/permissionsStore';
@@ -32,16 +33,18 @@ type MenuItem = {
   roles?: string[];
 };
 
+// Orden de uso: lo que se abre cada semana (asistencia, peticiones) va arriba, porque en un
+// iPhone SE solo caben ~7 ítems sin desplazar. Inventario, lo menos frecuente, queda al final.
 const MENU_ITEMS: MenuItem[] = [
   { label: 'Inicio', icon: 'home-outline', screen: 'Inicio', nestedTab: 'Dashboard' },
+  { label: 'Asistencia', icon: 'clipboard-check-outline', screen: 'Asistencia', roles: ['church_admin', 'pastor', 'leader'] },
+  { label: 'Peticiones de oración', icon: 'hands-pray', screen: 'Peticiones', roles: ['church_admin', 'pastor', 'leader'] },
   { label: 'Membresía', icon: 'account-group-outline', screen: 'Membresía', permission: { module: 'membresia', action: 'ver' } },
   { label: 'Grupos y Células', icon: 'account-multiple-outline', screen: 'GruposCelulas', permission: { module: 'grupos', action: 'ver' } },
+  { label: 'Casos Pastorales', icon: 'heart-outline', screen: 'Casos Pastorales', permission: { module: 'pastoral', action: 'ver' } },
   { label: 'Finanzas', icon: 'cash-multiple', screen: 'Finanzas', permission: { module: 'finanzas', action: 'ver' } },
   { label: 'Comunicaciones', icon: 'forum-outline', screen: 'Comunicaciones', nestedScreen: 'GestionList', roles: ['church_admin', 'pastor', 'leader', 'treasurer'] },
   { label: 'Bandeja de Entrada', icon: 'message-outline', screen: 'Comunicaciones', nestedScreen: 'BandejaEntrada' },
-  { label: 'Asistencia', icon: 'clipboard-check-outline', screen: 'Asistencia', roles: ['church_admin', 'pastor', 'leader'] },
-  { label: 'Casos Pastorales', icon: 'heart-outline', screen: 'Casos Pastorales', permission: { module: 'pastoral', action: 'ver' } },
-  { label: 'Peticiones de oración', icon: 'hands-pray', screen: 'Peticiones', roles: ['church_admin', 'pastor', 'leader'] },
   { label: 'Inventario', icon: 'package-variant', screen: 'Inventario', permission: { module: 'inventario', action: 'ver' } },
 ];
 
@@ -58,6 +61,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const hasAnyRole = usePermissionsStore((s) => s.hasAnyRole);
   const tieneCasosAsignados = usePermissionsStore((s) => s.tieneCasosAsignados);
   const fetchPermissions = usePermissionsStore((s) => s.fetchPermissions);
+  const insets = useSafeAreaInsets();
   const { navigation, state } = props;
   const activeRoute = state?.routeNames[state?.index];
 
@@ -142,13 +146,17 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFF' }}>
-      {/* HEADER usuario */}
-      <View style={drawerStyles.header}>
-        <View style={drawerStyles.avatarCircle}>
-          <Icon source="account-circle" size={54} color={PANTONE_134C} />
+      {/* HEADER usuario (compacto: en un iPhone SE una cabecera alta deja el menú sin espacio) */}
+      <View style={[drawerStyles.header, { paddingTop: insets.top + 14 }]}>
+        <View style={drawerStyles.headerRow}>
+          <View style={drawerStyles.avatarCircle}>
+            <Icon source="account-circle" size={40} color={PANTONE_134C} />
+          </View>
+          <View style={drawerStyles.headerText}>
+            <Text style={drawerStyles.userName} numberOfLines={2}>{displayName}</Text>
+            <Text style={drawerStyles.userEmail} numberOfLines={1}>{user?.email ?? '—'}</Text>
+          </View>
         </View>
-        <Text style={drawerStyles.userName}>{displayName}</Text>
-        <Text style={drawerStyles.userEmail}>{user?.email ?? '—'}</Text>
         {iglesias.length > 1 && (
           <TouchableOpacity style={drawerStyles.changeChurchBtn} onPress={resetIglesia} activeOpacity={0.8}>
             <Icon source="swap-horizontal" size={15} color={PANTONE_295C} />
@@ -225,25 +233,25 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 
 const drawerStyles = StyleSheet.create({
   header: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingTop: 48,
+    paddingBottom: 14,
+    paddingHorizontal: 18,
     borderBottomColor: '#EEE',
     borderBottomWidth: 1,
     marginBottom: 6,
     backgroundColor: PANTONE_295C,
   },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerText: { flex: 1 },
   avatarCircle: {
     backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 40,
-    width: 68,
-    height: 68,
+    borderRadius: 26,
+    width: 52,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
   },
   userName: { fontWeight: '600', fontSize: 16, color: '#fff' },
-  userEmail: { fontSize: 13, color: PANTONE_134C, marginBottom: 2 },
+  userEmail: { fontSize: 13, color: PANTONE_134C, marginTop: 2 },
   changeChurchBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -253,6 +261,7 @@ const drawerStyles = StyleSheet.create({
     paddingVertical: 5,
     marginTop: 10,
     gap: 5,
+    alignSelf: 'flex-start',
   },
   changeChurchText: { fontSize: 13, color: PANTONE_295C, fontWeight: '600', flexShrink: 1 },
   menuList: { paddingVertical: 12 },
@@ -271,7 +280,7 @@ const drawerStyles = StyleSheet.create({
   menuLabelActive: { color: PANTONE_295C, fontWeight: '600' },
   menuIconWrapper: { marginRight: 15 },
   footer: {
-    paddingBottom: 24,
+    paddingBottom: 16,
     alignItems: 'center',
     borderTopColor: '#EEE',
     borderTopWidth: 1,
@@ -282,8 +291,8 @@ const drawerStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    marginTop: 10,
-    marginBottom: 16,
+    marginTop: 6,
+    marginBottom: 8,
     marginLeft: 12,
   },
   logoutText: { color: '#888', fontSize: 15, marginLeft: 6 },
