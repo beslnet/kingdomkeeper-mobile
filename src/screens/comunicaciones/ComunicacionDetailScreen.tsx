@@ -18,6 +18,7 @@ import {
   eliminarComunicacion,
   Comunicacion,
 } from '../../api/comunicaciones';
+import { GRUPO_CON_CUENTA_ID, alcanceEnvio, textoLlegara } from '../../utils/comunicaciones';
 
 const ESTADO_STYLES: Record<string, { bg: string; text: string }> = {
   borrador: { bg: '#FFF3E0', text: '#E65100' },
@@ -97,9 +98,16 @@ export default function ComunicacionDetailScreen({ route }: { route: any }) {
 
   const handleEnviar = async () => {
     if (!comunicacion) return;
+    const grupoCuenta = comunicacion.grupos_destinatarios_detalle?.find((g) => g.id === GRUPO_CON_CUENTA_ID);
+    const conGrupoCuenta = !!grupoCuenta;
+    const llegan = alcanceEnvio({
+      grupoConCuenta: grupoCuenta ? grupoCuenta.num_miembros : null,
+      individuales: Number(comunicacion.num_destinatarios_display || comunicacion.num_destinatarios) || 0,
+    });
     Alert.alert(
       'Confirmar envío',
-      `¿Enviar "${comunicacion.titulo}" a ${comunicacion.num_destinatarios_display || comunicacion.num_destinatarios} destinatario(s)?`,
+      `¿Enviar "${comunicacion.titulo}"?\n\n${textoLlegara(llegan)}` +
+        (conGrupoCuenta ? '\nSolo la reciben los hermanos que tienen cuenta en la app.' : ''),
       [
         { text: 'Cancelar', style: 'cancel' },
         {

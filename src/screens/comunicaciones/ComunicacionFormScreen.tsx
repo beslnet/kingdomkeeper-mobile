@@ -24,6 +24,13 @@ import {
   GrupoDestinatario,
   ComunicacionPayload,
 } from '../../api/comunicaciones';
+import { listarMiembros } from '../../api/miembros';
+import {
+  GRUPO_CON_CUENTA_ID,
+  alcanceEnvio,
+  textoLlegara,
+  textoSoloConCuenta,
+} from '../../utils/comunicaciones';
 
 const TIPOS = [
   { value: 'notificacion', label: 'Notificación' },
@@ -119,12 +126,19 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
   const [grupos, setGrupos] = useState<GrupoDestinatario[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  const [selectedDestinatarios, setSelectedDestinatarios] = useState<Set<number>>(
-    new Set(comunicacion?.destinatarios_detalle?.map((d) => d.id) ?? [])
-  );
   const [selectedGrupos, setSelectedGrupos] = useState<Set<number>>(
     new Set(comunicacion?.grupos_destinatarios_detalle?.map((g) => g.id) ?? [])
   );
+  // El grupo "con cuenta" ya incluye a cualquier individual: un borrador que traía ambos queda solo con el grupo.
+  const [selectedDestinatarios, setSelectedDestinatarios] = useState<Set<number>>(
+    new Set(
+      selectedGrupos.has(GRUPO_CON_CUENTA_ID)
+        ? []
+        : comunicacion?.destinatarios_detalle?.map((d) => d.id) ?? []
+    )
+  );
+  // Miembros activos en total (con o sin cuenta), para decir cuántos NO recibirán. null = no se pudo saber.
+  const [totalActivos, setTotalActivos] = useState<number | null>(null);
   const [destSearch, setDestSearch] = useState('');
 
   const [saving, setSaving] = useState(false);
@@ -139,15 +153,18 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
           listarGruposDestinatarios(),
         ]);
         setDestinatarios(destData);
-        const gruposConTodos: GrupoDestinatario[] = [
-          { id: 0, nombre: 'Todos los miembros activos', num_miembros: 0 },
-          ...gruposData,
-        ];
-        setGrupos(gruposConTodos);
+        setGrupos(gruposData);
       } catch {
         // Proceed without lists if API fails
       } finally {
         setLoadingData(false);
+      }
+      // Solo informativo; un rol sin acceso a Membresía simplemente no verá el "de N".
+      try {
+        const activos = await listarMiembros({ estado: 'activo', page_size: 1 });
+        setTotalActivos(typeof activos?.count === 'number' ? activos.count : null);
+      } catch {
+        setTotalActivos(null);
       }
     };
     fetchData();
@@ -163,6 +180,8 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
   };
 
   const toggleGrupo = (id: number) => {
+    // Elegir "todos con cuenta" vuelve redundantes los individuales: se limpian en vez de contarse dos veces.
+    if (id === GRUPO_CON_CUENTA_ID && !selectedGrupos.has(id)) setSelectedDestinatarios(new Set());
     setSelectedGrupos((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -226,6 +245,14 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
       setSaving(false);
     }
   };
+
+  const grupoConCuenta = grupos.find((g) => g.id === GRUPO_CON_CUENTA_ID);
+  const grupoConCuentaElegido = selectedGrupos.has(GRUPO_CON_CUENTA_ID);
+  const llegan = alcanceEnvio({
+    grupoConCuenta: grupoConCuentaElegido ? grupoConCuenta?.num_miembros ?? 0 : null,
+    individuales: selectedDestinatarios.size,
+  });
+  const hayDestino = selectedDestinatarios.size > 0 || selectedGrupos.size > 0;
 
   const filteredDestinatarios = destSearch.trim()
     ? destinatarios.filter((d) =>
@@ -331,9 +358,19 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
             })}
           </View>
         )}
+        {!loadingData && grupoConCuenta && (
+          <Text style={styles.avisoCuenta}>
+            {textoSoloConCuenta(grupoConCuenta.num_miembros, totalActivos)}
+          </Text>
+        )}
 
         {/* Destinatarios individuales */}
         <FieldLabel label="Destinatarios individuales" />
+        {grupoConCuentaElegido && (
+          <Text style={styles.avisoCuenta}>
+            Ya están incluidos en «{grupoConCuenta?.nombre}». Desmárcalo para elegir personas una por una.
+          </Text>
+        )}
         <TextInput
           style={[styles.textInput, styles.searchInput]}
           placeholder="Buscar miembro..."
@@ -355,8 +392,9 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
               return (
                 <TouchableOpacity
                   key={d.id}
-                  style={styles.checkboxRow}
+                  style={[styles.checkboxRow, grupoConCuentaElegido && styles.checkboxRowDisabled]}
                   onPress={() => toggleDestinatario(d.id)}
+                  disabled={grupoConCuentaElegido}
                   activeOpacity={0.7}
                 >
                   <Icon
@@ -381,6 +419,14 @@ export default function ComunicacionFormScreen({ route }: { route: any }) {
             {filteredDestinatarios.length === 0 && destSearch.trim() && (
               <Text style={styles.emptyText}>Sin resultados.</Text>
             )}
+          </View>
+        )}
+
+        {/* A cuántos llega */}
+        {hayDestino && !loadingData && (
+          <View style={[styles.resumenAlcance, llegan === 0 && styles.resumenAlcanceCero]}>
+            <Icon source={llegan === 0 ? 'alert-outline' : 'account-check-outline'} size={20} color={llegan === 0 ? '#B71C1C' : PANTONE_295C} />
+            <Text style={[styles.resumenAlcanceText, llegan === 0 && { color: '#B71C1C' }]}>{textoLlegara(llegan)}</Text>
           </View>
         )}
 
@@ -506,6 +552,33 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
     gap: 10,
+  },
+  checkboxRowDisabled: {
+    opacity: 0.45,
+  },
+  avisoCuenta: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#666',
+    marginTop: 8,
+  },
+  resumenAlcance: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EAF2FF',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 16,
+  },
+  resumenAlcanceCero: {
+    backgroundColor: '#FFEBEE',
+  },
+  resumenAlcanceText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: PANTONE_295C,
   },
   checkboxLabel: {
     fontSize: 14,
