@@ -14,6 +14,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { usePermissionsStore } from '../../store/permissionsStore';
 import { useAuthStore } from '../../store/authStore';
 import { obtenerEvento, eliminarEvento } from '../../api/eventos';
+import { obtenerGrupo } from '../../api/grupos';
+import { contarDelGrupo } from '../../utils/eventos';
 import { PANTONE_295C } from '../../theme/colors';
 
 function formatDate(raw: string | null | undefined): string {
@@ -54,12 +56,21 @@ export default function GrupoEventoDetailScreen() {
     setError(null);
     try {
       const result = await obtenerEvento(eventoId);
+      // El detalle no trae cuántos del grupo asistieron (la lista sí): se cuenta con los integrantes.
+      if (result.miembros_grupo_asistieron === undefined && grupoId) {
+        try {
+          const g = await obtenerGrupo(grupoId);
+          result.miembros_grupo_asistieron = contarDelGrupo(result.participantes ?? [], g.miembros ?? []);
+        } catch {
+          // Sin el grupo no se puede separar: se muestra solo el total.
+        }
+      }
       setEvento(result);
       navigation.setOptions({ title: result.titulo || 'Evento' });
     } catch {
       setError('No se pudo cargar el evento. Toca para reintentar.');
     }
-  }, [eventoId, navigation]);
+  }, [eventoId, grupoId, navigation]);
 
   useEffect(() => {
     setLoading(true);
@@ -189,10 +200,13 @@ export default function GrupoEventoDetailScreen() {
             <Icon source="account-check-outline" size={16} color="#666" />
             <Text style={styles.metaLabel}>Asistentes:</Text>
             <Text style={styles.metaValue}>
-              {evento.miembros_grupo_asistieron ?? 0} del grupo
-              {(evento.total_asistieron ?? 0) > (evento.miembros_grupo_asistieron ?? 0)
-                ? ` + ${(evento.total_asistieron ?? 0) - (evento.miembros_grupo_asistieron ?? 0)} otros`
-                : ''}
+              {evento.miembros_grupo_asistieron == null
+                ? `${evento.total_asistieron ?? 0}`
+                : `${evento.miembros_grupo_asistieron} del grupo${
+                    (evento.total_asistieron ?? 0) > evento.miembros_grupo_asistieron
+                      ? ` + ${(evento.total_asistieron ?? 0) - evento.miembros_grupo_asistieron} otros`
+                      : ''
+                  }`}
             </Text>
           </View>
         </View>
