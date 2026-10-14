@@ -17,6 +17,7 @@ import MembresiaStack from './MembresiaStack';
 import FinanzasStack from './FinanzasStack';
 import CasosPastoralesStack from './CasosPastoralesStack';
 import InventarioStack from './InventarioStack';
+import AsistenciaStack from './AsistenciaStack';
 
 const Drawer = createDrawerNavigator();
 
@@ -37,6 +38,7 @@ const MENU_ITEMS: MenuItem[] = [
   { label: 'Finanzas', icon: 'cash-multiple', screen: 'Finanzas', permission: { module: 'finanzas', action: 'ver' } },
   { label: 'Comunicaciones', icon: 'forum-outline', screen: 'Comunicaciones', nestedScreen: 'GestionList', roles: ['church_admin', 'pastor', 'leader', 'treasurer'] },
   { label: 'Bandeja de Entrada', icon: 'message-outline', screen: 'Comunicaciones', nestedScreen: 'BandejaEntrada' },
+  { label: 'Asistencia', icon: 'clipboard-check-outline', screen: 'Asistencia', roles: ['church_admin', 'pastor', 'leader'] },
   { label: 'Casos Pastorales', icon: 'heart-outline', screen: 'Casos Pastorales', permission: { module: 'pastoral', action: 'ver' } },
   { label: 'Inventario', icon: 'package-variant', screen: 'Inventario', permission: { module: 'inventario', action: 'ver' } },
 ];
@@ -299,6 +301,7 @@ export default function MainDrawer() {
       <Drawer.Screen name="Membresía" component={MembresiaStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Finanzas" component={FinanzasStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Comunicaciones" component={ComunicacionesStack} options={{ headerShown: false }} />
+      <Drawer.Screen name="Asistencia" component={AsistenciaStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Casos Pastorales" component={CasosPastoralesStack} options={{ headerShown: false }} />
       <Drawer.Screen name="Inventario" component={InventarioStack} options={{ headerShown: false }} />
     </Drawer.Navigator>
