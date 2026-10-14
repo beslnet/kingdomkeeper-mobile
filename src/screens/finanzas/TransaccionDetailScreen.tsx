@@ -259,7 +259,7 @@ export default function TransaccionDetailScreen() {
       {/* Action buttons */}
       {canView && (
         <View style={styles.actionsSection}>
-          {transaccion.estado === 'pendiente' && canApprove && !activeAction && (
+          {transaccion.estado === 'pendiente' && transaccion.puedo_aprobar === true && !activeAction && (
             <View style={styles.actionRow}>
               <TouchableOpacity
                 style={[styles.actionBtn, { backgroundColor: PANTONE_295C }]}

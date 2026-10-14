@@ -184,9 +184,12 @@ export default function TransaccionDetailScreen() {
   const route = useRoute<any>();
   const { transaccionId, grupoId, puedeGestionar } = route.params ?? {};
 
-  const { hasPermission, isSuperAdmin, hasAnyRole } = usePermissionsStore();
-  // Solo tesorero o superuser pueden aprobar/rechazar/pagar — igual que TesoreroPermission del backend
-  const isTreasurer = isSuperAdmin || hasAnyRole(['tesorero']);
+  const { hasPermission, isSuperAdmin } = usePermissionsStore();
+  // Pagar y anular son de tesorería (finanzas.aprobar). Aprobar/rechazar NO se decide aquí: lo
+  // calcula el backend en puedo_aprobar (tesorería, o el líder/co-líder si va al fondo de su
+  // grupo; nunca quien lo registró). Antes miraba el rol 'tesorero', que no existe ('treasurer'),
+  // y el tesorero no veía ningún botón.
+  const isTreasurer = isSuperAdmin || hasPermission('finanzas', 'aprobar');
 
   const [transaccion, setTransaccion] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -274,7 +277,7 @@ export default function TransaccionDetailScreen() {
 
   // Permission flags
   const estado = transaccion.estado ?? '';
-  const puedeAprobar   = isTreasurer && estado === 'pendiente';
+  const puedeAprobar   = transaccion.puedo_aprobar === true;
   const puedePagar     = isTreasurer && estado === 'aprobado';
   const puedeAnular    = (isTreasurer || puedeGestionar) && estado !== 'anulado' && estado !== 'rechazado';
   const puedeRectificar = puedeGestionar && estado === 'rechazado';
@@ -414,7 +417,7 @@ export default function TransaccionDetailScreen() {
           </TouchableOpacity>
         ) : null}
 
-        {/* ── Acciones de aprobación (tesorero) ── */}
+        {/* ── Acciones de aprobación (según puedo_aprobar / tesorería) ── */}
         {(puedeAprobar || puedePagar) ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>ACCIONES DE APROBACIÓN</Text>

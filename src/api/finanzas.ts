@@ -59,6 +59,8 @@ export interface Transaccion {
   motivo_rechazo?: string;
   motivo_anulacion?: string;
   requiere_aprobacion?: boolean;
+  /** Lo calcula el backend (puede_aprobar): el botón Aprobar/Rechazar sale de aquí, no de los roles. */
+  puedo_aprobar?: boolean;
   aprobado_por?: string | number;
   aprobado_por_nombre?: string;
   fecha_aprobacion?: string;
