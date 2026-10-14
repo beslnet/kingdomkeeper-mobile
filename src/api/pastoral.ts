@@ -188,6 +188,8 @@ export interface PeticionOracion {
   fecha_respuesta: string | null;
   testimonio: string;
   registrada_por: string | null;
+  /** ¿Puede quien mira editarla, borrarla, responderla o reabrirla? La decide el backend: las propias, o cualquiera si lidera la intercesión. */
+  puedo_gestionar: boolean;
   created_at: string;
   /** Desde cuándo corre el plazo de 12 meses de una petición sin respuesta. */
   vigente_desde?: string | null;

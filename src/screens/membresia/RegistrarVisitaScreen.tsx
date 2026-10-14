@@ -13,11 +13,11 @@ import { useNavigation } from '@react-navigation/native';
 import {
   registrarVisita,
   listarMiembros,
+  listarResponsablesVisita,
   COMO_LLEGO,
   QUIERE_CONTACTO,
 } from '../../api/miembros';
-import { listarUsuarios } from '../../api/pastoral';
-import { useIglesiaStore } from '../../store/iglesiaStore';
+import { usePermissionsStore } from '../../store/permissionsStore';
 import PersonaPicker, { PersonaOpcion } from '../../components/PersonaPicker';
 import {
   INITIAL_VISITA,
@@ -67,7 +67,9 @@ function Opciones<T extends string>({
 
 export default function RegistrarVisitaScreen() {
   const navigation = useNavigation<any>();
-  const iglesiaId = useIglesiaStore(st => st.iglesiaId);
+  // Elegir quién hace el seguimiento es asignar: lo hacen el pastor, la administración y quienes lideran la
+  // bienvenida; un integrante registra y el líder asigna. Lo resuelve el backend (`puede` de mis-permisos).
+  const puedeAsignar = usePermissionsStore(st => st.can('visitas.asignar'));
   const [fields, setFields] = useState<VisitaFields>(INITIAL_VISITA);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -88,18 +90,21 @@ export default function RegistrarVisitaScreen() {
         );
       })
       .catch(() => vivo && setHermanos([]));
-    listarUsuarios(iglesiaId)
-      .then(lista => {
-        if (!vivo) return;
-        setUsuarios(
-          lista.filter(u => !enEliminacion(u)).map(u => ({ id: u.id, nombre: nombreDe(u), detalle: u.email })),
-        );
-      })
-      .catch(() => vivo && setUsuarios([]));
+    // No /core/usuarios/: a un pastor esa lista solo le trae su propio nombre, y no incluye al equipo de bienvenida.
+    if (puedeAsignar) {
+      listarResponsablesVisita()
+        .then(lista => {
+          if (!vivo) return;
+          setUsuarios(lista.map(u => ({ id: u.id, nombre: u.nombre })));
+        })
+        .catch(() => vivo && setUsuarios([]));
+    } else {
+      setUsuarios([]);
+    }
     return () => {
       vivo = false;
     };
-  }, [iglesiaId]);
+  }, [puedeAsignar]);
 
   const handleChange = <K extends keyof VisitaFields>(name: K, value: VisitaFields[K]) => {
     setFields(prev => ({ ...prev, [name]: value }));
@@ -112,9 +117,17 @@ export default function RegistrarVisitaScreen() {
     if (Object.keys(errs).length > 0) return;
     setSubmitting(true);
     try {
-      await registrarVisita(armarVisita(fields));
+      const cuerpo = armarVisita(fields);
+      // Quien no puede asignar no manda responsable (el backend lo rechazaría): el líder de bienvenida lo asigna después.
+      if (!puedeAsignar) cuerpo.ficha.responsable_id = null;
+      await registrarVisita(cuerpo);
       Alert.alert('Visita registrada', 'El visitante ha sido registrado exitosamente.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+        {
+          text: 'OK',
+          // Si esta es la primera pantalla de la pila (el comité entra directo aquí) no hay a dónde volver:
+          // se deja la ficha limpia para la siguiente visita.
+          onPress: () => (navigation.canGoBack() ? navigation.goBack() : setFields(INITIAL_VISITA)),
+        },
       ]);
     } catch (err: any) {
       Alert.alert('Error', mensajeDeErrorVisita(err));
@@ -231,7 +244,10 @@ export default function RegistrarVisitaScreen() {
           value={fields.quiere_contacto}
           onChange={v => handleChange('quiere_contacto', v)}
         />
-        {usuarios.length > 0 && (
+        {!puedeAsignar && (
+          <Text style={styles.helper}>Quien lidera la bienvenida asignará el seguimiento.</Text>
+        )}
+        {puedeAsignar && usuarios.length > 0 && (
           <PersonaPicker
             label="Seguimiento a cargo de"
             ayuda="Le llega un aviso al teléfono"

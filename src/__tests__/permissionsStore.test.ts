@@ -206,4 +206,56 @@ describe('permissionsStore', () => {
       expect(canSeeItem({ roles: ['leader'] }, s)).toBe(false);
     });
   });
+
+  describe('can / canAny: lo que el backend resolvió (rol + función de ministerio)', () => {
+    it('empieza sin nada: ni puede, ni funciones, ni ministerios', () => {
+      const st = usePermissionsStore.getState();
+      expect(st.puede).toEqual([]);
+      expect(st.funciones).toEqual({});
+      expect(st.ministerios).toEqual([]);
+      expect(st.can('visitas.registrar')).toBe(false);
+    });
+
+    it('can es exactamente lo que dice `puede`; canAny basta con uno', () => {
+      usePermissionsStore.setState({ puede: ['visitas.registrar', 'peticiones.ver'] });
+      const st = usePermissionsStore.getState();
+      expect(st.can('visitas.registrar')).toBe(true);
+      expect(st.can('visitas.asignar')).toBe(false);
+      expect(st.canAny(['visitas.asignar', 'peticiones.ver'])).toBe(true);
+      expect(st.canAny(['visitas.asignar', 'asistencia.marcar'])).toBe(false);
+    });
+
+    it('no se deriva de los roles: un member con función bienvenida puede registrar, un leader sin ella no', () => {
+      usePermissionsStore.setState({ roles: ['member'], puede: ['visitas.registrar', 'visitas.ver_propias'] });
+      expect(usePermissionsStore.getState().can('visitas.registrar')).toBe(true);
+      usePermissionsStore.setState({ roles: ['leader'], puede: [] });
+      expect(usePermissionsStore.getState().can('visitas.registrar')).toBe(false);
+    });
+
+    it('el superadmin puede todo', () => {
+      usePermissionsStore.setState({ isSuperAdmin: true, puede: [] });
+      expect(usePermissionsStore.getState().can('asistencia.configurar')).toBe(true);
+    });
+
+    it('fetchPermissions guarda puede, funciones y ministerios; reset los limpia', async () => {
+      mockGetMisPermisos.mockResolvedValue({
+        roles: ['member'], permisos: {}, modulos_accesibles: [], es_super_admin: false,
+        puede: ['asistencia.marcar'], funciones: { asistencia: 'integrante' },
+        ministerios: [{ grupo_id: 7, grupo: 'Ujieres', funcion: 'asistencia', nivel: 'integrante' }],
+      } as any);
+      await usePermissionsStore.getState().fetchPermissions();
+      const st = usePermissionsStore.getState();
+      expect(st.puede).toEqual(['asistencia.marcar']);
+      expect(st.funciones).toEqual({ asistencia: 'integrante' });
+      expect(st.ministerios[0].grupo).toBe('Ujieres');
+      st.reset();
+      expect(usePermissionsStore.getState().puede).toEqual([]);
+    });
+
+    it('un backend que aún no manda `puede` no rompe nada', async () => {
+      mockGetMisPermisos.mockResolvedValue({ roles: ['pastor'], permisos: {}, modulos_accesibles: [] } as any);
+      await usePermissionsStore.getState().fetchPermissions();
+      expect(usePermissionsStore.getState().puede).toEqual([]);
+    });
+  });
 });

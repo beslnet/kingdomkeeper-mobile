@@ -157,21 +157,24 @@ function PeticionCard({
           <Text style={styles.testimonioText}>{item.testimonio}</Text>
         </View>
       )}
-      <View style={styles.cardActions}>
-        {item.estado === 'orando' ? (
-          <TouchableOpacity style={styles.btnRespondida} onPress={onResponder} activeOpacity={0.8}>
-            <Icon source="check-circle-outline" size={16} color="#2E7D32" />
-            <Text style={styles.btnRespondidaText}>¡Respondida!</Text>
+      {/* Responder, reabrir y eliminar: las propias, o cualquiera si lidera la intercesión (lo dice el backend). */}
+      {item.puedo_gestionar && (
+        <View style={styles.cardActions}>
+          {item.estado === 'orando' ? (
+            <TouchableOpacity style={styles.btnRespondida} onPress={onResponder} activeOpacity={0.8}>
+              <Icon source="check-circle-outline" size={16} color="#2E7D32" />
+              <Text style={styles.btnRespondidaText}>¡Respondida!</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.btnLink} onPress={onReabrir} activeOpacity={0.7}>
+              <Text style={styles.btnLinkText}>Volver a «en oración»</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.btnLink} onPress={onEliminar} activeOpacity={0.7}>
+            <Text style={[styles.btnLinkText, { color: '#C62828' }]}>Eliminar</Text>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.btnLink} onPress={onReabrir} activeOpacity={0.7}>
-            <Text style={styles.btnLinkText}>Volver a «en oración»</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={styles.btnLink} onPress={onEliminar} activeOpacity={0.7}>
-          <Text style={[styles.btnLinkText, { color: '#C62828' }]}>Eliminar</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      )}
     </View>
   );
 }
