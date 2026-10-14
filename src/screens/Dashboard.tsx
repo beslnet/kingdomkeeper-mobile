@@ -179,8 +179,10 @@ export default function DashboardScreen() {
           onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
           style={styles.hamburgerBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Abrir menú"
         >
-          <Icon source="menu" size={26} color={PANTONE_295C} />
+          <Icon source="menu" size={26} color="#fff" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.greeting}>{greeting}, {nombre}!</Text>
