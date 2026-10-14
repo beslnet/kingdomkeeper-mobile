@@ -183,6 +183,7 @@ export default function RendicionForm() {
             <DateTimePicker
               value={fecha}
               mode="date"
+              locale="es-CL"
               display={Platform.OS === 'ios' ? 'inline' : 'default'}
               onChange={(_, d) => {
                 setShowFechaPicker(Platform.OS === 'ios');

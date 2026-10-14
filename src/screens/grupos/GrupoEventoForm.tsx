@@ -174,6 +174,7 @@ export default function GrupoEventoFormScreen() {
           <DateTimePicker
             value={fechaInicio}
             mode="datetime"
+            locale="es-CL"
             display={Platform.OS === 'ios' ? 'inline' : 'default'}
             onChange={(_, date) => {
               setShowInicioPicker(Platform.OS === 'ios');
@@ -209,6 +210,7 @@ export default function GrupoEventoFormScreen() {
               <DateTimePicker
                 value={fechaFin}
                 mode="datetime"
+                locale="es-CL"
                 display={Platform.OS === 'ios' ? 'inline' : 'default'}
                 minimumDate={fechaInicio}
                 onChange={(_, date) => {

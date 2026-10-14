@@ -339,6 +339,7 @@ export default function ConsumoFormScreen() {
               <DateTimePicker
                 value={fechaConsumo}
                 mode="date"
+                locale="es-CL"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                 maximumDate={new Date()}
                 onChange={(_e, date) => {

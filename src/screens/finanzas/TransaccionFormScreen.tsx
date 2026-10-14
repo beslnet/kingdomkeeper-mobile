@@ -325,6 +325,7 @@ export default function TransaccionFormScreen() {
           <DateTimePicker
             value={fecha}
             mode="date"
+            locale="es-CL"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={(_e, date) => {
               setShowDatePicker(Platform.OS === 'ios');

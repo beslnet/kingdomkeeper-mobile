@@ -167,6 +167,7 @@ function DateField({
         <DateTimePicker
           value={value ?? new Date()}
           mode="date"
+          locale="es-CL"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           maximumDate={maxDate}
           onChange={(_e, date) => {

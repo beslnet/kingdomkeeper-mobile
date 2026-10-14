@@ -87,6 +87,7 @@ function CampoFecha({
         <DateTimePicker
           value={deISO(valor)}
           mode="date"
+          locale="es-CL"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           minimumDate={minimo ? deISO(minimo) : undefined}
           maximumDate={maximo ? deISO(maximo) : undefined}

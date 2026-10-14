@@ -369,6 +369,7 @@ export default function PrestamoFormScreen() {
               <DateTimePicker
                 value={fechaDevolucion ?? new Date()}
                 mode="date"
+                locale="es-CL"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                 minimumDate={new Date()}
                 onChange={(_e, date) => {

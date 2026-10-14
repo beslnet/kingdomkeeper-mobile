@@ -400,6 +400,7 @@ export default function ProfileScreen() {
               <DateTimePicker
                 value={fechaNacimiento ? new Date(fechaNacimiento) : new Date(1990, 0, 1)}
                 mode="date"
+                locale="es-CL"
                 display="default"
                 maximumDate={new Date()}
                 onChange={(_event, date) => {
