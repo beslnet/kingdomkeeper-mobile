@@ -27,6 +27,7 @@ import {
   UnidadMedida,
   TipoArticulo,
 } from '../../api/inventario';
+import { parsearPesosOpcional, pesosComoTexto } from '../../utils/pesos';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -189,7 +190,7 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
   const [modelo, setModelo] = useState(articulo?.modelo ?? '');
   const [numeroSerie, setNumeroSerie] = useState(articulo?.numero_serie ?? '');
   const [valorAdquisicion, setValorAdquisicion] = useState(
-    articulo?.valor_adquisicion ?? '',
+    pesosComoTexto(articulo?.valor_adquisicion),
   );
   const [fechaAdquisicion, setFechaAdquisicion] = useState(
     articulo?.fecha_adquisicion ?? '',
@@ -300,6 +301,13 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
       setFormError('El código es obligatorio para artículos individuales.');
       return;
     }
+    const valorParseado = tipoArticulo === 'individual'
+      ? parsearPesosOpcional(valorAdquisicion)
+      : { ok: true as const, valor: null };
+    if (!valorParseado.ok) {
+      setFormError(`Valor de adquisición: ${valorParseado.error}`);
+      return;
+    }
     if (tipoArticulo !== 'individual') {
       const cantNum = parseInt(cantidad, 10);
       if (isNaN(cantNum) || cantNum < 0) {
@@ -335,7 +343,7 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
         payload.marca = marca.trim();
         payload.modelo = modelo.trim();
         payload.numero_serie = numeroSerie.trim();
-        payload.valor_adquisicion = valorAdquisicion.trim() || null;
+        payload.valor_adquisicion = valorParseado.valor === null ? null : String(valorParseado.valor);
         payload.fecha_adquisicion = fechaAdquisicion.trim() || null;
         payload.cantidad = 1;
         payload.unidad_medida = 'unidad';
@@ -547,11 +555,11 @@ export default function ArticuloFormScreen({ route }: { route: any }) {
               <FieldLabel label="Valor de Adquisición" />
               <TextInput
                 style={styles.textInput}
-                placeholder="0.00"
+                placeholder="0"
                 placeholderTextColor="#AAA"
                 value={valorAdquisicion}
                 onChangeText={setValorAdquisicion}
-                keyboardType="decimal-pad"
+                keyboardType="number-pad"
               />
 
               <FieldLabel label="Fecha de Adquisición (YYYY-MM-DD)" />

@@ -14,6 +14,7 @@ import { Icon } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { PANTONE_295C } from '../../theme/colors';
+import { parsearPesos } from '../../utils/pesos';
 import {
   crearTransaccion,
   editarTransaccion,
@@ -121,27 +122,27 @@ export default function TransaccionFormScreen() {
     loadCategorias(val);
   };
 
+  const montoParseado = parsearPesos(monto);
+
   const validate = (): boolean => {
     if (!tipo) { setFormError('El tipo es obligatorio.'); return false; }
     if (!categoriaId) { setFormError('La categoría es obligatoria.'); return false; }
     if (!cuentaId) { setFormError('La cuenta es obligatoria.'); return false; }
-    if (!monto || isNaN(parseFloat(monto)) || parseFloat(monto) <= 0) {
-      setFormError('El monto debe ser un número mayor a 0.');
-      return false;
-    }
+    if (!montoParseado.ok) { setFormError(montoParseado.error); return false; }
+    if (montoParseado.valor <= 0) { setFormError('El monto debe ser mayor a 0.'); return false; }
     return true;
   };
 
   const handleSave = async () => {
     setFormError(null);
-    if (!validate()) return;
+    if (!validate() || !montoParseado.ok) return;
     setSaving(true);
     try {
       const fields = {
         tipo,
         categoria_id: categoriaId!,
         cuenta_id: cuentaId!,
-        monto: parseFloat(monto),
+        monto: montoParseado.valor,
         fecha: toISODateStr(fecha),
         medio: medio || undefined,
         observaciones: observaciones || undefined,
@@ -307,7 +308,7 @@ export default function TransaccionFormScreen() {
           placeholderTextColor="#AAA"
           value={monto}
           onChangeText={setMonto}
-          keyboardType="decimal-pad"
+          keyboardType="number-pad"
         />
 
         {/* Fecha */}

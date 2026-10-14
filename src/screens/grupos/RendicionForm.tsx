@@ -20,6 +20,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PANTONE_295C } from '../../theme/colors';
 import { crearTransaccion, rectificarTransaccion, listarCategorias } from '../../api/finanzas';
+import { parsearPesos } from '../../utils/pesos';
 
 const MEDIOS = [
   { label: 'Efectivo', value: 'efectivo' },
@@ -102,8 +103,10 @@ export default function RendicionForm() {
 
   const handleSubmit = useCallback(async () => {
     if (!categoriaId) { Alert.alert('Error', 'Selecciona una categoría.'); return; }
-    const montoNum = parseFloat(monto.replace(',', '.'));
-    if (!monto || isNaN(montoNum) || montoNum <= 0) { Alert.alert('Error', 'Ingresa un monto válido.'); return; }
+    const montoParseado = parsearPesos(monto);
+    if (!montoParseado.ok) { Alert.alert('Error', montoParseado.error); return; }
+    const montoNum = montoParseado.valor;
+    if (montoNum <= 0) { Alert.alert('Error', 'El monto debe ser mayor a 0.'); return; }
 
     try {
       setSaving(true);
@@ -194,7 +197,7 @@ export default function RendicionForm() {
             style={styles.textInput}
             value={monto}
             onChangeText={setMonto}
-            keyboardType="numeric"
+            keyboardType="number-pad"
             placeholder="0"
           />
 

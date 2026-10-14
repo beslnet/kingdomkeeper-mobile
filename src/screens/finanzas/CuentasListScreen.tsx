@@ -22,6 +22,7 @@ import {
   TipoCuentaFondo,
   formatMonto,
 } from '../../api/finanzas';
+import { parsearPesosOpcional, pesosComoTexto } from '../../utils/pesos';
 
 function FieldLabel({ label, required }: { label: string; required?: boolean }) {
   return (
@@ -139,7 +140,7 @@ export default function CuentasListScreen() {
     setEditingCuenta(cuenta);
     setFormNombre(cuenta.nombre);
     setFormTipoId(cuenta.tipo?.id ?? null);
-    setFormSaldo(String(Math.round(Number(cuenta.saldo_inicial ?? 0))));
+    setFormSaldo(pesosComoTexto(cuenta.saldo_inicial ?? 0));
     setFormError(null);
     setShowForm(true);
   };
@@ -154,12 +155,14 @@ export default function CuentasListScreen() {
     setFormError(null);
     if (!formNombre.trim()) { setFormError('El nombre es obligatorio.'); return; }
     if (!formTipoId) { setFormError('El tipo es obligatorio.'); return; }
+    const saldo = parsearPesosOpcional(formSaldo);
+    if (!saldo.ok) { setFormError(saldo.error); return; }
     setSaving(true);
     try {
       const payload = {
         nombre: formNombre.trim(),
         tipo_id: formTipoId,
-        saldo_inicial: formSaldo ? parseFloat(formSaldo) : 0,
+        saldo_inicial: saldo.valor ?? 0,
       };
       if (editingCuenta) {
         await editarCuenta(editingCuenta.id, payload);
@@ -239,7 +242,7 @@ export default function CuentasListScreen() {
         placeholderTextColor="#AAA"
         value={formSaldo}
         onChangeText={setFormSaldo}
-        keyboardType="decimal-pad"
+        keyboardType="number-pad"
       />
 
       {formError ? (
