@@ -34,6 +34,7 @@ import {
   listarPeticiones,
   PeticionOracion,
   reabrirPeticion,
+  renovarPeticion,
   responderPeticion,
   resumenPeticiones,
   ResumenPeticiones,
@@ -48,6 +49,7 @@ import {
   mensajeDeError,
   payloadParaAnotar,
   puedeAnotar,
+  textoVencimiento,
 } from '../../utils/peticiones';
 import { useRefreshOnRestore } from '../../hooks/useRefreshOnRestore';
 
@@ -107,11 +109,13 @@ function PeticionCard({
   item,
   onResponder,
   onReabrir,
+  onRenovar,
   onEliminar,
 }: {
   item: PeticionOracion;
   onResponder: () => void;
   onReabrir: () => void;
+  onRenovar: () => void;
   onEliminar: () => void;
 }) {
   const privada = item.visibilidad === 'privada';
@@ -136,6 +140,17 @@ function PeticionCard({
         {item.registrada_por ? ` · anotó ${item.registrada_por}` : ''}
         {item.estado === 'respondida' ? ` · respondida el ${fechaCorta(item.fecha_respuesta)}` : ''}
       </Text>
+      {item.estado === 'orando' && item.vence_en_dias !== null && item.vence_en_dias !== undefined && (
+        <View style={styles.venceRow}>
+          <View style={styles.chipVence}>
+            <Icon source="clock-alert-outline" size={12} color="#E65100" />
+            <Text style={styles.chipVenceText}>{textoVencimiento(item.vence_en_dias)}</Text>
+          </View>
+          <TouchableOpacity style={styles.btnLink} onPress={onRenovar} activeOpacity={0.7}>
+            <Text style={styles.btnLinkText}>Sigue vigente</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       {!!item.testimonio && (
         <View style={styles.testimonio}>
           <Icon source="check-circle-outline" size={16} color="#2E7D32" />
@@ -257,6 +272,15 @@ export default function PeticionesScreen() {
       cargar(tab, true);
     } catch (err) {
       Alert.alert('No se pudo reabrir', mensajeDeError(err, 'Intenta de nuevo.'));
+    }
+  };
+
+  const renovar = async (p: PeticionOracion) => {
+    try {
+      await renovarPeticion(p.id);
+      cargar(tab, true);
+    } catch (err) {
+      Alert.alert('No se pudo renovar', mensajeDeError(err, 'Intenta de nuevo.'));
     }
   };
 
@@ -437,6 +461,7 @@ export default function PeticionesScreen() {
             item={item}
             onResponder={() => abrirRespuesta(item)}
             onReabrir={() => reabrir(item)}
+            onRenovar={() => renovar(item)}
             onEliminar={() => eliminar(item)}
           />
         )}
@@ -655,6 +680,9 @@ const styles = StyleSheet.create({
   chipPrivada: { backgroundColor: '#F5F5F5' },
   chipCongregacion: { backgroundColor: '#E3F2FD' },
   chipText: { fontSize: 11, fontWeight: '600' },
+  venceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  chipVence: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#FFF3E0' },
+  chipVenceText: { fontSize: 11, fontWeight: '600', color: '#E65100' },
   cardMotivo: { fontSize: 14, color: '#444', lineHeight: 20, marginTop: 4 },
   cardMeta: { fontSize: 12, color: '#999', marginTop: 6 },
   testimonio: {

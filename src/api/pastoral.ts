@@ -172,7 +172,7 @@ export const listarUsuarios = async (iglesiaId?: number | null): Promise<Usuario
 
 // ─── Peticiones de oración ───────────────────────────────────────────────────
 
-export type EstadoPeticion = 'orando' | 'respondida';
+export type EstadoPeticion = 'orando' | 'respondida' | 'vencida';
 export type VisibilidadPeticion = 'privada' | 'congregacion';
 
 export interface PeticionOracion {
@@ -189,6 +189,10 @@ export interface PeticionOracion {
   testimonio: string;
   registrada_por: string | null;
   created_at: string;
+  /** Desde cuándo corre el plazo de 12 meses de una petición sin respuesta. */
+  vigente_desde?: string | null;
+  /** Días para que venza; el backend lo manda solo desde 30 días antes (si no, null). */
+  vence_en_dias?: number | null;
 }
 
 export interface PeticionPayload {
@@ -241,6 +245,12 @@ export const responderPeticion = async (
 
 export const reabrirPeticion = async (id: number): Promise<PeticionOracion> => {
   const { data } = await api.post(`/api/pastoral/peticiones/${id}/reabrir/`);
+  return data;
+};
+
+/** "Sigue vigente": quien pidió vuelve a pedir; el plazo de 12 meses parte de hoy. */
+export const renovarPeticion = async (id: number): Promise<PeticionOracion> => {
+  const { data } = await api.post(`/api/pastoral/peticiones/${id}/renovar/`);
   return data;
 };
 

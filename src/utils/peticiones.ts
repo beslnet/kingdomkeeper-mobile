@@ -60,3 +60,13 @@ export function payloadParaAnotar(f: PeticionPayload): PeticionPayload {
     consentimiento_publicar: f.visibilidad === 'congregacion' && f.consentimiento_publicar,
   };
 }
+
+/**
+ * Texto del chip de una petición en oración que está por vencer. `dias` es `vence_en_dias` del
+ * backend: llega solo desde 30 días antes (si no, null), así que aquí no se recalcula el plazo.
+ */
+export function textoVencimiento(dias: number | null | undefined): string {
+  if (dias === null || dias === undefined) return '';
+  if (dias <= 0) return 'Vence hoy';
+  return dias === 1 ? 'Vence en 1 día' : `Vence en ${dias} días`;
+}

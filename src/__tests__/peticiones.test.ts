@@ -7,6 +7,7 @@ import {
   mensajeDeError,
   payloadParaAnotar,
   puedeAnotar,
+  textoVencimiento,
 } from '../utils/peticiones';
 
 jest.mock('../api/api', () => ({ __esModule: true, default: { get: jest.fn(), post: jest.fn(), delete: jest.fn() } }));
@@ -94,5 +95,18 @@ describe('listarPeticiones', () => {
   it('acepta una lista sin paginar', async () => {
     mockGet.mockResolvedValueOnce({ data: [{ id: 7 }] });
     expect((await listarPeticiones('respondida')).map((p) => p.id)).toEqual([7]);
+  });
+});
+
+describe('textoVencimiento', () => {
+  it('sin aviso (null o undefined) no hay texto: el backend solo manda el número desde 30 días antes', () => {
+    expect(textoVencimiento(null)).toBe('');
+    expect(textoVencimiento(undefined)).toBe('');
+  });
+
+  it('dice los días, en singular con 1 y "hoy" con 0', () => {
+    expect(textoVencimiento(30)).toBe('Vence en 30 días');
+    expect(textoVencimiento(1)).toBe('Vence en 1 día');
+    expect(textoVencimiento(0)).toBe('Vence hoy');
   });
 });
