@@ -11,6 +11,11 @@ export function usePermissions() {
     hasRole: usePermissionsStore((s) => s.hasRole),
     hasAnyRole: usePermissionsStore((s) => s.hasAnyRole),
     canAccess: usePermissionsStore((s) => s.canAccess),
+    puede: usePermissionsStore((s) => s.puede),
+    funciones: usePermissionsStore((s) => s.funciones),
+    ministerios: usePermissionsStore((s) => s.ministerios),
+    can: usePermissionsStore((s) => s.can),
+    canAny: usePermissionsStore((s) => s.canAny),
     fetchPermissions: usePermissionsStore((s) => s.fetchPermissions),
   };
 }

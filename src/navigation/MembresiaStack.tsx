@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { DrawerActions } from '@react-navigation/native';
 import { Icon } from 'react-native-paper';
 import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
+import { usePermissionsStore } from '../store/permissionsStore';
 
 import MiembrosListScreen from '../screens/membresia/MiembrosListScreen';
 import MiembroDetailScreen from '../screens/membresia/MiembroDetailScreen';
@@ -26,8 +27,12 @@ const HamburgerButton = ({ navigation }: { navigation: any }) => (
 );
 
 export default function MembresiaStack() {
+  // Quien llega por la función de bienvenida (rol member, sin `membresia.ver`) no tiene lista de miembros: su
+  // primera pantalla es la ficha de la visita. Lo decide el permiso, no un rol.
+  const veMiembros = usePermissionsStore((s) => s.hasPermission('membresia', 'ver'));
   return (
     <Stack.Navigator
+      initialRouteName={veMiembros ? 'MiembrosList' : 'RegistrarVisita'}
       screenOptions={{
         headerStyle: { backgroundColor: PANTONE_295C },
         headerTintColor: PANTONE_134C,
@@ -79,7 +84,11 @@ export default function MembresiaStack() {
       <Stack.Screen
         name="RegistrarVisita"
         component={RegistrarVisitaScreen}
-        options={{ title: 'Registrar visita' }}
+        // Si es la primera pantalla de la pila (no hay a dónde volver) el menú va a la izquierda.
+        options={({ navigation }: { navigation: any }) => ({
+          title: 'Registrar visita',
+          ...(navigation.canGoBack() ? {} : { headerLeft: () => <HamburgerButton navigation={navigation} /> }),
+        })}
       />
     </Stack.Navigator>
   );

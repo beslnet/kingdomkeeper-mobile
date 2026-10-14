@@ -20,33 +20,9 @@ import CasosPastoralesStack from './CasosPastoralesStack';
 import InventarioStack from './InventarioStack';
 import AsistenciaStack from './AsistenciaStack';
 import PeticionesStack from './PeticionesStack';
+import { MENU_ITEMS, MenuItem, puedeVerItem } from './menuAcceso';
 
 const Drawer = createDrawerNavigator();
-
-type MenuItem = {
-  label: string;
-  icon: string;
-  screen: string;
-  nestedTab?: string;
-  nestedScreen?: string;
-  permission?: { module: string; action: string };
-  roles?: string[];
-};
-
-// Orden de uso: lo que se abre cada semana (asistencia, peticiones) va arriba, porque en un
-// iPhone SE solo caben ~7 ítems sin desplazar. Inventario, lo menos frecuente, queda al final.
-const MENU_ITEMS: MenuItem[] = [
-  { label: 'Inicio', icon: 'home-outline', screen: 'Inicio', nestedTab: 'Dashboard' },
-  { label: 'Asistencia', icon: 'clipboard-check-outline', screen: 'Asistencia', roles: ['church_admin', 'pastor', 'leader'] },
-  { label: 'Peticiones de oración', icon: 'hands-pray', screen: 'Peticiones', roles: ['church_admin', 'pastor', 'leader'] },
-  { label: 'Membresía', icon: 'account-group-outline', screen: 'Membresía', permission: { module: 'membresia', action: 'ver' } },
-  { label: 'Grupos y Células', icon: 'account-multiple-outline', screen: 'GruposCelulas', permission: { module: 'grupos', action: 'ver' } },
-  { label: 'Casos Pastorales', icon: 'heart-outline', screen: 'Casos Pastorales', permission: { module: 'pastoral', action: 'ver' } },
-  { label: 'Finanzas', icon: 'cash-multiple', screen: 'Finanzas', permission: { module: 'finanzas', action: 'ver' } },
-  { label: 'Comunicaciones', icon: 'forum-outline', screen: 'Comunicaciones', nestedScreen: 'GestionList', roles: ['church_admin', 'pastor', 'leader', 'treasurer'] },
-  { label: 'Bandeja de Entrada', icon: 'message-outline', screen: 'Comunicaciones', nestedScreen: 'BandejaEntrada' },
-  { label: 'Inventario', icon: 'package-variant', screen: 'Inventario', permission: { module: 'inventario', action: 'ver' } },
-];
 
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const logout = useAuthStore((state) => state.logout);
@@ -59,6 +35,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const isLoading = usePermissionsStore((s) => s.isLoading);
   const hasPermission = usePermissionsStore((s) => s.hasPermission);
   const hasAnyRole = usePermissionsStore((s) => s.hasAnyRole);
+  const canAny = usePermissionsStore((s) => s.canAny);
   const tieneCasosAsignados = usePermissionsStore((s) => s.tieneCasosAsignados);
   const fetchPermissions = usePermissionsStore((s) => s.fetchPermissions);
   const insets = useSafeAreaInsets();
@@ -109,18 +86,8 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
     }
   }, [iglesiaId, fetchPermissions]);
 
-  const canSeeItem = (item: MenuItem): boolean => {
-    if (isSuperAdmin) return true;
-    if (isLoading) return !item.permission && !item.roles;
-    if (item.roles && item.roles.length > 0 && !hasAnyRole(item.roles)) return false;
-    // Casos Pastorales: visible solo si puede gestionar (rol pastoral) O tiene casos asignados
-    if (item.screen === 'Casos Pastorales') {
-      const puedeGestionar = isSuperAdmin || hasAnyRole(['pastor', 'leader', 'church_admin']);
-      return puedeGestionar || tieneCasosAsignados;
-    }
-    if (item.permission && !hasPermission(item.permission.module, item.permission.action)) return false;
-    return true;
-  };
+  const canSeeItem = (item: MenuItem): boolean =>
+    puedeVerItem(item, { isSuperAdmin, isLoading, tieneCasosAsignados, hasPermission, hasAnyRole, canAny });
 
   const displayName =
     user?.nombre && user?.apellidos

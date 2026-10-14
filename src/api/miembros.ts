@@ -231,6 +231,15 @@ export const registrarVisita = async (data: RegistrarVisitaInput): Promise<{ id:
   return res;
 };
 
+/**
+ * A quién se le puede asignar el seguimiento de una visita: pastor, líderes, administración y el equipo de
+ * bienvenida. Solo la piden quienes pueden asignar (`visitas.asignar`); a los demás el backend les responde 403.
+ */
+export const listarResponsablesVisita = async (): Promise<{ id: number; nombre: string }[]> => {
+  const { data } = await api.get('/api/miembros/responsables-seguimiento/');
+  return Array.isArray(data) ? data : [];
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function getEstadoMembresiaColor(estado: string): { bg: string; text: string } {
