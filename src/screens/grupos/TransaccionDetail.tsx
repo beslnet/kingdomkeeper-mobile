@@ -370,6 +370,7 @@ export default function TransaccionDetailScreen() {
               label="Aprobado"
               who={transaccion.aprobado_por_nombre}
               when={formatDateTime(transaccion.fecha_aprobacion)}
+              note={transaccion.aprobacion_nota ?? null}
             />
           ) : null}
           {/* Rechazo */}

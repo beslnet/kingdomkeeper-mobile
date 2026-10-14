@@ -248,7 +248,9 @@ export default function TransaccionDetailScreen() {
             <Text style={styles.alertRowText}>Motivo anulación: {transaccion.motivo_anulacion}</Text>
           </View>
         ) : null}
-        {transaccion.aprobado_por_nombre ? (
+        {transaccion.aprobacion_nota ? (
+          <InfoRow label="Aprobación" value={transaccion.aprobacion_nota} />
+        ) : transaccion.aprobado_por_nombre ? (
           <InfoRow label="Aprobado por" value={`${transaccion.aprobado_por_nombre}${transaccion.fecha_aprobacion ? ` (${formatDateDisplay(transaccion.fecha_aprobacion.split('T')[0])})` : ''}`} />
         ) : null}
         {transaccion.pagado_por_nombre ? (

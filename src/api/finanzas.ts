@@ -63,6 +63,8 @@ export interface Transaccion {
   puedo_aprobar?: boolean;
   aprobado_por?: string | number;
   aprobado_por_nombre?: string;
+  /** "Registrado y aprobado por tesorería: <nombre>" cuando el gasto nació aprobado; la arma el backend. */
+  aprobacion_nota?: string | null;
   fecha_aprobacion?: string;
   pagado_por?: string | number;
   pagado_por_nombre?: string;
