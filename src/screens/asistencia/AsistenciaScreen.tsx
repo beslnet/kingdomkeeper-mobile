@@ -26,11 +26,11 @@ import {
 } from '../../api/asistencia';
 import {
   Familia,
-  VISITAS_SIN_FICHA_ACTIVO,
   alternarFamilia,
   armarFamilias,
   deIso,
   estadoFamilia,
+  etiquetaFamilia,
   fechaLarga,
   aIso,
   mismosPresentes,
@@ -38,6 +38,8 @@ import {
   reunionPorDefecto,
   sumarDias,
   ultimaFecha,
+  visitasComoNumero,
+  visitasParaEnviar,
 } from '../../utils/asistencia';
 import { PANTONE_295C } from '../../theme/colors';
 
@@ -64,6 +66,7 @@ export default function AsistenciaScreen() {
   const [original, setOriginal] = useState<Set<number>>(new Set());
   const [presentes, setPresentes] = useState<Set<number>>(new Set());
   const [visitasSinFicha, setVisitasSinFicha] = useState('');
+  const [visitasOriginal, setVisitasOriginal] = useState<number | null>(null);
   const [buscar, setBuscar] = useState('');
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -77,7 +80,9 @@ export default function AsistenciaScreen() {
   reunionRef.current = reunion;
 
   const hoy = aIso(new Date());
-  const sucio = !!datos && !mismosPresentes(presentes, original);
+  const sucio =
+    !!datos &&
+    (!mismosPresentes(presentes, original) || visitasComoNumero(visitasSinFicha) !== visitasOriginal);
 
   const cargarReuniones = useCallback(async () => {
     setError(null);
@@ -118,7 +123,8 @@ export default function AsistenciaScreen() {
       setDatos(d);
       setOriginal(ya);
       setPresentes(new Set(ya));
-      setVisitasSinFicha('');
+      setVisitasOriginal(d.visitas_sin_ficha);
+      setVisitasSinFicha(d.visitas_sin_ficha === null ? '' : String(d.visitas_sin_ficha));
     } catch (err) {
       if (mio !== pedido.current) return;
       setDatos(null);
@@ -192,18 +198,17 @@ export default function AsistenciaScreen() {
     if (!reunion || !datos) return;
     setGuardando(true);
     try {
-      const n = parseInt(visitasSinFicha, 10);
       const d = await guardarAsistenciaDelDia(reunion.id, {
         fecha,
         presentes: [...presentes],
-        ...(VISITAS_SIN_FICHA_ACTIVO && visitasSinFicha !== '' && !Number.isNaN(n)
-          ? { visitas_sin_ficha: Math.max(0, n) }
-          : {}),
+        ...visitasParaEnviar(visitasSinFicha, visitasOriginal),
       });
       const ya = new Set(d.personas.filter((p) => p.presente).map((p) => p.id));
       setDatos(d);
       setOriginal(ya);
       setPresentes(new Set(ya));
+      setVisitasOriginal(d.visitas_sin_ficha);
+      setVisitasSinFicha(d.visitas_sin_ficha === null ? '' : String(d.visitas_sin_ficha));
       setAviso(`Asistencia guardada: ${ya.size} presente${ya.size === 1 ? '' : 's'}`);
       setTimeout(() => setAviso(null), 3000);
     } catch (err) {
@@ -363,8 +368,20 @@ export default function AsistenciaScreen() {
             </View>
           }
           ListFooterComponent={
-            VISITAS_SIN_FICHA_ACTIVO ? (
+            reunion?.grupo ? null : (
               <View style={styles.visitasBox}>
+                {datos && datos.visitas.length > 0 && (
+                  <View style={styles.visitasFichas}>
+                    <Text style={styles.visitasLabel}>
+                      Visitas que dejaron ficha ({datos.visitas.length})
+                    </Text>
+                    {datos.visitas.map((v) => (
+                      <Text key={v.id} style={styles.visitaNombre}>
+                        {v.nombre}
+                      </Text>
+                    ))}
+                  </View>
+                )}
                 <Text style={styles.visitasLabel}>Visitas que no dejaron ficha (opcional)</Text>
                 <TextInput
                   style={styles.visitasInput}
@@ -373,9 +390,10 @@ export default function AsistenciaScreen() {
                   keyboardType="number-pad"
                   placeholder="0"
                   maxLength={3}
+                  accessibilityLabel="Visitas que no dejaron ficha"
                 />
               </View>
-            ) : null
+            )
           }
           renderItem={({ item }) => {
             if (item.tipo === 'familia') {
@@ -385,17 +403,18 @@ export default function AsistenciaScreen() {
                   style={[styles.familiaRow, est === 'todos' && styles.rowChecked]}
                   onPress={() => setPresentes((s) => alternarFamilia(s, item.familia))}
                   activeOpacity={0.7}
-                  accessibilityLabel={`Familia ${item.familia.nombre}, marcar a todos`}
+                  accessibilityLabel={`${etiquetaFamilia(item.familia.nombre)}, marcar a todos`}
                 >
                   <Icon
-                    source={est === 'todos' ? 'checkbox-multiple-marked-circle' : est === 'algunos' ? 'minus-circle' : 'checkbox-multiple-blank-circle-outline'}
+                    source={est === 'todos' ? 'checkbox-marked-circle' : est === 'algunos' ? 'minus-circle' : 'checkbox-blank-circle-outline'}
                     size={26}
                     color={est === 'ninguno' ? '#BBB' : PANTONE_295C}
                   />
                   <View style={styles.flex1}>
-                    <Text style={styles.familiaNombre}>Familia {item.familia.nombre}</Text>
+                    <Text style={styles.familiaNombre}>{etiquetaFamilia(item.familia.nombre)}</Text>
                     <Text style={styles.familiaSub}>
-                      {item.familia.personas.filter((p) => presentes.has(p.id)).length} de {item.familia.personas.length} · toca para marcar a todos
+                      {item.familia.personas.filter((p) => presentes.has(p.id)).length} de {item.familia.personas.length} ·{' '}
+                      {est === 'todos' ? 'toca para desmarcar' : 'toca para marcar a todos'}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -514,6 +533,8 @@ const styles = StyleSheet.create({
   familiaNombre: { fontSize: 15, fontWeight: '700', color: PANTONE_295C },
   familiaSub: { fontSize: 12, color: '#888', marginTop: 2 },
   visitasBox: { backgroundColor: '#fff', borderRadius: 10, padding: 14, marginTop: 8 },
+  visitasFichas: { marginBottom: 14 },
+  visitaNombre: { fontSize: 14, color: '#222', fontWeight: '600', marginBottom: 4 },
   visitasLabel: { fontSize: 14, color: '#444', marginBottom: 8 },
   visitasInput: { borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 10, fontSize: 16, width: 90 },
   toast: {

@@ -1,8 +1,8 @@
 import {
-  alternarFamilia, armarFamilias, estadoFamilia, fechaLarga, mismosPresentes, normalizar, reunionPorDefecto, sumarDias, ultimaFecha,
+  alternarFamilia, etiquetaFamilia, armarFamilias, estadoFamilia, fechaLarga, mismosPresentes, normalizar, reunionPorDefecto, sumarDias, ultimaFecha, visitasComoNumero, visitasParaEnviar,
 } from '../utils/asistencia';
 
-const p = (id: number, grupo_familiar?: string | null) => ({ id, nombre: `P${id}`, presente: false, grupo_familiar });
+const p = (id: number, familia: string | null = null) => ({ id, nombre: `P${id}`, presente: false, familia });
 
 describe('ultimaFecha (0 = lunes … 6 = domingo)', () => {
   // 2026-10-13 es martes
@@ -31,7 +31,7 @@ describe('familias', () => {
     expect(familias[0].personas.map((x) => x.id)).toEqual([1, 2, 6]);
     expect(sueltas.map((x) => x.id)).toEqual([3, 4, 5, 7]);
   });
-  it('sin grupo_familiar en nadie (API v1) no hay familias', () => {
+  it('si nadie tiene familia no se arma ninguna', () => {
     const { familias, sueltas } = armarFamilias([p(1), p(2)]);
     expect(familias).toEqual([]);
     expect(sueltas).toHaveLength(2);
@@ -74,4 +74,35 @@ describe('reunionPorDefecto', () => {
     expect(reunionPorDefecto([culto, otra], martes)).toBe(culto);
   });
   it('sin reuniones, nada', () => expect(reunionPorDefecto([], martes)).toBeNull());
+});
+
+describe('visitas que no dejaron ficha', () => {
+  it('texto a número', () => {
+    expect(visitasComoNumero('')).toBeNull();
+    expect(visitasComoNumero('4')).toBe(4);
+    expect(visitasComoNumero('0')).toBe(0);
+  });
+  it('sin cambios no se manda nada (el backend conserva lo guardado)', () => {
+    expect(visitasParaEnviar('', null)).toEqual({});
+    expect(visitasParaEnviar('3', 3)).toEqual({});
+  });
+  it('un número nuevo o corregido se manda', () => {
+    expect(visitasParaEnviar('4', null)).toEqual({ visitas_sin_ficha: 4 });
+    expect(visitasParaEnviar('2', 5)).toEqual({ visitas_sin_ficha: 2 });
+    expect(visitasParaEnviar('0', null)).toEqual({ visitas_sin_ficha: 0 });
+  });
+  it('borrar un número que había manda null', () => {
+    expect(visitasParaEnviar('', 5)).toEqual({ visitas_sin_ficha: null });
+  });
+});
+
+describe('etiquetaFamilia', () => {
+  it('antepone Familia si falta', () => expect(etiquetaFamilia('Pérez')).toBe('Familia Pérez'));
+  it('no la repite', () => {
+    expect(etiquetaFamilia('Familia Pérez')).toBe('Familia Pérez');
+    expect(etiquetaFamilia('familia perez ')).toBe('familia perez');
+  });
+  it('una palabra que solo empieza igual sí lleva el prefijo', () => {
+    expect(etiquetaFamilia('Familiar Soto')).toBe('Familia Familiar Soto');
+  });
 });

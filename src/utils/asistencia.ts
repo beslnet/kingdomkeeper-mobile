@@ -1,12 +1,5 @@
 import type { PersonaAsistencia } from '../api/asistencia';
 
-/**
- * Asistencia v2 agrega `visitas_sin_ficha` al POST y `grupo_familiar` a cada persona.
- * El número de visitas queda apagado hasta que el backend lo traiga; las familias no
- * necesitan interruptor: si ninguna persona trae `grupo_familiar`, no se arma ninguna.
- */
-export const VISITAS_SIN_FICHA_ACTIVO = false;
-
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -72,13 +65,13 @@ export interface Familia {
 const claveDe = (texto: string) => texto.trim().replace(/\s+/g, ' ').toLowerCase();
 
 /**
- * Agrupa por `grupo_familiar`. Una persona sola con ese nombre no es una familia: queda suelta.
+ * Agrupa por `familia`. Una persona sola con ese nombre no es una familia: queda suelta.
  * Devuelve las familias y, aparte, las personas sin familia (en el orden recibido).
  */
 export function armarFamilias(personas: PersonaAsistencia[]): { familias: Familia[]; sueltas: PersonaAsistencia[] } {
   const porClave = new Map<string, Familia>();
   for (const p of personas) {
-    const texto = (p.grupo_familiar ?? '').trim();
+    const texto = (p.familia ?? '').trim();
     if (!texto) continue;
     const clave = claveDe(texto);
     const f = porClave.get(clave);
@@ -116,3 +109,23 @@ export function mismosPresentes(a: Set<number>, b: Set<number>): boolean {
 /** Sin tildes ni mayúsculas, para que "perez" encuentre "Pérez". */
 export const normalizar = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+/** El texto del campo "visitas que no dejaron ficha" como número (vacío = null). */
+export function visitasComoNumero(texto: string): number | null {
+  const n = parseInt(texto, 10);
+  return Number.isNaN(n) ? null : Math.max(0, n);
+}
+
+/**
+ * Qué mandar en `visitas_sin_ficha`: nada si no cambió (el backend deja lo que había), el número
+ * si lo anotaron o cambiaron, y null si lo borraron teniendo uno guardado.
+ */
+export function visitasParaEnviar(texto: string, original: number | null): { visitas_sin_ficha?: number | null } {
+  const actual = visitasComoNumero(texto);
+  return actual === original ? {} : { visitas_sin_ficha: actual };
+}
+
+/** "Familia Pérez": si el nombre ya empieza con "Familia" no se repite. */
+export function etiquetaFamilia(nombre: string): string {
+  return /^familia\b/i.test(nombre.trim()) ? nombre.trim() : `Familia ${nombre.trim()}`;
+}

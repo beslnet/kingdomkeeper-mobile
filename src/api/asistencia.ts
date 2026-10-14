@@ -21,21 +21,35 @@ export interface PersonaAsistencia {
   id: number;
   nombre: string;
   presente: boolean;
-  /** Texto libre de Miembro.grupo_familiar; lo agrega Asistencia v2. Hasta entonces no viene. */
-  grupo_familiar?: string | null;
+  /**
+   * Nombre de su familia (Miembro.grupo_familiar), ya con una sola escritura para todos los de la
+   * misma familia: se agrupa por igualdad. null si no tiene.
+   */
+  familia: string | null;
+}
+
+/** Una visita que dejó ficha ese día: se identifica y se le da seguimiento (en la web). */
+export interface VisitaDelDia {
+  id: number;
+  nombre: string;
+  telefono: string | null;
 }
 
 export interface AsistenciaDelDia {
   fecha: string;
   guardada: boolean;
   presentes: number;
+  /** Cuántas visitas no dejaron ficha; null si no se anotó. */
+  visitas_sin_ficha: number | null;
+  /** Las que sí dejaron ficha ese día (las reuniones de grupo no las traen). */
+  visitas: VisitaDelDia[];
   personas: PersonaAsistencia[];
 }
 
 export interface GuardarAsistenciaPayload {
   fecha: string;
   presentes: number[];
-  /** Visitas que no dejaron ficha; lo agrega Asistencia v2. Hasta entonces no se manda. */
+  /** Omitido = no se toca lo que ya había; null = borrar el número; n = anotarlo. */
   visitas_sin_ficha?: number | null;
 }
 
