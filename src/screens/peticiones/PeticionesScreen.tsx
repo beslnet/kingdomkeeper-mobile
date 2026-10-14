@@ -146,9 +146,11 @@ function PeticionCard({
             <Icon source="clock-alert-outline" size={12} color="#E65100" />
             <Text style={styles.chipVenceText}>{textoVencimiento(item.vence_en_dias)}</Text>
           </View>
-          <TouchableOpacity style={styles.btnLink} onPress={onRenovar} activeOpacity={0.7}>
-            <Text style={styles.btnLinkText}>Sigue vigente</Text>
-          </TouchableOpacity>
+          {item.puedo_gestionar && (
+            <TouchableOpacity style={styles.btnLink} onPress={onRenovar} activeOpacity={0.7}>
+              <Text style={styles.btnLinkText}>Sigue vigente</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
       {!!item.testimonio && (
