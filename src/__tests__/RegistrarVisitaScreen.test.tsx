@@ -58,6 +58,13 @@ describe('RegistrarVisitaScreen', () => {
     mockUsuarios.mockResolvedValue([{ id: 9, nombre: 'Lía', apellidos: 'Soto', email: 'lia@example.test' }]);
   });
 
+  it('la casilla dice que la visita puede pedir que le borren los datos (política de privacidad v2)', async () => {
+    const tree = await montar();
+    expect(textos(tree)).toContain(
+      'La visita aceptó que la iglesia guarde estos datos para contactarla y acompañarla. Puede pedir que los borren cuando quiera.',
+    );
+  });
+
   it('sin la casilla de autorización no registra y avisa por qué', async () => {
     const tree = await montar();
     await escribir(tree, 'Nombre *', 'Ana');

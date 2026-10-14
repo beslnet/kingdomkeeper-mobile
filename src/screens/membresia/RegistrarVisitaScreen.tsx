@@ -268,7 +268,7 @@ export default function RegistrarVisitaScreen() {
 
         <Divider style={styles.divider} />
         <Checkbox.Item
-          label="La visita aceptó que la iglesia guarde estos datos para contactarla"
+          label="La visita aceptó que la iglesia guarde estos datos para contactarla y acompañarla. Puede pedir que los borren cuando quiera."
           status={fields.consentimiento ? 'checked' : 'unchecked'}
           onPress={() => handleChange('consentimiento', !fields.consentimiento)}
           position="leading"

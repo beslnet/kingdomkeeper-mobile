@@ -322,6 +322,9 @@ export default function PeticionesScreen() {
           multiline
           textAlignVertical="top"
         />
+        <Text style={styles.motivoAyuda} testID="peticion-motivo-ayuda">
+          Basta en términos generales: «por su salud», «por su familia». No anote diagnósticos.
+        </Text>
 
         <Text style={styles.label}>Fecha</Text>
         <CampoFecha
@@ -552,6 +555,7 @@ const styles = StyleSheet.create({
   },
   formTitulo: { fontSize: 16, fontWeight: '700', color: '#222', marginBottom: 4 },
   label: { fontSize: 13, fontWeight: '600', color: '#555', marginTop: 12, marginBottom: 5 },
+  motivoAyuda: { fontSize: 12, color: '#777', marginTop: 4, lineHeight: 16 },
   input: {
     borderWidth: 1,
     borderColor: '#DDD',
