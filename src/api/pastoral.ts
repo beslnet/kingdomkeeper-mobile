@@ -169,3 +169,82 @@ export const listarUsuarios = async (iglesiaId?: number | null): Promise<Usuario
   });
   return Array.isArray(data) ? data : (data.results ?? []);
 };
+
+// ─── Peticiones de oración ───────────────────────────────────────────────────
+
+export type EstadoPeticion = 'orando' | 'respondida';
+export type VisibilidadPeticion = 'privada' | 'congregacion';
+
+export interface PeticionOracion {
+  id: number;
+  por_quien: string;
+  miembro: number | null;
+  miembro_nombre: string | null;
+  motivo: string;
+  fecha: string; // YYYY-MM-DD
+  visibilidad: VisibilidadPeticion;
+  consentimiento_publicar: boolean;
+  estado: EstadoPeticion;
+  fecha_respuesta: string | null;
+  testimonio: string;
+  registrada_por: string | null;
+  created_at: string;
+}
+
+export interface PeticionPayload {
+  por_quien: string;
+  motivo: string;
+  fecha: string;
+  visibilidad: VisibilidadPeticion;
+  consentimiento_publicar: boolean;
+}
+
+export interface ResumenPeticiones {
+  orando: number;
+  respondidas_mes: number;
+  respondidas_anio: number;
+}
+
+const PAGINA_PETICIONES = 100;
+const MAX_PAGINAS_PETICIONES = 5;
+
+/** Trae las peticiones de un estado, siguiendo `next` si hay más de una página. */
+export const listarPeticiones = async (estado: EstadoPeticion): Promise<PeticionOracion[]> => {
+  const todas: PeticionOracion[] = [];
+  for (let page = 1; page <= MAX_PAGINAS_PETICIONES; page++) {
+    const { data } = await api.get('/api/pastoral/peticiones/', {
+      params: { estado, page_size: PAGINA_PETICIONES, page },
+    });
+    if (Array.isArray(data)) return data;
+    todas.push(...(data.results ?? []));
+    if (!data.next) break;
+  }
+  return todas;
+};
+
+export const crearPeticion = async (payload: PeticionPayload): Promise<PeticionOracion> => {
+  const { data } = await api.post('/api/pastoral/peticiones/', payload);
+  return data;
+};
+
+export const eliminarPeticion = async (id: number): Promise<void> => {
+  await api.delete(`/api/pastoral/peticiones/${id}/`);
+};
+
+export const responderPeticion = async (
+  id: number,
+  payload: { fecha_respuesta: string; testimonio: string }
+): Promise<PeticionOracion> => {
+  const { data } = await api.post(`/api/pastoral/peticiones/${id}/responder/`, payload);
+  return data;
+};
+
+export const reabrirPeticion = async (id: number): Promise<PeticionOracion> => {
+  const { data } = await api.post(`/api/pastoral/peticiones/${id}/reabrir/`);
+  return data;
+};
+
+export const resumenPeticiones = async (): Promise<ResumenPeticiones> => {
+  const { data } = await api.get('/api/pastoral/peticiones/resumen/');
+  return data;
+};
