@@ -157,9 +157,15 @@ export const obtenerLogs = async (id: number): Promise<LogCasoPastoral[]> => {
 
 // ─── User listing (for responsable search) ───────────────────────────────────
 
-export const listarUsuarios = async (): Promise<Usuario[]> => {
+// `iglesiaId` acota la lista a esa iglesia: sin él, quien administra varias ve los
+// usuarios de todas, y el backend rechaza como responsable a uno de otra iglesia.
+export const listarUsuarios = async (iglesiaId?: number | null): Promise<Usuario[]> => {
   const { data } = await api.get('/api/core/usuarios/', {
-    params: { estado: 'activo', page_size: 100 },
+    params: {
+      estado: 'activo',
+      page_size: 100,
+      ...(iglesiaId != null ? { iglesia_id: iglesiaId } : {}),
+    },
   });
   return Array.isArray(data) ? data : (data.results ?? []);
 };

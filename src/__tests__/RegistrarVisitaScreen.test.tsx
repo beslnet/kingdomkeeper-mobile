@@ -1,0 +1,105 @@
+import React from 'react';
+import { Alert } from 'react-native';
+import renderer, { act } from 'react-test-renderer';
+
+jest.mock('../api/api', () => ({ __esModule: true, default: {} }));
+jest.mock('@react-navigation/native', () => ({
+  useNavigation: () => ({ goBack: jest.fn() }),
+}));
+jest.mock('../store/iglesiaStore', () => ({
+  useIglesiaStore: (sel: any) => sel({ iglesiaId: 1 }),
+}));
+jest.mock('../api/miembros', () => ({
+  ...jest.requireActual('../api/miembros'),
+  registrarVisita: jest.fn(),
+  listarMiembros: jest.fn(),
+}));
+jest.mock('../api/pastoral', () => ({ listarUsuarios: jest.fn() }));
+
+import { registrarVisita, listarMiembros } from '../api/miembros';
+import { listarUsuarios } from '../api/pastoral';
+import RegistrarVisitaScreen from '../screens/membresia/RegistrarVisitaScreen';
+
+const mockRegistrar = registrarVisita as jest.Mock;
+const mockMiembros = listarMiembros as jest.Mock;
+const mockUsuarios = listarUsuarios as jest.Mock;
+
+const flush = () => act(async () => { await Promise.resolve(); await Promise.resolve(); });
+
+async function montar() {
+  let tree!: renderer.ReactTestRenderer;
+  await act(async () => {
+    tree = renderer.create(<RegistrarVisitaScreen />);
+  });
+  await flush();
+  return tree;
+}
+
+const textos = (tree: renderer.ReactTestRenderer) =>
+  JSON.stringify(tree.toJSON());
+
+const escribir = async (tree: renderer.ReactTestRenderer, label: string, valor: string) => {
+  const input = tree.root.findAll(n => n.props.label === label && typeof n.props.onChangeText === 'function')[0];
+  await act(async () => input.props.onChangeText(valor));
+};
+
+const tocar = async (tree: renderer.ReactTestRenderer, pred: (n: any) => boolean) => {
+  const el = tree.root.findAll(n => pred(n) && typeof n.props.onPress === 'function')[0];
+  await act(async () => el.props.onPress());
+};
+
+describe('RegistrarVisitaScreen', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    // react-native-paper avisa de que no hay librería de íconos en jest; no aporta al test.
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockMiembros.mockResolvedValue({ results: [{ id: 5, nombre: 'Marta', apellidos: 'Rojas', email: null }] });
+    mockUsuarios.mockResolvedValue([{ id: 9, nombre: 'Lía', apellidos: 'Soto', email: 'lia@example.test' }]);
+  });
+
+  it('sin la casilla de autorización no registra y avisa por qué', async () => {
+    const tree = await montar();
+    await escribir(tree, 'Nombre *', 'Ana');
+    await escribir(tree, 'Apellidos *', 'Pérez');
+    await tocar(tree, n => n.props.children === 'Registrar visita');
+    expect(mockRegistrar).not.toHaveBeenCalled();
+    expect(textos(tree)).toContain('Sin su autorización no se pueden guardar sus datos.');
+  });
+
+  it('con la casilla manda la ficha con el consentimiento', async () => {
+    mockRegistrar.mockResolvedValue({ id: '1' });
+    const tree = await montar();
+    await escribir(tree, 'Nombre *', 'Ana');
+    await escribir(tree, 'Apellidos *', 'Pérez');
+    await tocar(tree, n => n.props.label?.startsWith?.('La visita aceptó'));
+    await tocar(tree, n => n.props.children === 'Registrar visita');
+    expect(mockRegistrar).toHaveBeenCalledTimes(1);
+    expect(mockRegistrar.mock.calls[0][0].ficha.consentimiento).toBe(true);
+  });
+
+  it('si no se pueden cargar hermanos ni usuarios, esos campos no aparecen y la visita se registra', async () => {
+    mockMiembros.mockRejectedValue({ response: { status: 403 } });
+    mockUsuarios.mockRejectedValue({ response: { status: 403 } });
+    mockRegistrar.mockResolvedValue({ id: '1' });
+    const tree = await montar();
+    expect(textos(tree)).not.toContain('Seguimiento a cargo de');
+    await tocar(tree, n => n.props.children === 'Lo invitó alguien');
+    expect(textos(tree)).not.toContain('¿Quién lo invitó?');
+    await escribir(tree, 'Nombre *', 'Ana');
+    await escribir(tree, 'Apellidos *', 'Pérez');
+    await tocar(tree, n => n.props.label?.startsWith?.('La visita aceptó'));
+    await tocar(tree, n => n.props.children === 'Registrar visita');
+    expect(mockRegistrar).toHaveBeenCalledTimes(1);
+    const { ficha } = mockRegistrar.mock.calls[0][0];
+    expect(ficha.responsable_id).toBeNull();
+    expect(ficha.invitado_por_id).toBeNull();
+  });
+
+  it('con las listas cargadas ofrece al responsable y al invitador', async () => {
+    const tree = await montar();
+    expect(textos(tree)).toContain('Seguimiento a cargo de');
+    await tocar(tree, n => n.props.children === 'Lo invitó alguien');
+    expect(textos(tree)).toContain('¿Quién lo invitó?');
+  });
+});
