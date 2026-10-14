@@ -65,6 +65,8 @@ export interface Transaccion {
   aprobado_por_nombre?: string;
   /** "Registrado y aprobado por tesorería: <nombre>" cuando el gasto nació aprobado; la arma el backend. */
   aprobacion_nota?: string | null;
+  /** El responsable pagó de su bolsillo y se le devuelve: lo único que quien registra no se aprueba a sí mismo. */
+  es_reembolso?: boolean;
   fecha_aprobacion?: string;
   pagado_por?: string | number;
   pagado_por_nombre?: string;
@@ -203,6 +205,7 @@ export const crearTransaccion = async (fields: {
   responsable_id?: number;
   medio?: string;
   observaciones?: string;
+  es_reembolso?: boolean;
 }): Promise<Transaccion> => {
   const { data } = await api.post('/api/finanzas/transacciones/', fields);
   return data;
@@ -217,6 +220,7 @@ export const editarTransaccion = async (id: number, fields: Partial<{
   responsable_id: number;
   medio: string;
   observaciones: string;
+  es_reembolso: boolean;
 }>): Promise<Transaccion> => {
   const { data } = await api.patch(`/api/finanzas/transacciones/${id}/`, fields);
   return data;

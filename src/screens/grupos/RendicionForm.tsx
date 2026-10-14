@@ -46,6 +46,7 @@ export default function RendicionForm() {
   const [medio, setMedio] = useState<string>(transaccion?.medio ?? 'efectivo');
   const [observaciones, setObservaciones] = useState<string>(transaccion?.observaciones ?? '');
   const [usaFondoGeneral, setUsaFondoGeneral] = useState<boolean>(transaccion?.usa_fondo_general ?? false);
+  const [esReembolso, setEsReembolso] = useState<boolean>(false);
   const [archivo, setArchivo] = useState<{ uri: string; type: string; name: string } | null>(null);
 
   const [saving, setSaving] = useState(false);
@@ -130,6 +131,7 @@ export default function RendicionForm() {
           observaciones,
           grupo_id: grupoId,
           usa_fondo_general: usaFondoGeneral,
+          es_reembolso: esReembolso,
           _file: archivo,
         });
       }
@@ -140,7 +142,7 @@ export default function RendicionForm() {
     } finally {
       setSaving(false);
     }
-  }, [categoriaId, fecha, monto, medio, observaciones, usaFondoGeneral, archivo, grupoId, isRectifying, transaccion, navigation]);
+  }, [categoriaId, fecha, monto, medio, observaciones, usaFondoGeneral, esReembolso, archivo, grupoId, isRectifying, transaccion, navigation]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -252,6 +254,22 @@ export default function RendicionForm() {
                 value={usaFondoGeneral}
                 onValueChange={setUsaFondoGeneral}
                 trackColor={{ true: PANTONE_295C }}
+              />
+            </View>
+          ) : null}
+
+          {/* Reembolso: lo pagó quien registra de su bolsillo y se lo devuelven */}
+          {!isRectifying ? (
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Es un reembolso</Text>
+                <Text style={styles.hint}>Lo pagué yo y me lo devuelven</Text>
+              </View>
+              <Switch
+                value={esReembolso}
+                onValueChange={setEsReembolso}
+                trackColor={{ true: PANTONE_295C }}
+                accessibilityLabel="Es un reembolso: lo pagué yo y me lo devuelven"
               />
             </View>
           ) : null}

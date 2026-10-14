@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
+  Switch,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -70,6 +71,7 @@ export default function TransaccionFormScreen() {
   const [fecha, setFecha] = useState<Date>(parseDateStr(transaccion?.fecha));
   const [medio, setMedio] = useState(transaccion?.medio ?? '');
   const [observaciones, setObservaciones] = useState(transaccion?.observaciones ?? '');
+  const [esReembolso, setEsReembolso] = useState<boolean>(transaccion?.es_reembolso ?? false);
 
   const [categorias, setCategorias] = useState<CategoriaTransaccion[]>([]);
   const [cuentas, setCuentas] = useState<CuentaFondo[]>([]);
@@ -146,6 +148,7 @@ export default function TransaccionFormScreen() {
         fecha: toISODateStr(fecha),
         medio: medio || undefined,
         observaciones: observaciones || undefined,
+        es_reembolso: tipo === 'egreso' && esReembolso,
       };
       if (isEdit) {
         await editarTransaccion(transaccion!.id, fields);
@@ -387,6 +390,21 @@ export default function TransaccionFormScreen() {
           textAlignVertical="top"
         />
 
+        {tipo === 'egreso' ? (
+          <View style={styles.switchRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.switchLabel}>Es un reembolso</Text>
+              <Text style={styles.switchHint}>Lo pagué yo y me lo devuelven</Text>
+            </View>
+            <Switch
+              value={esReembolso}
+              onValueChange={setEsReembolso}
+              trackColor={{ true: PANTONE_295C }}
+              accessibilityLabel="Es un reembolso: lo pagué yo y me lo devuelven"
+            />
+          </View>
+        ) : null}
+
         {formError ? (
           <View style={styles.errorBanner}>
             <Text style={styles.errorBannerText}>{formError}</Text>
@@ -411,6 +429,9 @@ export default function TransaccionFormScreen() {
 }
 
 const styles = StyleSheet.create({
+  switchRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12 },
+  switchLabel: { fontSize: 14, fontWeight: '600', color: '#333' },
+  switchHint: { fontSize: 12, color: '#888', marginTop: 2 },
   flex: {
     flex: 1,
   },
