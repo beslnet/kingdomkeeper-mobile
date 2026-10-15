@@ -5,7 +5,7 @@ import AuthNavigator from './src/navigation/AuthNavigator';
 import AppNavigator from './src/navigation/AppNavigator';
 import ChurchSelectorScreen from './src/screens/ChurchSelector';
 import TermsAcceptanceScreen from './src/screens/TermsAcceptanceScreen';
-import { ActivityIndicator, View, Platform, AppState, AppStateStatus } from 'react-native';
+import { ActivityIndicator, View, AppState, AppStateStatus } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from './src/store/authStore';
 import { useIglesiaStore } from './src/store/iglesiaStore';
@@ -15,16 +15,15 @@ import { initializePushNotifications, syncPushDeviceToken } from './src/services
 import { OfflineBanner } from './src/components/OfflineBanner';
 import { ForceUpdateModal } from './src/components/ForceUpdateModal';
 import { InAppNotificationBanner, InAppNotification } from './src/components/InAppNotificationBanner';
-import { APP_VERSION } from './src/version';
-import { isVersionOutdated } from './src/utils/versionCheck';
-import { STORE_URLS } from './src/version';
+import { checkForUpdate, RECHECK_INTERVAL_MS } from './src/services/forceUpdate';
+import { dlog } from './src/utils/debugLogger';
 import { navigationRef } from './src/navigation/navigationRef';
 import { handleNotificationNavigation } from './src/utils/notificationNavigation';
 
 export default function App() {
   const { isLoggedIn, checkAuth, termsAccepted } = useAuthStore();
   const iglesiaId = useIglesiaStore((state) => state.iglesiaId);
-  const { forceUpdateRequired, forceUpdateUrl, setForceUpdate } = useAppStore();
+  const { forceUpdateRequired, forceUpdateUrl } = useAppStore();
   const refreshBadge = useBadgeStore((state) => state.refresh);
   const [foregroundNotif, setForegroundNotif] = useState<InAppNotification | null>(null);
   // Store initial notification to navigate once nav is ready (killed state)
@@ -63,25 +62,24 @@ export default function App() {
     checkAuth();
   }, [checkAuth]);
 
-  // iOS proactive version check against iTunes API (production only)
+  // Force-update (solo en builds de producción: en desarrollo el Metro no debe bloquearse).
+  // iOS compara contra el lookup del App Store (con parámetro anti-caché, ver
+  // utils/versionCheck.ts); Android contra el mínimo que publica el backend. Corre al
+  // abrir y al volver a primer plano, a lo más cada RECHECK_INTERVAL_MS. Si la consulta
+  // falla, no pasa nada: ver services/forceUpdate.ts.
   useEffect(() => {
-    if (__DEV__ || Platform.OS !== 'ios') return;
-    const checkiOSVersion = async () => {
-      try {
-        const res = await fetch(
-          'https://itunes.apple.com/lookup?bundleId=com.kingdomkeeper.mobile&country=cl',
-        );
-        const json = await res.json();
-        const storeVersion: string = json?.results?.[0]?.version;
-        if (storeVersion && isVersionOutdated(APP_VERSION, storeVersion)) {
-          setForceUpdate(true, STORE_URLS.ios);
-        }
-      } catch {
-        // Non-critical — ignore network errors during version check
-      }
+    if (__DEV__) return;
+    let lastCheck = 0;
+    const run = () => {
+      lastCheck = Date.now();
+      checkForUpdate();
     };
-    checkiOSVersion();
-  }, [setForceUpdate]);
+    run();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && Date.now() - lastCheck > RECHECK_INTERVAL_MS) run();
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -93,12 +91,12 @@ export default function App() {
     };
 
     startPushSetup().catch((error) => {
-      console.warn('Push initialization failed.', error);
+      dlog('Push initialization failed.', error);
     });
 
     const unsubscribeTokenRefresh = messaging().onTokenRefresh((token) => {
       syncPushDeviceToken(token).catch((error) => {
-        console.warn('Push token refresh sync failed.', error);
+        dlog('Push token refresh sync failed.', error);
       });
     });
 

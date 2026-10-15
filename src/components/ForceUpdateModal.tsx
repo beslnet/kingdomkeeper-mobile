@@ -19,15 +19,13 @@ interface Props {
 }
 
 export function ForceUpdateModal({ visible, storeUrl }: Props) {
-  const url = storeUrl ?? (Platform.OS === 'ios' ? STORE_URLS.ios : STORE_URLS.android);
+  const defaultUrl = Platform.OS === 'ios' ? STORE_URLS.ios : STORE_URLS.android;
+  const url = storeUrl || defaultUrl;
 
   const handleUpdate = () => {
+    // Si la URL que mandó el servidor no abre, se cae a la de la tienda de src/version.ts.
     Linking.openURL(url).catch(() => {
-      const fallback =
-        Platform.OS === 'ios'
-          ? 'itms-apps://itunes.apple.com/app/id6760925086'
-          : 'market://details?id=com.kingdomkeeper.mobile';
-      Linking.openURL(fallback);
+      if (url !== defaultUrl) Linking.openURL(defaultUrl).catch(() => {});
     });
   };
 
