@@ -226,14 +226,19 @@ export const editarTransaccion = async (id: number, fields: Partial<{
   return data;
 };
 
+// Aprobar, rechazar, pagar y anular responden {mensaje, transaccion}, no la transacción sola.
+// Sin desenvolver, TransaccionDetailScreen guardaba el envoltorio como transacción y quedaba en "$0"
+// después de cada acción (SE2-05 del QA de la app).
+const transaccionDe = (data: any): Transaccion => (data && data.transaccion ? data.transaccion : data);
+
 export const aprobarTransaccion = async (id: number, observaciones = ''): Promise<Transaccion> => {
   const { data } = await api.post(`/api/finanzas/transacciones/${id}/aprobar/`, { observaciones });
-  return data;
+  return transaccionDe(data);
 };
 
 export const rechazarTransaccion = async (id: number, motivo: string): Promise<Transaccion> => {
   const { data } = await api.post(`/api/finanzas/transacciones/${id}/rechazar/`, { motivo });
-  return data;
+  return transaccionDe(data);
 };
 
 export const pagarTransaccion = async (
@@ -243,12 +248,12 @@ export const pagarTransaccion = async (
   const payload: any = { observaciones: opts.observaciones ?? '' };
   if (opts.cuenta_origen_id) payload.cuenta_origen_id = opts.cuenta_origen_id;
   const { data } = await api.post(`/api/finanzas/transacciones/${id}/pagar/`, payload);
-  return data;
+  return transaccionDe(data);
 };
 
 export const anularTransaccion = async (id: number, motivo: string): Promise<Transaccion> => {
   const { data } = await api.post(`/api/finanzas/transacciones/${id}/anular/`, { motivo });
-  return data;
+  return transaccionDe(data);
 };
 
 export const rectificarTransaccion = async (id: number, fields: Partial<{
