@@ -1,4 +1,10 @@
-import type { PeticionPayload } from '../api/pastoral';
+import type {
+  AcompanarPayload,
+  AlcanceComunicado,
+  CasoInfoPeticion,
+  PeticionOracion,
+  PeticionPayload,
+} from '../api/pastoral';
 
 /** YYYY-MM-DD en hora local (no UTC: a las 21:00 en Chile `toISOString` ya da el día siguiente). */
 export function aISO(fecha: Date): string {
@@ -69,4 +75,49 @@ export function textoVencimiento(dias: number | null | undefined): string {
   if (dias === null || dias === undefined) return '';
   if (dias <= 0) return 'Vence hoy';
   return dias === 1 ? 'Vence en 1 día' : `Vence en ${dias} días`;
+}
+
+/**
+ * ¿Se puede armar el comunicado con el testimonio? Si no, `motivo` dice por qué. Las mismas reglas
+ * y palabras que la web (peticionesUtils.js); la API las hace cumplir, esto solo evita ofrecer un
+ * botón que sabemos que va a fallar.
+ */
+export function evaluarCompartirTestimonio(
+  p: Pick<PeticionOracion, 'estado' | 'visibilidad' | 'consentimiento_publicar' | 'testimonio' | 'comunicacion_info'>
+): { puede: boolean; motivo: string } {
+  if (p.comunicacion_info) return { puede: false, motivo: 'Ya tiene un borrador de comunicado.' };
+  if (p.estado !== 'respondida') return { puede: false, motivo: 'Solo se comparte una petición respondida.' };
+  if (p.visibilidad !== 'congregacion' || !p.consentimiento_publicar) {
+    return { puede: false, motivo: 'Es privada: no se puede compartir con la congregación.' };
+  }
+  if (!p.testimonio || !p.testimonio.trim()) return { puede: false, motivo: 'Falta el testimonio de la respuesta.' };
+  return { puede: true, motivo: '' };
+}
+
+/** Texto corto del caso enlazado: "Visita · Nuevo · Pastor Test". */
+export function resumenCaso(caso: Pick<CasoInfoPeticion, 'tipo_display' | 'estado_display' | 'responsable_nombre'> | null | undefined): string {
+  if (!caso) return '';
+  return [caso.tipo_display, caso.estado_display, caso.responsable_nombre].filter(Boolean).join(' · ');
+}
+
+/** Un comunicado llega solo a quien tiene cuenta en la app: la frase que se muestra al compartir. */
+export function fraseAlcance(alcance: AlcanceComunicado | null | undefined): string {
+  if (!alcance) return '';
+  const { con_cuenta: con, miembros_activos: total } = alcance;
+  if (!total) return 'La iglesia no tiene hermanos activos registrados.';
+  if (con >= total) return `Llegará a los ${con} hermanos activos.`;
+  return `Llegará a ${con} de ${total} hermanos activos: solo a quienes tienen cuenta en la app.`;
+}
+
+/** El cuerpo de "Necesita acompañamiento": sin responsable queda quien lo abre; la nota solo si hay. */
+export function payloadAcompanar(f: {
+  tipo: 'oracion' | 'visita';
+  responsableId: number | null;
+  nota: string;
+}): AcompanarPayload {
+  return {
+    tipo: f.tipo,
+    ...(f.responsableId ? { responsable_id: f.responsableId } : {}),
+    ...(f.nota.trim() ? { nota: f.nota.trim() } : {}),
+  };
 }

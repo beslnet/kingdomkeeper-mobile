@@ -110,3 +110,51 @@ describe('textoVencimiento', () => {
     expect(textoVencimiento(0)).toBe('Vence hoy');
   });
 });
+
+// ─── Acompañar y compartir el testimonio (mismas reglas y palabras que la web: peticionesUtils.js) ───
+import { evaluarCompartirTestimonio, fraseAlcance, payloadAcompanar, resumenCaso } from '../utils/peticiones';
+
+describe('evaluarCompartirTestimonio', () => {
+  const respondida: any = {
+    estado: 'respondida', visibilidad: 'congregacion', consentimiento_publicar: true,
+    testimonio: 'Dios sanó a mi mamá', comunicacion_info: null,
+  };
+  it('una respondida para la congregación, con consentimiento y testimonio, se puede compartir', () => {
+    expect(evaluarCompartirTestimonio(respondida)).toEqual({ puede: true, motivo: '' });
+  });
+  it('si ya hay borrador de comunicado, no', () => {
+    expect(evaluarCompartirTestimonio({ ...respondida, comunicacion_info: { id: 1, estado: 'borrador', estado_display: 'Borrador' } }))
+      .toEqual({ puede: false, motivo: 'Ya tiene un borrador de comunicado.' });
+  });
+  it('una que sigue en oración, no', () => {
+    expect(evaluarCompartirTestimonio({ ...respondida, estado: 'orando' }).motivo).toBe('Solo se comparte una petición respondida.');
+  });
+  it('una privada, o sin consentimiento, no se comparte con la congregación', () => {
+    const motivo = 'Es privada: no se puede compartir con la congregación.';
+    expect(evaluarCompartirTestimonio({ ...respondida, visibilidad: 'privada' }).motivo).toBe(motivo);
+    expect(evaluarCompartirTestimonio({ ...respondida, consentimiento_publicar: false }).motivo).toBe(motivo);
+  });
+  it('sin testimonio (o solo espacios), no', () => {
+    expect(evaluarCompartirTestimonio({ ...respondida, testimonio: '' }).motivo).toBe('Falta el testimonio de la respuesta.');
+    expect(evaluarCompartirTestimonio({ ...respondida, testimonio: '   ' }).puede).toBe(false);
+  });
+});
+
+describe('resumenCaso, fraseAlcance, payloadAcompanar', () => {
+  it('resumenCaso une tipo, estado y responsable, sin huecos', () => {
+    expect(resumenCaso({ tipo_display: 'Visita', estado_display: 'Nuevo', responsable_nombre: 'Pastor Test' })).toBe('Visita · Nuevo · Pastor Test');
+    expect(resumenCaso({ tipo_display: 'Oración', estado_display: 'Nuevo', responsable_nombre: null })).toBe('Oración · Nuevo');
+    expect(resumenCaso(null)).toBe('');
+  });
+  it('fraseAlcance dice a cuántos llegaría: solo hay comunicado para quien tiene cuenta', () => {
+    expect(fraseAlcance({ miembros_activos: 59, con_cuenta: 59 })).toBe('Llegará a los 59 hermanos activos.');
+    expect(fraseAlcance({ miembros_activos: 59, con_cuenta: 12 })).toBe('Llegará a 12 de 59 hermanos activos: solo a quienes tienen cuenta en la app.');
+    expect(fraseAlcance({ miembros_activos: 0, con_cuenta: 0 })).toBe('La iglesia no tiene hermanos activos registrados.');
+    expect(fraseAlcance(null)).toBe('');
+  });
+  it('payloadAcompanar: sin responsable queda quien abre el caso; la nota solo si hay', () => {
+    expect(payloadAcompanar({ tipo: 'oracion', responsableId: null, nota: '  ' })).toEqual({ tipo: 'oracion' });
+    expect(payloadAcompanar({ tipo: 'visita', responsableId: 4, nota: ' Llamar el lunes ' }))
+      .toEqual({ tipo: 'visita', responsable_id: 4, nota: 'Llamar el lunes' });
+  });
+});

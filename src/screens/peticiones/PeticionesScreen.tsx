@@ -28,6 +28,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { PANTONE_295C } from '../../theme/colors';
 import {
+  AlcanceComunicado,
+  compartirTestimonioPeticion,
   crearPeticion,
   eliminarPeticion,
   EstadoPeticion,
@@ -43,14 +45,18 @@ import {
   aISO,
   deISO,
   fechaCorta,
+  evaluarCompartirTestimonio,
   formularioTrasAnotar,
   formularioVacio,
   hoyISO,
   mensajeDeError,
   payloadParaAnotar,
   puedeAnotar,
+  resumenCaso,
   textoVencimiento,
 } from '../../utils/peticiones';
+import { usePermissionsStore } from '../../store/permissionsStore';
+import { AcompanarModal, BorradorModal } from './AcompanarModal';
 import { useRefreshOnRestore } from '../../hooks/useRefreshOnRestore';
 
 const TABS: { key: EstadoPeticion; label: string }[] = [
@@ -107,18 +113,26 @@ function CampoFecha({
 
 function PeticionCard({
   item,
+  puedeAcompanar,
   onResponder,
   onReabrir,
   onRenovar,
   onEliminar,
+  onAcompanar,
+  onCompartir,
 }: {
   item: PeticionOracion;
+  /** `peticiones.acompanar`: abrir un caso desde la petición y compartir el testimonio. */
+  puedeAcompanar: boolean;
   onResponder: () => void;
   onReabrir: () => void;
   onRenovar: () => void;
   onEliminar: () => void;
+  onAcompanar: () => void;
+  onCompartir: () => void;
 }) {
   const privada = item.visibilidad === 'privada';
+  const compartir = evaluarCompartirTestimonio(item);
   return (
     <View style={styles.card}>
       <View style={styles.cardTitleRow}>
@@ -159,6 +173,53 @@ function PeticionCard({
           <Text style={styles.testimonioText}>{item.testimonio}</Text>
         </View>
       )}
+      {(item.caso_info || item.comunicacion_info) && (
+        <View style={styles.enlaces}>
+          {item.caso_info && (
+            <View style={styles.chipEnlace} testID="peticion-caso">
+              <Icon source="hand-heart-outline" size={12} color="#0277BD" />
+              <Text style={[styles.chipText, { color: '#0277BD' }]}>
+                {`Acompañamiento: ${resumenCaso(item.caso_info)}`}
+              </Text>
+            </View>
+          )}
+          {item.comunicacion_info && (
+            <View style={[styles.chipEnlace, styles.chipEnlaceMorado]} testID="peticion-comunicado">
+              <Icon source="bullhorn-outline" size={12} color="#6A1B9A" />
+              <Text style={[styles.chipText, { color: '#6A1B9A' }]}>
+                {`Comunicado: ${item.comunicacion_info.estado_display}`}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+      {/* Abrir un caso y compartir el testimonio: quien lidera la intercesión, el pastor y los líderes
+          (`peticiones.acompanar`, igual que el menú de la web). */}
+      {puedeAcompanar && (!item.caso_info || (item.estado === 'respondida' && !item.comunicacion_info)) && (
+        <View style={styles.cardActions}>
+          {!item.caso_info && (
+            <TouchableOpacity testID="peticion-acompanar" style={styles.btnLink} onPress={onAcompanar} activeOpacity={0.7}>
+              <Text style={styles.btnLinkText}>Necesita acompañamiento</Text>
+            </TouchableOpacity>
+          )}
+          {item.estado === 'respondida' && !item.comunicacion_info && (
+            <View style={styles.compartirCol}>
+              <TouchableOpacity
+                testID="peticion-compartir"
+                style={[styles.btnLink, !compartir.puede && styles.btnDisabled]}
+                onPress={onCompartir}
+                disabled={!compartir.puede}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.btnLinkText}>Compartir el testimonio</Text>
+              </TouchableOpacity>
+              {!compartir.puede && (
+                <Text style={styles.compartirMotivo} testID="peticion-compartir-motivo">{compartir.motivo}</Text>
+              )}
+            </View>
+          )}
+        </View>
+      )}
       {/* Responder, reabrir y eliminar: las propias, o cualquiera si lidera la intercesión (lo dice el backend). */}
       {item.puedo_gestionar && (
         <View style={styles.cardActions}>
@@ -184,6 +245,11 @@ function PeticionCard({
 // ─── Pantalla ─────────────────────────────────────────────────────────────────
 
 export default function PeticionesScreen() {
+  // Quién puede acompañar lo resuelve el backend (rol + función de intercesión); aquí solo se pregunta.
+  const puedeAcompanar = usePermissionsStore((s) => s.can('peticiones.acompanar'));
+  const [acompanando, setAcompanando] = useState<PeticionOracion | null>(null);
+  const [borrador, setBorrador] = useState<{ peticion: PeticionOracion; alcance: AlcanceComunicado } | null>(null);
+  const [aviso, setAviso] = useState<{ mensaje: string; error?: boolean } | null>(null);
   const [tab, setTab] = useState<EstadoPeticion>('orando');
   const [peticiones, setPeticiones] = useState<PeticionOracion[]>([]);
   const [resumen, setResumen] = useState<ResumenPeticiones | null>(null);
@@ -286,6 +352,22 @@ export default function PeticionesScreen() {
       cargar(tab, true);
     } catch (err) {
       Alert.alert('No se pudo renovar', mensajeDeError(err, 'Intenta de nuevo.'));
+    }
+  };
+
+  const mostrarAviso = (a: { mensaje: string; error?: boolean }) => {
+    setAviso(a);
+    setTimeout(() => setAviso(null), 3500);
+  };
+
+  const compartirTestimonio = async (p: PeticionOracion) => {
+    try {
+      const data = await compartirTestimonioPeticion(p.id);
+      setBorrador({ peticion: data, alcance: data.alcance });
+      cargar(tab, true);
+    } catch (err: any) {
+      mostrarAviso({ mensaje: mensajeDeError(err, 'No se pudo preparar el comunicado.'), error: true });
+      if (err?.response?.status === 409) cargar(tab, true);
     }
   };
 
@@ -468,6 +550,9 @@ export default function PeticionesScreen() {
             onReabrir={() => reabrir(item)}
             onRenovar={() => renovar(item)}
             onEliminar={() => eliminar(item)}
+            puedeAcompanar={puedeAcompanar}
+            onAcompanar={() => setAcompanando(item)}
+            onCompartir={() => compartirTestimonio(item)}
           />
         )}
         ListEmptyComponent={
@@ -490,6 +575,26 @@ export default function PeticionesScreen() {
         }
         contentContainerStyle={styles.listContent}
       />
+
+      <AcompanarModal
+        peticion={acompanando}
+        onClose={() => setAcompanando(null)}
+        onHecho={(a) => {
+          setAcompanando(null);
+          mostrarAviso(a);
+          cargar(tab, true);
+        }}
+      />
+      <BorradorModal
+        peticion={borrador?.peticion ?? null}
+        alcance={borrador?.alcance ?? null}
+        onClose={() => setBorrador(null)}
+      />
+      {aviso && (
+        <View style={[styles.toast, aviso.error && styles.toastError]} pointerEvents="none" testID="peticiones-aviso">
+          <Text style={styles.toastTexto}>{aviso.mensaje}</Text>
+        </View>
+      )}
 
       <Modal visible={!!responder} animationType="slide" transparent onRequestClose={() => setResponder(null)}>
         <KeyboardAvoidingView
@@ -712,6 +817,20 @@ const styles = StyleSheet.create({
   },
   btnRespondidaText: { color: '#2E7D32', fontWeight: '700', fontSize: 13 },
   btnLink: { paddingVertical: 8, paddingHorizontal: 4 },
+  compartirCol: { flexShrink: 1 },
+  compartirMotivo: { fontSize: 11, color: '#999', paddingHorizontal: 4, maxWidth: 220 },
+  enlaces: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  chipEnlace: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3,
+    backgroundColor: '#E1F2FB', alignSelf: 'flex-start',
+  },
+  chipEnlaceMorado: { backgroundColor: '#F3E5F5' },
+  toast: {
+    position: 'absolute', bottom: 24, alignSelf: 'center', backgroundColor: '#2E7D32', borderRadius: 20,
+    paddingHorizontal: 16, paddingVertical: 10, maxWidth: '90%',
+  },
+  toastError: { backgroundColor: '#C62828' },
+  toastTexto: { color: '#fff', fontSize: 14, fontWeight: '600' },
   btnLinkText: { color: PANTONE_295C, fontWeight: '600', fontSize: 13 },
   modalFondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalCard: {

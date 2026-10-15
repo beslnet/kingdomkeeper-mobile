@@ -195,6 +195,33 @@ export interface PeticionOracion {
   vigente_desde?: string | null;
   /** Días para que venza; el backend lo manda solo desde 30 días antes (si no, null). */
   vence_en_dias?: number | null;
+  /** El caso de acompañamiento abierto desde esta petición (una petición tiene a lo sumo uno). */
+  caso_info?: CasoInfoPeticion | null;
+  /** El borrador de comunicado con su testimonio. */
+  comunicacion_info?: ComunicacionInfoPeticion | null;
+}
+
+export interface CasoInfoPeticion {
+  id: number;
+  titulo: string;
+  tipo: string;
+  tipo_display: string;
+  estado: string;
+  estado_display: string;
+  es_confidencial: boolean;
+  responsable_nombre: string | null;
+}
+
+export interface ComunicacionInfoPeticion {
+  id: number;
+  estado: string;
+  estado_display: string;
+}
+
+/** Cuántos hermanos recibirían el comunicado: solo llega a quien tiene cuenta en la app. */
+export interface AlcanceComunicado {
+  miembros_activos: number;
+  con_cuenta: number;
 }
 
 export interface PeticionPayload {
@@ -258,5 +285,41 @@ export const renovarPeticion = async (id: number): Promise<PeticionOracion> => {
 
 export const resumenPeticiones = async (): Promise<ResumenPeticiones> => {
   const { data } = await api.get('/api/pastoral/peticiones/resumen/');
+  return data;
+};
+
+/** Quienes pueden quedar de responsables de un caso: pastor, líderes y administración. */
+export const listarResponsablesPeticion = async (): Promise<{ id: number; nombre: string }[]> => {
+  const { data } = await api.get('/api/pastoral/peticiones/responsables/');
+  return data;
+};
+
+export interface AcompanarPayload {
+  tipo: 'oracion' | 'visita';
+  /** Omitido: queda quien lo abre. */
+  responsable_id?: number;
+  nota?: string;
+}
+
+/**
+ * "Necesita acompañamiento": abre un caso (oración o visita) enlazado a la petición. 201 con la
+ * petición. 409 (axios lo lanza): ya tenía un caso. Si la petición es privada, el caso nace confidencial.
+ */
+export const acompanarPeticion = async (
+  id: number,
+  payload: AcompanarPayload
+): Promise<PeticionOracion> => {
+  const { data } = await api.post(`/api/pastoral/peticiones/${id}/acompanar/`, payload);
+  return data;
+};
+
+/**
+ * Deja el testimonio de una respondida como BORRADOR de comunicado (no lo envía). 201 con la
+ * petición y el `alcance`. 400 si es privada o no tiene testimonio; 409 si ya tenía borrador.
+ */
+export const compartirTestimonioPeticion = async (
+  id: number
+): Promise<PeticionOracion & { alcance: AlcanceComunicado }> => {
+  const { data } = await api.post(`/api/pastoral/peticiones/${id}/compartir-testimonio/`);
   return data;
 };
