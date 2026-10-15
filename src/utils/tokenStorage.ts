@@ -9,7 +9,7 @@ import { dlog } from './debugLogger';
  *    petición; el Keychain sería lento para eso.
  *  · refresh token (30 días) → Keychain. Es la credencial larga: con él se pide un
  *    access nuevo sin contraseña, así que es la que no puede quedar en un archivo
- *    plano del teléfono (AsyncStorage no está cifrado y entra en los respaldos de iOS).
+ *    plano del teléfono (AsyncStorage no está cifrado).
  *
  * MIGRACIÓN (1.1.3 → esta): la 1.1.3 guardaba el refresh token en AsyncStorage, clave
  * `refresh_token`. Quien actualiza con la sesión abierta NO debe quedar deslogueado:
