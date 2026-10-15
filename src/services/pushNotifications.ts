@@ -1,6 +1,7 @@
 import { PermissionsAndroid, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DeviceInfo from 'react-native-device-info';
+import { dlog } from '../utils/debugLogger';
 import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 import { registerPushDevice, unregisterPushDeviceToken } from '../api/pushNotifications';
 
@@ -33,7 +34,7 @@ export const syncPushDeviceToken = async (providedToken?: string) => {
   try {
     const hasPermission = await requestPushPermission();
     if (!hasPermission) {
-      console.warn('Push notifications permission was not granted.');
+      dlog('Push notifications permission was not granted.');
       return;
     }
 
@@ -41,7 +42,7 @@ export const syncPushDeviceToken = async (providedToken?: string) => {
 
     const token = providedToken ?? await messaging().getToken();
     if (!token) {
-      console.warn('Firebase messaging did not return a device token.');
+      dlog('Firebase messaging did not return a device token.');
       return;
     }
 
@@ -53,7 +54,7 @@ export const syncPushDeviceToken = async (providedToken?: string) => {
     });
     await AsyncStorage.setItem(PUSH_TOKEN_STORAGE_KEY, token);
   } catch (error) {
-    console.warn('Failed to synchronize push token.', error);
+    dlog('Failed to synchronize push token.', error);
   }
 };
 
@@ -72,7 +73,16 @@ export const unregisterPushDevice = async () => {
 
     await AsyncStorage.removeItem(PUSH_TOKEN_STORAGE_KEY);
   } catch (error) {
-    console.warn('Failed to unregister push token.', error);
+    dlog('Failed to unregister push token.', error);
+  }
+};
+
+/** Borra solo la copia local del token de push (sin avisar al servidor): para sesiones ya vencidas. */
+export const clearStoredPushToken = async () => {
+  try {
+    await AsyncStorage.removeItem(PUSH_TOKEN_STORAGE_KEY);
+  } catch (error) {
+    dlog('Failed to clear stored push token.', error);
   }
 };
 
@@ -80,7 +90,7 @@ export const getInitialPushNotification = async (): Promise<FirebaseMessagingTyp
   try {
     return await messaging().getInitialNotification();
   } catch (error) {
-    console.warn('Failed to obtain initial push notification.', error);
+    dlog('Failed to obtain initial push notification.', error);
     return null;
   }
 };

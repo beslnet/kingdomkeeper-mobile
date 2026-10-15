@@ -1,7 +1,17 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../api/api';
 import { loginApi, getMe, getMisIglesias } from '../api/auth';
+import {
+  clearAllTokens,
+  deleteRefreshToken,
+  getAccessToken,
+  getRefreshToken,
+  migrateRefreshToken,
+  saveAccessToken,
+  saveRefreshToken,
+} from '../utils/tokenStorage';
 import { verificarTerminos, type LegalDocument } from '../api/legal';
 
 export type Iglesia = {
@@ -19,7 +29,10 @@ export type AuthState = {
   termsAccepted: boolean | null;
   pendingDocuments: LegalDocument[];
   login: (username: string, password: string) => Promise<void>;
+  /** Cierre de sesión pedido por el usuario: avisa al servidor y limpia el teléfono. */
   logout: () => Promise<void>;
+  /** La sesión ya no sirve (refresh vencido o revocado): limpia el teléfono sin llamar al servidor. */
+  expireSession: () => Promise<void>;
   checkAuth: () => Promise<void>;
   checkTerms: () => Promise<void>;
   setTermsAccepted: () => void;
@@ -28,7 +41,7 @@ export type AuthState = {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       isLoggedIn: null,
       _hasHydrated: false,
       user: null,
@@ -41,8 +54,8 @@ export const useAuthStore = create<AuthState>()(
         set({ loading: true });
         try {
           const tokens = await loginApi(username, password);
-          await AsyncStorage.setItem('access_token', tokens.access);
-          await AsyncStorage.setItem('refresh_token', tokens.refresh);
+          await saveAccessToken(tokens.access);
+          await saveRefreshToken(tokens.refresh);
           const [user, iglesias] = await Promise.all([getMe(), getMisIglesias()]);
           // Check terms after obtaining token
           let termsAccepted = true;
@@ -68,6 +81,8 @@ export const useAuthStore = create<AuthState>()(
             throw new Error('Usuario o contraseña incorrectos. Verifica tus datos e intenta de nuevo.');
           } else if (status === 400) {
             throw new Error(detail || 'Datos inválidos. Revisa tu usuario y contraseña.');
+          } else if (status === 429) {
+            throw new Error('Demasiados intentos. Espera un momento e intenta de nuevo.');
           } else if (status === 403) {
             throw new Error('Tu cuenta no tiene acceso. Contacta al administrador.');
           } else if (!error?.response) {
@@ -79,10 +94,26 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
+        // Antes de borrar nada: ambas llamadas necesitan el token vigente.
         const { unregisterPushDevice } = await import('../services/pushNotifications');
         await unregisterPushDevice();
-        await AsyncStorage.removeItem('access_token');
-        await AsyncStorage.removeItem('refresh_token');
+        // Revoca el refresh token en el servidor: sin esto, copiarlo antes de cerrar
+        // sesión seguiría sirviendo 30 días. Si falla (sin red), igual se cierra aquí.
+        try {
+          const refresh = await getRefreshToken();
+          if (refresh) {
+            await api.post('/api/token/logout/', { refresh }, { timeout: 5000 });
+          }
+        } catch {
+          // Siempre limpiar la sesión local.
+        }
+        await get().expireSession();
+      },
+
+      expireSession: async () => {
+        await clearAllTokens();
+        const { clearStoredPushToken } = await import('../services/pushNotifications');
+        await clearStoredPushToken();
         const { useIglesiaStore } = await import('./iglesiaStore');
         useIglesiaStore.getState().resetIglesia();
         const { usePermissionsStore } = await import('./permissionsStore');
@@ -91,7 +122,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkAuth: async () => {
-        const token = await AsyncStorage.getItem('access_token');
+        // Sesiones de la 1.1.3: el refresh token pasa de AsyncStorage al Keychain.
+        await migrateRefreshToken();
+        const token = await getAccessToken();
         if (token) {
           try {
             const [user, iglesias] = await Promise.all([getMe(), getMisIglesias()]);
@@ -109,11 +142,14 @@ export const useAuthStore = create<AuthState>()(
             // Only clear session on 401 (token truly invalid).
             // Network / connectivity errors must NOT log the user out.
             if (error?.response?.status === 401) {
-              set({ isLoggedIn: false, user: null, iglesias: [] });
+              await get().expireSession();
             }
             // Otherwise keep the persisted state — user stays logged in
           }
         } else {
+          // Sin access token no hay sesión. El Keychain de iOS sobrevive a desinstalar la
+          // app: si quedó un refresh token de una instalación anterior, se borra.
+          await deleteRefreshToken();
           set({ isLoggedIn: false });
         }
       },
