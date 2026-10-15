@@ -28,7 +28,7 @@ export interface PersonaAsistencia {
   familia: string | null;
 }
 
-/** Una visita que dejó ficha ese día: se identifica y se le da seguimiento (en la web). */
+/** Una visita que dejó ficha ese día. Su ficha y su seguimiento están en el detalle de la visita (Membresía). */
 export interface VisitaDelDia {
   id: number;
   nombre: string;
