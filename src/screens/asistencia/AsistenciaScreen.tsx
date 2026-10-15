@@ -588,9 +588,9 @@ const styles = StyleSheet.create({
   visitasInput: { borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 10, fontSize: 16, width: 90 },
   toast: {
     position: 'absolute', bottom: 92, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#2E7D32', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: '#2E7D32', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, maxWidth: '92%',
   },
-  toastTexto: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  toastTexto: { color: '#fff', fontSize: 14, fontWeight: '600', flexShrink: 1 },
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#F5F7FA', padding: 16, paddingBottom: 28,
     borderTopWidth: 1, borderTopColor: '#E0E0E0',

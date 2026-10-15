@@ -178,7 +178,7 @@ function PeticionCard({
           {item.caso_info && (
             <View style={styles.chipEnlace} testID="peticion-caso">
               <Icon source="hand-heart-outline" size={12} color="#0277BD" />
-              <Text style={[styles.chipText, { color: '#0277BD' }]}>
+              <Text style={[styles.chipEnlaceTexto, { color: '#0277BD' }]}>
                 {`Acompañamiento: ${resumenCaso(item.caso_info)}`}
               </Text>
             </View>
@@ -186,7 +186,7 @@ function PeticionCard({
           {item.comunicacion_info && (
             <View style={[styles.chipEnlace, styles.chipEnlaceMorado]} testID="peticion-comunicado">
               <Icon source="bullhorn-outline" size={12} color="#6A1B9A" />
-              <Text style={[styles.chipText, { color: '#6A1B9A' }]}>
+              <Text style={[styles.chipEnlaceTexto, { color: '#6A1B9A' }]}>
                 {`Comunicado: ${item.comunicacion_info.estado_display}`}
               </Text>
             </View>
@@ -196,27 +196,27 @@ function PeticionCard({
       {/* Abrir un caso y compartir el testimonio: quien lidera la intercesión, el pastor y los líderes
           (`peticiones.acompanar`, igual que el menú de la web). */}
       {puedeAcompanar && (!item.caso_info || (item.estado === 'respondida' && !item.comunicacion_info)) && (
-        <View style={styles.cardActions}>
-          {!item.caso_info && (
-            <TouchableOpacity testID="peticion-acompanar" style={styles.btnLink} onPress={onAcompanar} activeOpacity={0.7}>
-              <Text style={styles.btnLinkText}>Necesita acompañamiento</Text>
-            </TouchableOpacity>
-          )}
-          {item.estado === 'respondida' && !item.comunicacion_info && (
-            <View style={styles.compartirCol}>
+        <View style={styles.accionesAcomp}>
+          <View style={styles.accionesAcompFila}>
+            {!item.caso_info && (
+              <TouchableOpacity testID="peticion-acompanar" style={styles.btnLinkSuelto} onPress={onAcompanar} activeOpacity={0.7}>
+                <Text style={styles.btnLinkText}>Necesita acompañamiento</Text>
+              </TouchableOpacity>
+            )}
+            {item.estado === 'respondida' && !item.comunicacion_info && (
               <TouchableOpacity
                 testID="peticion-compartir"
-                style={[styles.btnLink, !compartir.puede && styles.btnDisabled]}
+                style={[styles.btnLinkSuelto, !compartir.puede && styles.btnDisabled]}
                 onPress={onCompartir}
                 disabled={!compartir.puede}
                 activeOpacity={0.7}
               >
                 <Text style={styles.btnLinkText}>Compartir el testimonio</Text>
               </TouchableOpacity>
-              {!compartir.puede && (
-                <Text style={styles.compartirMotivo} testID="peticion-compartir-motivo">{compartir.motivo}</Text>
-              )}
-            </View>
+            )}
+          </View>
+          {item.estado === 'respondida' && !item.comunicacion_info && !compartir.puede && (
+            <Text style={styles.compartirMotivo} testID="peticion-compartir-motivo">{compartir.motivo}</Text>
           )}
         </View>
       )}
@@ -817,13 +817,16 @@ const styles = StyleSheet.create({
   },
   btnRespondidaText: { color: '#2E7D32', fontWeight: '700', fontSize: 13 },
   btnLink: { paddingVertical: 8, paddingHorizontal: 4 },
-  compartirCol: { flexShrink: 1 },
-  compartirMotivo: { fontSize: 11, color: '#999', paddingHorizontal: 4, maxWidth: 220 },
+  accionesAcomp: { marginTop: 6 },
+  accionesAcompFila: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 18 },
+  btnLinkSuelto: { paddingVertical: 6, paddingHorizontal: 4 },
+  compartirMotivo: { fontSize: 12, color: '#999', marginTop: 2, marginLeft: 4 },
   enlaces: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   chipEnlace: {
     flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3,
-    backgroundColor: '#E1F2FB', alignSelf: 'flex-start',
+    backgroundColor: '#E1F2FB', alignSelf: 'flex-start', maxWidth: '100%',
   },
+  chipEnlaceTexto: { fontSize: 11, fontWeight: '600', flexShrink: 1 },
   chipEnlaceMorado: { backgroundColor: '#F3E5F5' },
   toast: {
     position: 'absolute', bottom: 24, alignSelf: 'center', backgroundColor: '#2E7D32', borderRadius: 20,

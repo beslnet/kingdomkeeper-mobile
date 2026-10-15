@@ -10,7 +10,6 @@ import {
 } from '../../api/miembros';
 import ElegirResponsableModal from '../../components/ElegirResponsableModal';
 import { usePermissionsStore } from '../../store/permissionsStore';
-import { fechaCorta } from '../../utils/asistencia';
 import {
   BORRAR_DATOS,
   SIN_FICHA,
@@ -143,7 +142,6 @@ export default function FichaVisitaSection({
             <Fila icono="note-text-outline" etiqueta="Notas" valor={ficha.notas} />
           </>
         )}
-        <Fila icono="calendar-check-outline" etiqueta="Llegó el" valor={fechaCorta(ficha.fecha)} />
         <Fila icono="hand-heart-outline" etiqueta="Seguimiento" valor={textoSeguimiento(ficha)} />
 
         {!!aviso && <Text style={styles.aviso} testID="ficha-aviso">{aviso}</Text>}
