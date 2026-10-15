@@ -129,3 +129,8 @@ export function visitasParaEnviar(texto: string, original: number | null): { vis
 export function etiquetaFamilia(nombre: string): string {
   return /^familia\b/i.test(nombre.trim()) ? nombre.trim() : `Familia ${nombre.trim()}`;
 }
+
+/** "11-10-2026", como la muestra la web en "No han venido". */
+export function fechaCorta(iso: string | null | undefined): string {
+  return iso ? iso.split('-').reverse().join('-') : '';
+}

@@ -75,3 +75,72 @@ export const guardarAsistenciaDelDia = async (
   const { data } = await api.post(`/api/asistencia/reuniones/${reunionId}/asistencia/`, payload);
   return data;
 };
+
+// ─── No han venido y seguimiento (web: AsistenciaPage → "No han venido") ─────
+
+/** Cuántas reuniones marcadas seguidas sin venir cuentan como "no ha venido" (igual que la web). */
+export const ULTIMAS_REUNIONES = 3;
+
+/** El caso de seguimiento de una persona: quién lo lleva y en qué va. */
+export interface SeguimientoResumen {
+  id: number;
+  estado: string;
+  estado_display: string;
+  responsable: string | null;
+}
+
+export interface PersonaAusente {
+  id: number;
+  nombre: string;
+  /** null si pidió que no la contacten. */
+  telefono: string | null;
+  no_contactar: boolean;
+  ultima_asistencia: string | null;
+  seguimiento: SeguimientoResumen | null;
+}
+
+export interface AusentesRespuesta {
+  /** false = todavía no hay `ultimas` reuniones con nombres marcados: no se acusa a nadie. */
+  suficientes: boolean;
+  marcadas: number;
+  desde?: string;
+  personas: PersonaAusente[];
+}
+
+export interface ResponsableSeguimiento {
+  id: number;
+  nombre: string;
+}
+
+export const obtenerAusentes = async (
+  reunionId: number,
+  ultimas: number = ULTIMAS_REUNIONES
+): Promise<AusentesRespuesta> => {
+  const { data } = await api.get(`/api/asistencia/reuniones/${reunionId}/ausentes/`, {
+    params: { ultimas },
+  });
+  return data;
+};
+
+/** Quienes pueden llevar un seguimiento: pastor, líderes, administración y el equipo de asistencia. */
+export const listarResponsablesSeguimiento = async (): Promise<ResponsableSeguimiento[]> => {
+  const { data } = await api.get('/api/asistencia/reuniones/responsables/');
+  return data;
+};
+
+/**
+ * 201: abre el caso. 409 (axios lo lanza): la persona ya tenía un seguimiento abierto; ver
+ * `yaTieneSeguimiento`.
+ */
+export const asignarSeguimientoAusente = async (
+  reunionId: number,
+  payload: { miembro_id: number; responsable_id: number; ultimas?: number }
+): Promise<{ seguimiento: SeguimientoResumen }> => {
+  const { data } = await api.post(
+    `/api/asistencia/reuniones/${reunionId}/asignar-seguimiento/`,
+    { ultimas: ULTIMAS_REUNIONES, ...payload }
+  );
+  return data;
+};
+
+export const yaTieneSeguimiento = (err: any): boolean => err?.response?.status === 409;

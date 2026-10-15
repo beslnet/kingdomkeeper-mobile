@@ -42,6 +42,8 @@ import {
   visitasParaEnviar,
 } from '../../utils/asistencia';
 import { PANTONE_295C } from '../../theme/colors';
+import { usePermissionsStore } from '../../store/permissionsStore';
+import AusentesTab from './AusentesTab';
 
 type Fila =
   | { tipo: 'familia'; key: string; familia: Familia }
@@ -59,6 +61,10 @@ const mensajeDeError = (err: any, porDefecto: string): string => {
 };
 
 export default function AsistenciaScreen() {
+  // Todo el equipo marca; ver a quienes no han venido y asignarles seguimiento es de quien lidera.
+  // Lo resuelve el backend (rol + función del ministerio): la app solo lo pregunta, como la web.
+  const puedeSeguimiento = usePermissionsStore((s) => s.can('asistencia.seguimiento'));
+  const [tab, setTab] = useState<'marcar' | 'ausentes'>('marcar');
   const [reuniones, setReuniones] = useState<Reunion[] | null>(null);
   const [reunion, setReunion] = useState<Reunion | null>(null);
   const [fecha, setFecha] = useState<string>('');
@@ -252,6 +258,7 @@ export default function AsistenciaScreen() {
     );
   }
 
+  const verAusentes = puedeSeguimiento && tab === 'ausentes';
   const total = datos?.personas.length ?? 0;
   const esHoyOFuturo = sumarDias(fecha || hoy, 7) > hoy;
 
@@ -276,6 +283,7 @@ export default function AsistenciaScreen() {
           {reuniones.length > 1 && <Icon source="chevron-down" size={22} color="#fff" />}
         </TouchableOpacity>
 
+        {!verAusentes && (
         <View style={styles.fechaRow}>
           <TouchableOpacity onPress={() => cambiarFecha(sumarDias(fecha, -7))} hitSlop={10} accessibilityLabel="Semana anterior">
             <Icon source="chevron-left" size={28} color="#fff" />
@@ -293,7 +301,38 @@ export default function AsistenciaScreen() {
             <Icon source="chevron-right" size={28} color={esHoyOFuturo ? 'rgba(255,255,255,0.3)' : '#fff'} />
           </TouchableOpacity>
         </View>
+        )}
       </View>
+
+      {puedeSeguimiento && (
+        <View style={styles.tabs} accessibilityRole="tablist">
+          {(['marcar', 'ausentes'] as const).map((t) => (
+            <TouchableOpacity
+              key={t}
+              style={[styles.tab, tab === t && styles.tabActiva]}
+              onPress={() => setTab(t)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab === t }}
+              testID={`tab-${t}`}
+            >
+              <Text style={[styles.tabTexto, tab === t && styles.tabTextoActivo]}>
+                {t === 'marcar' ? 'Marcar' : 'No han venido'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {verAusentes && reunion ? (
+        <AusentesTab
+          reunion={reunion}
+          onAviso={(m) => {
+            setAviso(m);
+            setTimeout(() => setAviso(null), 3500);
+          }}
+        />
+      ) : (
+      <>
 
       {selectorFecha && (
         <DateTimePicker
@@ -439,6 +478,9 @@ export default function AsistenciaScreen() {
         />
       )}
 
+      </>
+      )}
+
       {aviso && (
         <View style={styles.toast} pointerEvents="none">
           <Icon source="check-circle" size={18} color="#fff" />
@@ -446,6 +488,7 @@ export default function AsistenciaScreen() {
         </View>
       )}
 
+      {!verAusentes && (
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.saveBtn, (guardando || !datos) && styles.saveBtnDisabled]}
@@ -463,6 +506,7 @@ export default function AsistenciaScreen() {
           )}
         </TouchableOpacity>
       </View>
+      )}
 
       {/* Selector de reunión */}
       <Modal visible={selectorReunion} transparent animationType="fade" onRequestClose={() => setSelectorReunion(false)}>
@@ -504,6 +548,11 @@ const styles = StyleSheet.create({
   reunionBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
   reunionNombre: { fontSize: 18, fontWeight: '700', color: '#fff' },
   reunionSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 1 },
+  tabs: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 3, borderBottomColor: 'transparent' },
+  tabActiva: { borderBottomColor: PANTONE_295C },
+  tabTexto: { fontSize: 14, fontWeight: '600', color: '#777' },
+  tabTextoActivo: { color: PANTONE_295C },
   fechaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   fechaBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
   fechaTexto: { color: '#fff', fontSize: 16, fontWeight: '600' },
