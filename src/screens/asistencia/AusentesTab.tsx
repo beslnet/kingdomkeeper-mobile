@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,13 +12,13 @@ import {
   AusentesRespuesta,
   PersonaAusente,
   Reunion,
-  ResponsableSeguimiento,
   ULTIMAS_REUNIONES,
   asignarSeguimientoAusente,
   listarResponsablesSeguimiento,
   obtenerAusentes,
   yaTieneSeguimiento,
 } from '../../api/asistencia';
+import ElegirResponsableModal from '../../components/ElegirResponsableModal';
 import { fechaCorta } from '../../utils/asistencia';
 import { PANTONE_295C } from '../../theme/colors';
 
@@ -50,97 +48,38 @@ function AsignarModal({
   onClose: () => void;
   onHecho: (r: ResultadoAsignar) => void;
 }) {
-  const [responsables, setResponsables] = useState<ResponsableSeguimiento[] | null>(null);
-  const [elegido, setElegido] = useState<ResponsableSeguimiento | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
-
-  useEffect(() => {
-    if (!persona) return;
-    setElegido(null);
-    setError(null);
-    setResponsables(null);
-    listarResponsablesSeguimiento()
-      .then(setResponsables)
-      .catch(() => setResponsables([]));
-  }, [persona]);
-
-  const asignar = async () => {
-    if (!persona || !elegido) return;
-    setEnviando(true);
-    setError(null);
-    try {
-      await asignarSeguimientoAusente(reunion.id, { miembro_id: persona.id, responsable_id: elegido.id });
-      onHecho({
-        tipo: 'asignado',
-        mensaje: `Seguimiento asignado a ${elegido.nombre}. Le llegó un aviso al teléfono.`,
-      });
-    } catch (err) {
-      if (yaTieneSeguimiento(err)) {
-        onHecho({ tipo: 'ya_abierto', mensaje: `${persona.nombre} ya tiene un seguimiento abierto.` });
-      } else {
-        setError(mensajeDeError(err, 'No se pudo asignar el seguimiento.'));
-      }
-    } finally {
-      setEnviando(false);
-    }
-  };
-
   return (
-    <Modal visible={!!persona} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.modalFondo}>
-        <View style={styles.modalCaja}>
-          <Text style={styles.modalTitulo}>Asignar seguimiento</Text>
-          <Text style={styles.modalTexto} testID="asignar-texto">
-            Se abre un caso de seguimiento para <Text style={styles.negrita}>{persona?.nombre}</Text>: no vino a
-            las últimas {ULTIMAS_REUNIONES} reuniones de {reunion.nombre}.
-          </Text>
-          <Text style={styles.modalLabel}>Quién lo acompaña</Text>
-          <Text style={styles.modalAyuda}>Le llega un aviso al teléfono</Text>
-          {responsables === null ? (
-            <ActivityIndicator style={styles.cargandoResp} color={PANTONE_295C} />
-          ) : responsables.length === 0 ? (
-            <Text style={styles.modalAyuda}>Nadie disponible</Text>
-          ) : (
-            <ScrollView style={styles.listaResp}>
-              {responsables.map((r) => {
-                const activo = elegido?.id === r.id;
-                return (
-                  <TouchableOpacity
-                    key={r.id}
-                    style={[styles.respItem, activo && styles.respItemActivo]}
-                    onPress={() => setElegido(r)}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: activo }}
-                  >
-                    <Icon
-                      source={activo ? 'radiobox-marked' : 'radiobox-blank'}
-                      size={22}
-                      color={activo ? PANTONE_295C : '#BBB'}
-                    />
-                    <Text style={styles.respNombre}>{r.nombre}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
-          {error && <Text style={styles.modalError}>{error}</Text>}
-          <View style={styles.modalAcciones}>
-            <TouchableOpacity onPress={onClose} disabled={enviando} style={styles.btnTexto}>
-              <Text style={styles.btnTextoLabel}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={asignar}
-              disabled={!elegido || enviando}
-              style={[styles.btnAsignar, (!elegido || enviando) && styles.btnDeshabilitado]}
-              testID="asignar-confirmar"
-            >
-              {enviando ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.btnAsignarLabel}>Asignar</Text>}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
+    <ElegirResponsableModal
+      visible={!!persona}
+      titulo="Asignar seguimiento"
+      descripcion={
+        <>
+          Se abre un caso de seguimiento para <Text style={styles.negrita}>{persona?.nombre}</Text>: no vino a
+          las últimas {ULTIMAS_REUNIONES} reuniones de {reunion.nombre}.
+        </>
+      }
+      etiqueta="Quién lo acompaña"
+      ayuda="Le llega un aviso al teléfono"
+      confirmarLabel="Asignar"
+      cargar={listarResponsablesSeguimiento}
+      onClose={onClose}
+      onConfirm={async (elegido) => {
+        if (!persona) return;
+        try {
+          await asignarSeguimientoAusente(reunion.id, { miembro_id: persona.id, responsable_id: elegido.id });
+        } catch (err) {
+          // 409: ya tenía un seguimiento abierto. No es un error: se avisa y se recarga.
+          if (yaTieneSeguimiento(err)) {
+            return onHecho({ tipo: 'ya_abierto', mensaje: `${persona.nombre} ya tiene un seguimiento abierto.` });
+          }
+          throw new Error(mensajeDeError(err, 'No se pudo asignar el seguimiento.'));
+        }
+        onHecho({
+          tipo: 'asignado',
+          mensaje: `Seguimiento asignado a ${elegido.nombre}. Le llegó un aviso al teléfono.`,
+        });
+      }}
+    />
   );
 }
 
@@ -291,28 +230,4 @@ const styles = StyleSheet.create({
   },
   chipNeutroTexto: { color: '#666', fontSize: 12, fontWeight: '600' },
   negrita: { fontWeight: '700' },
-  modalFondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },
-  modalCaja: { backgroundColor: '#fff', borderRadius: 14, padding: 18, maxHeight: '85%' },
-  modalTitulo: { fontSize: 18, fontWeight: '700', color: '#222', marginBottom: 10 },
-  modalTexto: { fontSize: 14, color: '#333', marginBottom: 14 },
-  modalLabel: { fontSize: 13, fontWeight: '700', color: '#444' },
-  modalAyuda: { fontSize: 12, color: '#888', marginBottom: 6 },
-  cargandoResp: { marginVertical: 16 },
-  listaResp: { maxHeight: 220, borderTopWidth: 1, borderTopColor: '#EEE' },
-  respItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 6,
-    borderBottomWidth: 1, borderBottomColor: '#F2F2F2',
-  },
-  respItemActivo: { backgroundColor: '#F0F5FF' },
-  respNombre: { fontSize: 15, color: '#222', flex: 1 },
-  modalError: { color: '#E53935', fontSize: 13, marginTop: 10 },
-  modalAcciones: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 16 },
-  btnTexto: { paddingHorizontal: 12, paddingVertical: 10 },
-  btnTextoLabel: { color: PANTONE_295C, fontWeight: '700', fontSize: 15 },
-  btnAsignar: {
-    backgroundColor: PANTONE_295C, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10,
-    minWidth: 90, alignItems: 'center',
-  },
-  btnAsignarLabel: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  btnDeshabilitado: { opacity: 0.5 },
 });

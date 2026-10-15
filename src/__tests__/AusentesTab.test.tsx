@@ -116,7 +116,7 @@ describe('AusentesTab: quién faltó y su seguimiento (mismos textos que la web)
     const { tree, onAviso } = await montar();
     await abrirYElegir(tree);
     expect(textos(tree)).toContain('Se abre un caso de seguimiento para Marcela Quintana: no vino a las últimas 3 reuniones de Culto de domingo.');
-    const confirmar = tree.root.findByProps({ testID: 'asignar-confirmar' });
+    const confirmar = tree.root.findByProps({ testID: 'responsable-confirmar' });
     await act(async () => { await confirmar.props.onPress(); });
     expect(asignarSeguimientoAusente).toHaveBeenCalledWith(7, { miembro_id: 11, responsable_id: 2 });
     expect(onAviso).toHaveBeenCalledWith('Seguimiento asignado a Luis Rojas. Le llegó un aviso al teléfono.');
@@ -128,7 +128,7 @@ describe('AusentesTab: quién faltó y su seguimiento (mismos textos que la web)
     (asignarSeguimientoAusente as jest.Mock).mockRejectedValue({ response: { status: 409, data: { detail: 'Esta persona ya tiene un seguimiento abierto.' } } });
     const { tree, onAviso } = await montar();
     await abrirYElegir(tree);
-    await act(async () => { await tree.root.findByProps({ testID: 'asignar-confirmar' }).props.onPress(); });
+    await act(async () => { await tree.root.findByProps({ testID: 'responsable-confirmar' }).props.onPress(); });
     expect(onAviso).toHaveBeenCalledWith('Marcela Quintana ya tiene un seguimiento abierto.');
     expect(obtenerAusentes).toHaveBeenCalledTimes(2);
   });
@@ -138,7 +138,7 @@ describe('AusentesTab: quién faltó y su seguimiento (mismos textos que la web)
     (asignarSeguimientoAusente as jest.Mock).mockRejectedValue({ response: { status: 400, data: { responsable_id: ['Ese responsable no es de esta iglesia.'] } } });
     const { tree, onAviso } = await montar();
     await abrirYElegir(tree);
-    await act(async () => { await tree.root.findByProps({ testID: 'asignar-confirmar' }).props.onPress(); });
+    await act(async () => { await tree.root.findByProps({ testID: 'responsable-confirmar' }).props.onPress(); });
     expect(textos(tree)).toContain('Ese responsable no es de esta iglesia.');
     expect(onAviso).not.toHaveBeenCalled();
     expect(obtenerAusentes).toHaveBeenCalledTimes(1);

@@ -171,11 +171,14 @@ export const eliminarEntradaBitacora = async (id: number): Promise<void> => {
 
 // ─── User conversion ─────────────────────────────────────────────────────────
 
-export const convertirAUsuario = async (
-  id: number,
-): Promise<{ usuario_id: number; email_pendiente: string }> => {
-  const { data } = await api.post(`/api/miembros/${id}/convertir-a-usuario/`);
-  return data;
+/**
+ * Invita al miembro a crear su cuenta: abre el usuario (pendiente de activación) y le manda la invitación
+ * al email de su ficha. Es `invitar-usuario`; la ruta `convertir-a-usuario` que usaba antes no existe en el
+ * backend (404). Pide membresía → editar.
+ */
+export const convertirAUsuario = async (id: number): Promise<{ email: string }> => {
+  const { data } = await api.post(`/api/miembros/${id}/invitar-usuario/`);
+  return { email: data?.usuario?.email };
 };
 
 export const reenviarInvitacion = async (email: string): Promise<void> => {
@@ -332,4 +335,53 @@ export const TIPOS_RELACION: { value: string; label: string; genero: 'M' | 'F' }
 export const filtrarRelacionesPorGenero = (genero: string | null | undefined) => {
   if (!genero) return TIPOS_RELACION;
   return TIPOS_RELACION.filter((r) => r.genero === genero);
+};
+
+// ─── Ficha de la visita (detalle del visitante) ──────────────────────────────
+
+/**
+ * La ficha completa de una visita (backend: `GET /api/miembros/{id}/ficha-visita/`, mismo alcance que
+ * `visitas-recientes`). 403 si quien mira no ve visitas; 404 si no es una visita o no es suya.
+ */
+export interface FichaVisitaDetalle {
+  id: number;
+  nombre: string;
+  fecha: string;
+  estado_membresia: 'activo' | 'inactivo' | 'visitante';
+  tiene_ficha: boolean;
+  como_llego: string | null;
+  invitado_por: string | null;
+  quiere_contacto: string | null;
+  no_contactar: boolean;
+  consentimiento: boolean;
+  /** ISO con hora. */
+  fecha_consentimiento: string | null;
+  notas: string | null;
+  seguimiento: { id: number; estado: string; estado_display: string; responsable: string | null } | null;
+}
+
+export const getFichaVisita = async (id: number): Promise<FichaVisitaDetalle> => {
+  const { data } = await api.get(`/api/miembros/${id}/ficha-visita/`);
+  return data;
+};
+
+/**
+ * Abre el caso de seguimiento de una visita que no lo tiene. Con `reasignar` cambia quién lleva el que ya
+ * está abierto. 400 trae el motivo ({detail}) en español.
+ */
+export const asignarSeguimientoVisita = async (
+  id: number,
+  responsableId: number,
+  { reasignar = false }: { reasignar?: boolean } = {},
+): Promise<{ id: number; estado: string; estado_display: string; responsable: string }> => {
+  const { data } = await api.post(`/api/miembros/${id}/asignar-seguimiento/`, {
+    responsable_id: responsableId,
+    ...(reasignar ? { reasignar: true } : {}),
+  });
+  return data;
+};
+
+/** La visita pidió que borren sus datos: se suprimen al instante. IRREVERSIBLE (pide membresía → editar). */
+export const revocarConsentimientoVisita = async (id: number): Promise<void> => {
+  await api.post(`/api/miembros/${id}/revocar-consentimiento/`, { confirmar: true });
 };

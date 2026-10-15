@@ -26,6 +26,7 @@ import {
   getEstadoMembresiaLabel,
 } from '../../api/miembros';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
+import FichaVisitaSection from './FichaVisitaSection';
 
 function InfoRow({
   icon,
@@ -139,13 +140,17 @@ export default function MiembroDetailScreen() {
       const result = await convertirAUsuario(miembroId);
       Alert.alert(
         'Cuenta creada',
-        `Se envió una invitación a ${result.email_pendiente}. El miembro deberá activar su cuenta.`,
+        `Se envió una invitación a ${result.email}. El miembro deberá activar su cuenta.`,
       );
       await loadData();
     } catch (err: any) {
+      const data = err?.response?.data;
+      // {error}, {detail} o los errores por campo del serializador ({email: ['…']}).
+      const primero: any = data && typeof data === 'object' ? Object.values(data)[0] : null;
       const msg =
-        err?.response?.data?.error ??
-        err?.response?.data?.detail ??
+        data?.error ??
+        data?.detail ??
+        (primero ? String(Array.isArray(primero) ? primero[0] : primero) : null) ??
         'No se pudo crear la cuenta.';
       Alert.alert('Error', msg);
     } finally {
@@ -182,7 +187,9 @@ export default function MiembroDetailScreen() {
 
   const usuarioEstado = miembro.usuario_asociado?.estado;
   const enEliminacion = miembro.usuario_asociado?.cuenta_en_eliminacion === true;
-  const showConvertirBtn = !miembro.usuario_asociado;
+  // Una visita solo aceptó que la contacten: no tiene cuenta. Si pasa a ser hermano (en la web) ya se le puede crear.
+  const esVisitante = miembro.estado_membresia === 'visitante';
+  const showConvertirBtn = !miembro.usuario_asociado && !esVisitante;
   const showReenviarBtn = usuarioEstado === 'pendiente_activacion';
 
   return (
@@ -269,6 +276,14 @@ export default function MiembroDetailScreen() {
           )}
         </View>
 
+        {/* Lo que anotó el comité de bienvenida y quién lleva el seguimiento (solo visitantes). */}
+        <FichaVisitaSection
+          miembroId={miembro.id}
+          nombre={nombreCompleto}
+          estadoMembresia={miembro.estado_membresia}
+          onBorrada={() => navigation.goBack()}
+        />
+
         {/* Datos personales */}
         <SectionTitle title="Datos personales" />
         <SectionCard>
@@ -278,12 +293,17 @@ export default function MiembroDetailScreen() {
             label="Género"
             value={miembro.genero === 'M' ? 'Masculino' : miembro.genero === 'F' ? 'Femenino' : undefined}
           />
-          <InfoRow icon="card-account-details-outline" label="Documento" value={miembro.documento_identidad} />
-          <InfoRow
-            icon="card-bulleted-outline"
-            label="Tipo de documento"
-            value={miembro.tipo_documento?.toUpperCase()}
-          />
+          {/* El código VIS-… de una visita es interno: no es un documento de la persona. */}
+          {!esVisitante && (
+            <>
+              <InfoRow icon="card-account-details-outline" label="Documento" value={miembro.documento_identidad} />
+              <InfoRow
+                icon="card-bulleted-outline"
+                label="Tipo de documento"
+                value={miembro.tipo_documento?.toUpperCase()}
+              />
+            </>
+          )}
           <InfoRow icon="calendar-check-outline" label="Fecha de ingreso" value={formatDate(miembro.fecha_ingreso)} />
         </SectionCard>
 
@@ -367,7 +387,9 @@ export default function MiembroDetailScreen() {
             </>
           ) : (
             <>
-              <Text style={styles.noDataText}>Este miembro no tiene cuenta de usuario.</Text>
+              <Text style={styles.noDataText}>
+                {esVisitante ? 'Una visita no tiene cuenta de usuario.' : 'Este miembro no tiene cuenta de usuario.'}
+              </Text>
               {canEdit && showConvertirBtn && (
                 <TouchableOpacity
                   style={styles.userActionBtn}
