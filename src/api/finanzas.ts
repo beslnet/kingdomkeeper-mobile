@@ -196,18 +196,59 @@ export const obtenerResumen = async (params: {
   return data;
 };
 
-export const crearTransaccion = async (fields: {
+/** Comprobante elegido en el teléfono (cámara, galería o documento), tal como lo entrega el picker. */
+export interface ArchivoAdjunto {
+  uri: string;
+  type: string;
+  name: string;
+}
+
+/**
+ * Los formularios de rendición/ingreso/rectificación pasan el comprobante en `_file`. El backend NO
+ * lee `_file`: lo busca como archivo multipart llamado `archivo_respaldo` (perform_create y
+ * rectificar). Con archivo, el cuerpo va como multipart y los campos como texto; sin archivo,
+ * JSON y sin la clave `_file`. (Desde d28b3df se mandaba `_file` dentro del JSON y el comprobante
+ * se perdía sin error.)
+ */
+const cuerpoConComprobante = <T extends { _file?: ArchivoAdjunto | null }>(fields: T) => {
+  const { _file, ...resto } = fields;
+  if (!_file) return { cuerpo: resto, config: undefined };
+  const fd = new FormData();
+  Object.entries(resto).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) fd.append(k, String(v));
+  });
+  fd.append('archivo_respaldo', _file as any);
+  return { cuerpo: fd, config: { headers: { 'Content-Type': 'multipart/form-data' } } };
+};
+
+interface CamposNuevaTransaccion {
   tipo: string;
   categoria_id: number | string;
-  cuenta_id: number | string;
   fecha: string;
   monto: number | string;
   responsable_id?: number;
   medio?: string;
   observaciones?: string;
   es_reembolso?: boolean;
-}): Promise<Transaccion> => {
-  const { data } = await api.post('/api/finanzas/transacciones/', fields);
+  /** Solo con grupo_id: el egreso se carga al fondo general en vez de al fondo del grupo. */
+  usa_fondo_general?: boolean;
+  _file?: ArchivoAdjunto | null;
+}
+
+/**
+ * Una transacción se crea contra una cuenta (cuenta_id) o contra un grupo (grupo_id): con grupo_id
+ * el backend elige la cuenta del grupo y el responsable (serializer.validate + perform_create), y
+ * cuenta_id deja de ser obligatorio. Sin ninguno de los dos, el backend responde 400.
+ */
+export type NuevaTransaccion = CamposNuevaTransaccion &
+  (
+    | { cuenta_id: number | string; grupo_id?: number | string }
+    | { cuenta_id?: number | string; grupo_id: number | string }
+  );
+
+export const crearTransaccion = async (fields: NuevaTransaccion): Promise<Transaccion> => {
+  const { cuerpo, config } = cuerpoConComprobante(fields);
+  const { data } = await api.post('/api/finanzas/transacciones/', cuerpo, config);
   return data;
 };
 
@@ -263,8 +304,10 @@ export const rectificarTransaccion = async (id: number, fields: Partial<{
   cuenta_id: number | string;
   fecha: string;
   medio: string;
+  _file: ArchivoAdjunto | null;
 }>): Promise<Transaccion> => {
-  const { data } = await api.post(`/api/finanzas/transacciones/${id}/rectificar/`, fields);
+  const { cuerpo, config } = cuerpoConComprobante(fields);
+  const { data } = await api.post(`/api/finanzas/transacciones/${id}/rectificar/`, cuerpo, config);
   return data;
 };
 
@@ -319,7 +362,7 @@ export const listarTiposCuenta = async (): Promise<TipoCuentaFondo[]> => {
 
 // ─── Categorías ───────────────────────────────────────────────────────────────
 
-export const listarCategorias = async (params: { tipo?: string } = {}): Promise<CategoriaTransaccion[]> => {
+export const listarCategorias = async (params: { tipo?: string; activo?: boolean } = {}): Promise<CategoriaTransaccion[]> => {
   const { data } = await api.get('/api/finanzas/categorias/', { params });
   return Array.isArray(data) ? data : data.results ?? [];
 };
