@@ -73,12 +73,43 @@ Regla del workspace: el agente deja el commit (y el push, solo si se autorizó) 
 pasa al usuario el comando exacto. Nunca `kamal deploy` ni nada que reinicie
 producción; un "ok" general no autoriza el deploy.
 
-**Lo que toca a la app:** el force-update lo decide el backend. `MINIMUM_APP_VERSION`
-está en `env.clear` de `kingdomkeeper-backend/config/deploy.yml` (hoy `1.1.0`);
-`core/middleware/app_version.py` lo compara con el header `X-App-Version` que manda
-`src/api/api.ts` y responde 426, que abre `ForceUpdateModal`. Subir ese mínimo es un
-deploy del backend, y deja fuera a quien no haya actualizado: antes, confirma que la
-versión nueva esté publicada en las DOS tiendas (ver punto 3).
+**Lo que toca a la app:** el force-update tiene tres mecanismos, y ninguno bloquea a nadie
+por un fallo de red:
+
+1. **Backend, 426 (ambas plataformas).** `MINIMUM_APP_VERSION` está en `env.clear` de
+   `kingdomkeeper-backend/config/deploy.yml` (hoy `1.1.0`); `core/middleware/app_version.py`
+   lo compara con el header `X-App-Version` que manda `src/api/api.ts` y responde 426, que
+   abre `ForceUpdateModal`. Subirlo es un deploy del backend, y deja fuera a quien no haya
+   actualizado: antes, confirma que la versión nueva esté publicada en las DOS tiendas (ver
+   punto 3).
+2. **iOS, lookup del App Store** (`src/services/forceUpdate.ts`, desde la publicación que sigue a la 1.1.3): compara con
+   la versión que publica Apple y avisa apenas sale, sin tocar el backend. La URL lleva
+   `&t=<ahora>` (`appStoreLookupUrl`, con su test): Apple sirve el lookup con `max-age` ≈ 7 h
+   y sin el parámetro el iPhone ve la versión anterior horas después del correo de
+   «publicada». **No lo quites.**
+3. **Android, mínimo por plataforma** (desde la publicación que sigue a la 1.1.3): `GET /api/public/app-version/`, que
+   lee `MINIMUM_APP_VERSION_ANDROID` (en `deploy.yml`, hoy `1.1.0` = igual al general). Se
+   sube DESPUÉS de que Play publique, y solo mueve a Android.
+
+Una app de la 1.1.3 o anterior solo responde al 426 (y, en iOS, al lookup viejo, con hasta 7 h
+de retraso): el mecanismo 3 y el parámetro anti-caché solo benefician a las versiones posteriores a la 1.1.3.
+
+### 1b. Sesión: dónde vive cada token
+
+El **refresh token (30 días) vive en el Keychain** (`react-native-keychain`, desde la publicación que sigue a la 1.1.3);
+el access token (60 min), en AsyncStorage. Todo pasa por `src/utils/tokenStorage.ts`: no
+vuelvas a leer ni escribir `access_token`/`refresh_token` directo en AsyncStorage.
+
+- El backend rota el refresh token y revoca el anterior, así que `src/api/api.ts` comparte
+  **un solo refresh** entre todas las peticiones que reciben 401; con un refresh por petición,
+  el segundo recibía 401 y cerraba la sesión de un usuario válido.
+- Cerrar sesión (`authStore.logout`) revoca el refresh token en `/api/token/logout/` y borra
+  todo; `expireSession` hace lo mismo sin llamar al servidor, para sesiones ya vencidas.
+- Un refresh token que sigue en AsyncStorage es de la 1.1.3: `checkAuth` lo migra al Keychain
+  y, si el Keychain falla, lo deja donde está (mejor eso que desloguear).
+- `dlog` (`src/utils/debugLogger.ts`) es el único logger: en release no escribe nada y reduce
+  los errores de axios a mensaje y status. No uses `console.*` con un error de axios: arrastra
+  el header `Authorization`.
 
 ### 2. `src/config/maps.ts` NO se versiona
 
