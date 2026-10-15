@@ -3,10 +3,12 @@ import { View, StyleSheet, Platform, KeyboardAvoidingView, Dimensions, Text, Ale
 import { TextInput, Button, HelperText } from 'react-native-paper';
 import { PANTONE_134C, PANTONE_295C } from '../theme/colors';
 import { solicitarRestablecerPassword } from '../api/auth';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { RootStackParamList } from '../types/navigation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export default function ForgotPasswordScreen({ navigation }) {
+export default function ForgotPasswordScreen({ navigation }: StackScreenProps<RootStackParamList, 'ForgotPassword'>) {
     const [email, setEmail] = useState('');
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState('');
