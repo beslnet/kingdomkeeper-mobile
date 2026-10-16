@@ -50,9 +50,9 @@ generate_changelog() {
 
   local raw_commits
   if [[ -n "$since_ref" ]]; then
-    raw_commits=$(git --no-pager log "${since_ref}..HEAD" --format='%H%x1f%s' 2>/dev/null)
+    raw_commits=$(git --no-pager log --no-merges "${since_ref}..HEAD" --format='%H%x1f%s' 2>/dev/null)
   else
-    raw_commits=$(git --no-pager log --max-count=40 --format='%H%x1f%s' 2>/dev/null)
+    raw_commits=$(git --no-pager log --no-merges --max-count=40 --format='%H%x1f%s' 2>/dev/null)
   fi
 
   local feats=() fixes=() security=()
@@ -71,7 +71,9 @@ generate_changelog() {
     # se colaban en las novedades de la tienda. Se mira qué archivos cambió: si
     # ninguno es de la app, fuera.
     local files
-    files=$(git --no-pager show --pretty=format: --name-only "$hash" 2>/dev/null | grep -vE '^[[:space:]]*$')
+    # `|| true`: con set -euo pipefail (los scripts de release), un commit sin archivos hacía que
+    # grep devolviera 1 y el release muriera sin mensaje. Pasó con los merges de oct-2026.
+    files=$(git --no-pager show --pretty=format: --name-only "$hash" 2>/dev/null | grep -vE '^[[:space:]]*$' || true)
     if [[ -n "$files" ]] && ! echo "$files" | grep -qvE '(^|/)(scripts|docs)/|^\.github/|^backend/'; then
       continue
     fi
