@@ -9,7 +9,9 @@
 #   ./scripts/changelog.sh 1.0.2
 
 _capitalize() {
-  echo "$1" | awk '{print toupper(substr($0,1,1)) substr($0,2)}'
+  # LC_ALL=C: awk trabaja por bytes. Con UTF-8, el awk de macOS se cae («illegal byte sequence»)
+  # si el asunto empieza con «, ¿ o una tilde; por bytes, esa letra queda tal cual.
+  echo "$1" | LC_ALL=C awk '{print toupper(substr($0,1,1)) substr($0,2)}'
 }
 
 _clean_prefix() {
