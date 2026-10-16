@@ -52,11 +52,14 @@ case "$BUMP" in
   --major) NEXT_VERSION="$((MAJOR + 1)).0.0" ;;
   --minor) NEXT_VERSION="${MAJOR}.$((MINOR + 1)).0" ;;
   --patch) NEXT_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+  # Rechazo de la tienda: misma versión, build nuevo (ninguna tienda acepta repetir el build).
+  --rebuild) NEXT_VERSION="${CURRENT_VERSION}" ;;
   *)
-    echo "Uso: $0 [--patch|--minor|--major]"
-    echo "  --patch  (default) 1.0.1 → 1.0.2"
-    echo "  --minor            1.0.1 → 1.1.0"
-    echo "  --major            1.0.1 → 2.0.0"
+    echo "Uso: $0 [--patch|--minor|--major|--rebuild]"
+    echo "  --patch   (default) 1.0.1 → 1.0.2"
+    echo "  --minor             1.0.1 → 1.1.0"
+    echo "  --major             1.0.1 → 2.0.0"
+    echo "  --rebuild           1.0.1 → 1.0.1 con build +1 (reenviar tras un rechazo)"
     exit 1
     ;;
 esac
@@ -109,6 +112,19 @@ git add "$GRADLE" "$APP_VER_FILE"
 git commit -m "chore(android): bump version ${VERSION} code ${VERSION_CODE}" 2>/dev/null || true
 git --no-pager tag "$TAG" 2>/dev/null && echo "Tag creado: $TAG" || echo "Tag $TAG ya existe (ignorado)"
 
+# ── Push del commit y del tag, YA ─────────────────────────────────────────────
+# Regla (Benjamín, 16-oct-2026): el tag marca el build que se ENTREGÓ a la tienda, no el que
+# se aprobó. Se pushea apenas termina el release; esperar a la aprobación hacía que el tag
+# quedara solo en un Mac. Si la tienda lo rechaza, NO se mueve ni se borra este tag: se
+# reenvía con `--rebuild` (misma versión, build +1), que crea un tag nuevo.
+if [[ "${NO_PUSH:-false}" == "true" ]]; then
+  echo "⚠️  NO_PUSH=true: falta  git push origin main && git push origin ${TAG}"
+elif git push origin main && git push origin "$TAG"; then
+  echo "Push hecho: main y ${TAG}"
+else
+  echo "⚠️  El push falló: córrelo a mano →  git push origin main && git push origin ${TAG}"
+fi
+
 echo ""
 echo "✅  AAB listo: $AAB ($(du -sh "$AAB" | cut -f1))"
 echo ""
@@ -116,7 +132,7 @@ echo "Pasos para subir a Play Store:"
 echo "  1. https://play.google.com/console → Prueba cerrada → Create new release"
 echo "  2. Subir: $AAB"
 echo "  3. Pegar novedades de GOOGLE PLAY (guardado en ${CHANGELOG_FILE_PATH:-build/changelogs/})"
-echo "  4. Cuando Play Store acepte: git push origin main && git push origin ${TAG}"
+echo "  4. Si Play lo rechaza: corrige y reenvía con  $0 --rebuild  (no muevas el tag ${TAG})"
 echo ""
 open -R "$AAB" 2>/dev/null || true
 
