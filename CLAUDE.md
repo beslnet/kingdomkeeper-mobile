@@ -77,7 +77,7 @@ producción; un "ok" general no autoriza el deploy.
 por un fallo de red:
 
 1. **Backend, 426 (ambas plataformas).** `MINIMUM_APP_VERSION` está en `env.clear` de
-   `kingdomkeeper-backend/config/deploy.yml` (hoy `1.1.0`); `core/middleware/app_version.py`
+   `kingdomkeeper-backend/config/deploy.yml` (`1.2.0` desde el 2026-10-25; antes `1.1.0`); `core/middleware/app_version.py`
    lo compara con el header `X-App-Version` que manda `src/api/api.ts` y responde 426, que
    abre `ForceUpdateModal`. Subirlo es un deploy del backend, y deja fuera a quien no haya
    actualizado: antes, confirma que la versión nueva esté publicada en las DOS tiendas (ver
@@ -88,7 +88,7 @@ por un fallo de red:
    y sin el parámetro el iPhone ve la versión anterior horas después del correo de
    «publicada». **No lo quites.**
 3. **Android, mínimo por plataforma** (desde la publicación que sigue a la 1.1.3): `GET /api/public/app-version/`, que
-   lee `MINIMUM_APP_VERSION_ANDROID` (en `deploy.yml`, hoy `1.1.0` = igual al general). Se
+   lee `MINIMUM_APP_VERSION_ANDROID` (en `deploy.yml`, `1.2.0` desde el 2026-10-25 = igual al general). Se
    sube DESPUÉS de que Play publique, y solo mueve a Android.
 
 Una app de la 1.1.3 o anterior solo responde al 426 (y, en iOS, al lookup viejo, con hasta 7 h
@@ -119,11 +119,11 @@ build falla por import faltante. **No lo agregues a git.**
 
 ### 3. La app está publicada hace meses
 
-iOS y Android en **`1.1.3` (build/versionCode 7)** (tags `ios/v1.1.3-7` y
-`android/v1.1.3-7`, del 7–8 de agosto). Contrastado el 2026-10-12: el lookup del App Store
-devuelve `1.1.3` con fecha 2026-08-08 y la ficha pública de Play muestra `1.1.3` (el
-versionCode no se ve desde afuera y no se miró Play Console). El mínimo que exige
-producción es `1.1.0`: `1.0.9` recibe 426, `1.1.0` pasa.
+iOS y Android en **`1.2.0` (build/versionCode 8)** (tags `ios/v1.2.0-8` y
+`android/v1.2.0-8`, enviada a revisión el 16-oct). Contrastado el 2026-10-25: el lookup del App
+Store devuelve `1.2.0` con fecha 2026-10-17 y la ficha pública de Play muestra `1.2.0`. El mínimo
+pasó de `1.1.0` a `1.2.0` en `deploy.yml` el 2026-10-25 y rige desde el deploy del backend
+siguiente: desde ahí una `1.1.x` recibe 426 y `1.2.0` pasa.
 
 No es un proyecto en desarrollo inicial: cualquier cambio en force-update, permisos o
 navegación afecta a usuarios reales. Verifica contra la versión publicada antes de
