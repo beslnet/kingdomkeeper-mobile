@@ -134,3 +134,37 @@ export function etiquetaFamilia(nombre: string): string {
 export function fechaCorta(iso: string | null | undefined): string {
   return iso ? iso.split('-').reverse().join('-') : '';
 }
+
+/**
+ * Si `fecha` no cae en el día de la reunión, el aviso que lo explica (las mismas palabras de la web);
+ * null si es su día. El backend no guarda esa asistencia sin `confirmar_otro_dia`: entra al promedio
+ * del informe y casi siempre es un error de dedo.
+ */
+export function avisoOtroDia(
+  reunion: { nombre: string; dia_semana: number; dia_semana_display: string },
+  fecha: string
+): string | null {
+  if (!fecha) return null;
+  const diaJs = deIso(fecha).getDay();
+  if (diaJs === (reunion.dia_semana + 1) % 7) return null;
+  const suyo = reunion.dia_semana_display.toLowerCase();
+  const plural = suyo.endsWith('s') ? suyo : `${suyo}s`; // los domingos, los miércoles
+  return (
+    `El ${fechaCorta(fecha)} es ${DIAS[diaJs]}, pero ${reunion.nombre} es los ${plural}. ` +
+    'Esta asistencia entra al promedio del informe.'
+  );
+}
+
+/** "10:00:00" (como lo devuelve el backend) o un Date → "10:00". */
+export function horaCorta(h: string | Date): string {
+  if (typeof h === 'string') return h.slice(0, 5);
+  return `${pad(h.getHours())}:${pad(h.getMinutes())}`;
+}
+
+/** "19:30" → un Date de hoy a esa hora (para el selector de hora). */
+export function horaComoDate(h: string): Date {
+  const [hh, mm] = h.split(':').map(Number);
+  const d = new Date();
+  d.setHours(hh || 0, mm || 0, 0, 0);
+  return d;
+}

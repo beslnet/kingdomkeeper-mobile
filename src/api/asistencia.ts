@@ -51,11 +51,39 @@ export interface GuardarAsistenciaPayload {
   presentes: number[];
   /** Omitido = no se toca lo que ya había; null = borrar el número; n = anotarlo. */
   visitas_sin_ficha?: number | null;
+  /**
+   * Una fecha que no cae en el día de la reunión (un culto de domingo un martes) el backend la
+   * rechaza con `codigo: 'otro_dia'` salvo que venga confirmada: entra al promedio del informe.
+   */
+  confirmar_otro_dia?: boolean;
+}
+
+/** Lo que se manda al crear o editar una reunión (web: «Nueva reunión»). */
+export interface ReunionPayload {
+  nombre: string;
+  tipo: 'culto' | 'reunion';
+  dia_semana: number;
+  /** HH:MM */
+  hora: string;
+  lugar: string;
+  /** null = de toda la iglesia (se marca a todos los hermanos activos). */
+  grupo: number | null;
 }
 
 export const listarReunionesActivas = async (): Promise<Reunion[]> => {
   const { data } = await api.get('/api/asistencia/reuniones/', { params: { activas: 1 } });
   return Array.isArray(data) ? data : data.results ?? [];
+};
+
+// Crear y editar: el pastor, la administración y quienes lideran la asistencia (`asistencia.configurar`).
+export const crearReunion = async (payload: ReunionPayload): Promise<Reunion> => {
+  const { data } = await api.post('/api/asistencia/reuniones/', payload);
+  return data;
+};
+
+export const editarReunion = async (id: number, payload: Partial<ReunionPayload>): Promise<Reunion> => {
+  const { data } = await api.patch(`/api/asistencia/reuniones/${id}/`, payload);
+  return data;
 };
 
 export const obtenerAsistenciaDelDia = async (

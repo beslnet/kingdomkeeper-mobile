@@ -28,6 +28,7 @@ import {
   Familia,
   alternarFamilia,
   armarFamilias,
+  avisoOtroDia,
   deIso,
   estadoFamilia,
   etiquetaFamilia,
@@ -44,6 +45,7 @@ import {
 import { PANTONE_295C } from '../../theme/colors';
 import { usePermissionsStore } from '../../store/permissionsStore';
 import AusentesTab from './AusentesTab';
+import ReunionFormModal from './ReunionFormModal';
 
 type Fila =
   | { tipo: 'familia'; key: string; familia: Familia }
@@ -64,6 +66,8 @@ export default function AsistenciaScreen() {
   // Todo el equipo marca; ver a quienes no han venido y asignarles seguimiento es de quien lidera.
   // Lo resuelve el backend (rol + función del ministerio): la app solo lo pregunta, como la web.
   const puedeSeguimiento = usePermissionsStore((s) => s.can('asistencia.seguimiento'));
+  // Crear y editar las reuniones: el pastor, la administración y quienes lideran la asistencia.
+  const puedeConfigurar = usePermissionsStore((s) => s.can('asistencia.configurar'));
   const [tab, setTab] = useState<'marcar' | 'ausentes'>('marcar');
   const [reuniones, setReuniones] = useState<Reunion[] | null>(null);
   const [reunion, setReunion] = useState<Reunion | null>(null);
@@ -80,6 +84,9 @@ export default function AsistenciaScreen() {
   const [selectorReunion, setSelectorReunion] = useState(false);
   const [selectorFecha, setSelectorFecha] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  // null = cerrado; { reunion: null } = nueva.
+  const [formulario, setFormulario] = useState<{ reunion: Reunion | null } | null>(null);
+  const [confirmarOtroDia, setConfirmarOtroDia] = useState(false);
   // Descarta respuestas de una reunión/fecha que el usuario ya cambió.
   const pedido = useRef(0);
   const reunionRef = useRef<Reunion | null>(null);
@@ -117,6 +124,8 @@ export default function AsistenciaScreen() {
   );
 
   const reunionId = reunion?.id;
+  // Si se edita la reunión y cambia de grupo, cambia a quién se marca: se vuelve a pedir.
+  const reunionGrupo = reunion?.grupo;
   const cargarAsistencia = useCallback(async () => {
     if (reunionId === undefined || !fecha) return;
     const mio = ++pedido.current;
@@ -138,11 +147,17 @@ export default function AsistenciaScreen() {
     } finally {
       if (mio === pedido.current) setCargando(false);
     }
-  }, [reunionId, fecha]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reunionId, reunionGrupo, fecha]);
 
   useEffect(() => {
     cargarAsistencia();
   }, [cargarAsistencia]);
+
+  // La confirmación de «fue una reunión especial» vale para esa reunión y esa fecha, no para la siguiente.
+  useEffect(() => {
+    setConfirmarOtroDia(false);
+  }, [reunionId, fecha]);
 
   // Cambiar de reunión o de fecha con marcas sin guardar pide confirmación.
   const confirmarDescarte = (seguir: () => void) => {
@@ -161,6 +176,25 @@ export default function AsistenciaScreen() {
       setReunion(r);
       setFecha(ultimaFecha(r.dia_semana));
     });
+  };
+
+  const abrirFormulario = (r: Reunion | null) => {
+    setSelectorReunion(false);
+    confirmarDescarte(() => setFormulario({ reunion: r }));
+  };
+
+  const reunionGuardada = (r: Reunion, creada: boolean) => {
+    setFormulario(null);
+    setAviso(creada ? 'Reunión creada' : 'Reunión guardada');
+    setTimeout(() => setAviso(null), 3000);
+    if (creada || r.id === reunion?.id) {
+      // La nueva queda elegida, con su último día; la editada, en su último día si se cambió el día.
+      const cambioDia = !reunion || creada || r.dia_semana !== reunion.dia_semana;
+      setBuscar('');
+      setReunion(r);
+      if (cambioDia) setFecha(ultimaFecha(r.dia_semana));
+    }
+    cargarReuniones();
   };
 
   const cambiarFecha = (nueva: string) => {
@@ -200,14 +234,17 @@ export default function AsistenciaScreen() {
       return n;
     });
 
+  const otroDia = reunion ? avisoOtroDia(reunion, fecha) : null;
+
   const guardar = async () => {
-    if (!reunion || !datos) return;
+    if (!reunion || !datos || (otroDia && !confirmarOtroDia)) return;
     setGuardando(true);
     try {
       const d = await guardarAsistenciaDelDia(reunion.id, {
         fecha,
         presentes: [...presentes],
         ...visitasParaEnviar(visitasSinFicha, visitasOriginal),
+        ...(otroDia ? { confirmar_otro_dia: confirmarOtroDia } : {}),
       });
       const ya = new Set(d.personas.filter((p) => p.presente).map((p) => p.id));
       setDatos(d);
@@ -246,19 +283,43 @@ export default function AsistenciaScreen() {
       </TouchableOpacity>
     );
   }
+  const formularioModal = (
+    <ReunionFormModal
+      visible={formulario !== null}
+      reunion={formulario?.reunion ?? null}
+      onGuardada={reunionGuardada}
+      onClose={() => setFormulario(null)}
+    />
+  );
+
   if (reuniones.length === 0) {
     return (
       <View style={styles.centered}>
         <Icon source="calendar-blank-outline" size={44} color="#BBB" />
         <Text style={styles.emptyTitle}>Aún no hay reuniones</Text>
         <Text style={styles.emptyText}>
-          Crea el culto o las reuniones de la semana desde la web (Asistencia → Nueva reunión) y aparecerán aquí.
+          {puedeConfigurar
+            ? 'Crea la primera: el culto del domingo, la escuela dominical, la reunión de varones…'
+            : 'Las crean el pastor, la administración o quienes lideran la asistencia.'}
         </Text>
+        {puedeConfigurar && (
+          <TouchableOpacity
+            style={[styles.saveBtn, styles.crearPrimera]}
+            onPress={() => setFormulario({ reunion: null })}
+            testID="crear-primera-reunion"
+          >
+            <Icon source="plus" size={20} color="#fff" />
+            <Text style={styles.saveBtnText}>Nueva reunión</Text>
+          </TouchableOpacity>
+        )}
+        {formularioModal}
       </View>
     );
   }
 
   const verAusentes = puedeSeguimiento && tab === 'ausentes';
+  // Con una sola reunión no hay que elegir, pero quien configura entra por ahí a crear o editar.
+  const abreSelector = reuniones.length > 1 || puedeConfigurar;
   const total = datos?.personas.length ?? 0;
   const esHoyOFuturo = sumarDias(fecha || hoy, 7) > hoy;
 
@@ -268,8 +329,8 @@ export default function AsistenciaScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.reunionBtn}
-          onPress={() => (reuniones.length > 1 ? setSelectorReunion(true) : undefined)}
-          activeOpacity={reuniones.length > 1 ? 0.7 : 1}
+          onPress={() => (abreSelector ? setSelectorReunion(true) : undefined)}
+          activeOpacity={abreSelector ? 0.7 : 1}
           accessibilityRole="button"
           accessibilityLabel="Elegir reunión"
         >
@@ -280,7 +341,7 @@ export default function AsistenciaScreen() {
               {reunion?.grupo_nombre ? ` · ${reunion.grupo_nombre}` : ''}
             </Text>
           </View>
-          {reuniones.length > 1 && <Icon source="chevron-down" size={22} color="#fff" />}
+          {abreSelector && <Icon source="chevron-down" size={22} color="#fff" />}
         </TouchableOpacity>
 
         {!verAusentes && (
@@ -351,6 +412,26 @@ export default function AsistenciaScreen() {
         <TouchableOpacity style={styles.cerrarPicker} onPress={() => setSelectorFecha(false)}>
           <Text style={styles.cerrarPickerTexto}>Listo</Text>
         </TouchableOpacity>
+      )}
+
+      {otroDia && (
+        <View style={styles.otroDia} testID="aviso-otro-dia">
+          <Text style={styles.otroDiaTexto}>{otroDia}</Text>
+          <TouchableOpacity
+            style={styles.otroDiaCheck}
+            onPress={() => setConfirmarOtroDia((v) => !v)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: confirmarOtroDia }}
+            testID="confirmar-otro-dia"
+          >
+            <Icon
+              source={confirmarOtroDia ? 'checkbox-marked' : 'checkbox-blank-outline'}
+              size={22}
+              color={confirmarOtroDia ? PANTONE_295C : '#8A4B00'}
+            />
+            <Text style={styles.otroDiaCheckTexto}>Fue una reunión especial</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Buscador y contador */}
@@ -491,9 +572,9 @@ export default function AsistenciaScreen() {
       {!verAusentes && (
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.saveBtn, (guardando || !datos) && styles.saveBtnDisabled]}
+          style={[styles.saveBtn, (guardando || !datos || (!!otroDia && !confirmarOtroDia)) && styles.saveBtnDisabled]}
           onPress={guardar}
-          disabled={guardando || !datos}
+          disabled={guardando || !datos || (!!otroDia && !confirmarOtroDia)}
           activeOpacity={0.85}
         >
           {guardando ? (
@@ -524,12 +605,34 @@ export default function AsistenciaScreen() {
                     </Text>
                   </View>
                   {r.id === reunion?.id && <Icon source="check" size={20} color={PANTONE_295C} />}
+                  {puedeConfigurar && (
+                    <TouchableOpacity
+                      style={styles.editarBtn}
+                      onPress={() => abrirFormulario(r)}
+                      hitSlop={8}
+                      accessibilityLabel={`Editar ${r.nombre}`}
+                      testID={`editar-reunion-${r.id}`}
+                    >
+                      <Icon source="pencil-outline" size={20} color="#666" />
+                    </TouchableOpacity>
+                  )}
                 </TouchableOpacity>
               ))}
+              {puedeConfigurar && (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => abrirFormulario(null)}
+                  testID="nueva-reunion"
+                >
+                  <Icon source="plus" size={20} color={PANTONE_295C} />
+                  <Text style={[styles.modalItemNombre, styles.nuevaTexto]}>Nueva reunión</Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
+      {formularioModal}
     </KeyboardAvoidingView>
   );
 }
@@ -607,4 +710,11 @@ const styles = StyleSheet.create({
   modalItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
   modalItemNombre: { fontSize: 15, fontWeight: '600', color: '#222' },
   modalItemSub: { fontSize: 12, color: '#888', marginTop: 2 },
+  editarBtn: { paddingLeft: 14, paddingVertical: 4 },
+  nuevaTexto: { color: PANTONE_295C, marginLeft: 10 },
+  crearPrimera: { marginTop: 20, paddingHorizontal: 28 },
+  otroDia: { backgroundColor: '#FFF4E5', marginHorizontal: 16, marginTop: 10, borderRadius: 10, padding: 12 },
+  otroDiaTexto: { fontSize: 13, color: '#8A4B00', lineHeight: 18 },
+  otroDiaCheck: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  otroDiaCheckTexto: { fontSize: 14, fontWeight: '600', color: '#5C3300' },
 });

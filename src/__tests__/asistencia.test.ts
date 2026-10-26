@@ -1,4 +1,7 @@
 import {
+  avisoOtroDia,
+  horaComoDate,
+  horaCorta,
   alternarFamilia, etiquetaFamilia, armarFamilias, estadoFamilia, fechaLarga, mismosPresentes, normalizar, reunionPorDefecto, sumarDias, ultimaFecha, visitasComoNumero, visitasParaEnviar,
 } from '../utils/asistencia';
 
@@ -104,5 +107,40 @@ describe('etiquetaFamilia', () => {
   });
   it('una palabra que solo empieza igual sí lleva el prefijo', () => {
     expect(etiquetaFamilia('Familiar Soto')).toBe('Familia Familiar Soto');
+  });
+});
+
+describe('avisoOtroDia (el backend no guarda un culto de domingo un martes sin confirmarlo)', () => {
+  const culto = { nombre: 'Culto dominical', dia_semana: 6, dia_semana_display: 'Domingo' };
+  const oracion = { nombre: 'Oración', dia_semana: 2, dia_semana_display: 'Miércoles' };
+
+  it('en su día no dice nada', () => {
+    expect(avisoOtroDia(culto, '2026-10-25')).toBeNull(); // domingo
+    expect(avisoOtroDia(oracion, '2026-10-21')).toBeNull(); // miércoles
+  });
+
+  it('en otro día lo explica con las palabras de la web', () => {
+    expect(avisoOtroDia(culto, '2026-10-20')).toBe(
+      'El 20-10-2026 es martes, pero Culto dominical es los domingos. Esta asistencia entra al promedio del informe.'
+    );
+  });
+
+  it('no le agrega otra «s» a un día que ya termina en s', () => {
+    expect(avisoOtroDia(oracion, '2026-10-25')).toContain('es los miércoles.');
+  });
+
+  it('sin fecha no avisa', () => {
+    expect(avisoOtroDia(culto, '')).toBeNull();
+  });
+});
+
+describe('hora de la reunión', () => {
+  it('corta los segundos que manda el backend y arma HH:MM desde un Date', () => {
+    expect(horaCorta('19:30:00')).toBe('19:30');
+    expect(horaCorta(new Date(2026, 9, 26, 9, 5))).toBe('09:05');
+  });
+
+  it('ida y vuelta por el selector', () => {
+    expect(horaCorta(horaComoDate('07:45'))).toBe('07:45');
   });
 });
