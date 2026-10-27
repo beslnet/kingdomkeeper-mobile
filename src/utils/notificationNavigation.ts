@@ -1,4 +1,4 @@
-import { CommonActions } from '@react-navigation/native';
+import { CommonActions, StackActions } from '@react-navigation/native';
 import { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 import { navigationRef } from '../navigation/navigationRef';
 
@@ -100,6 +100,33 @@ function dispatchNavigationReset(tabIndex: number, stack: StackRoute[]) {
   );
 }
 
+/** ¿Es el aviso «¿Pasaste lista?» (backend: iglesia/services/aviso_pasar_lista.py)? */
+export function esAvisoPasarLista(payload: ParsedPayload | null | undefined): boolean {
+  return payload?.modulo === 'asistencia' && payload?.entity === 'reunion' && !!payload?.entity_id;
+}
+
+/**
+ * Abre «Pasar lista» de esa reunión dentro de Grupos, con su grupo debajo: «atrás» vuelve al grupo. Es la
+ * misma pantalla de Asistencia, ya en la reunión.
+ */
+export function abrirPasarLista(reunionId: number, extra?: Record<string, any>) {
+  if (!navigationRef.isReady()) return;
+  const pasarLista = { reunionId, titulo: extra?.titulo || 'Pasar lista' };
+  if (!extra?.grupo_id) {
+    navigationRef.navigate('Main' as never, {
+      screen: 'GruposCelulas', params: { screen: 'PasarLista', params: pasarLista, initial: false },
+    } as never);
+    return;
+  }
+  // Primero el grupo y, encima, «Pasar lista» (push: un navigate volvería a una «Pasar lista» anterior y
+  // sacaría al grupo de debajo).
+  navigationRef.navigate('Main' as never, {
+    screen: 'GruposCelulas',
+    params: { screen: 'GrupoDetail', params: { id: extra.grupo_id, nombre: extra.grupo }, initial: false },
+  } as never);
+  setTimeout(() => navigationRef.dispatch(StackActions.push('PasarLista', pasarLista)), 0);
+}
+
 export function handleNotificationNavigation(
   remoteMessage: FirebaseMessagingTypes.RemoteMessage | null,
 ) {
@@ -111,6 +138,10 @@ export function handleNotificationNavigation(
       rawPayload && typeof rawPayload === 'string' ? JSON.parse(rawPayload) : {};
 
     const titulo = remoteMessage.notification?.title ?? 'Mensaje';
+    if (esAvisoPasarLista(payload)) {
+      abrirPasarLista(payload.entity_id as number, payload.extra);
+      return;
+    }
     const config = payload.modulo ? MODULE_NAV_CONFIG[payload.modulo] : undefined;
 
     if (config && payload.entity_id) {

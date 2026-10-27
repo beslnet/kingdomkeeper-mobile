@@ -31,12 +31,13 @@ export default function ReunionSemanal({
   const navigation = useNavigation<any>();
   // null = cerrado; { reunion: null } = configurar la primera.
   const [formulario, setFormulario] = useState<{ reunion: Reunion | null } | null>(null);
-  const reuniones = grupo.reuniones ?? [];
+  // Una pausada solo la ve quien gestiona el grupo, para reactivarla desde el lápiz.
+  const reuniones = (grupo.reuniones ?? []).filter((r) => r.activa !== false || gestiona);
 
   if (reuniones.length === 0 && !gestiona) return null;
 
   const comoReunion = (r: ReunionDelGrupo): Reunion => ({
-    ...r, grupo: grupo.id, grupo_nombre: grupo.nombre, activa: true,
+    ...r, grupo: grupo.id, grupo_nombre: grupo.nombre, activa: r.activa !== false,
   });
 
   return (
@@ -58,7 +59,7 @@ export default function ReunionSemanal({
       ) : (
         reuniones.map((r) => (
           <View key={r.id} style={styles.card}>
-            <Text style={styles.etiqueta}>REUNIÓN SEMANAL</Text>
+            <Text style={styles.etiqueta}>REUNIÓN SEMANAL{r.activa === false ? ' · PAUSADA' : ''}</Text>
             <Text style={styles.nombre}>{r.nombre}</Text>
             <Text style={styles.cuando}>
               Se reúnen {losDias(r.dia_semana_display)} a las {r.hora}
@@ -66,19 +67,25 @@ export default function ReunionSemanal({
             </Text>
             <Text style={styles.ultima}>
               {r.ultima
-                ? `Última vez que se pasó lista: ${fechaCorta(r.ultima.fecha)} · ${r.ultima.presentes} de ${r.total}`
+                ? `Última vez que se pasó lista: ${fechaCorta(r.ultima.fecha)} · ${r.ultima.presentes} de ${r.total}${
+                    r.ultima.tema ? ` · ${r.ultima.tema}` : ''
+                  }`
                 : 'Todavía no se ha pasado lista.'}
             </Text>
             {gestiona ? (
               <View style={styles.botones}>
-                <TouchableOpacity
-                  style={styles.pasarLista}
-                  onPress={() => navigation.navigate('PasarLista', { reunionId: r.id, titulo: r.nombre })}
-                  testID={`pasar-lista-${r.id}`}
-                >
-                  <Icon source="clipboard-check-outline" size={18} color="#fff" />
-                  <Text style={styles.pasarListaTexto}>Pasar lista</Text>
-                </TouchableOpacity>
+                {r.activa !== false ? (
+                  <TouchableOpacity
+                    style={styles.pasarLista}
+                    onPress={() => navigation.navigate('PasarLista', { reunionId: r.id, titulo: r.nombre })}
+                    testID={`pasar-lista-${r.id}`}
+                  >
+                    <Icon source="clipboard-check-outline" size={18} color="#fff" />
+                    <Text style={styles.pasarListaTexto}>Pasar lista</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={[styles.ultima, styles.flex1]}>Pausada: toca el lápiz para reactivarla.</Text>
+                )}
                 <TouchableOpacity
                   style={styles.editar}
                   onPress={() => setFormulario({ reunion: comoReunion(r) })}
@@ -99,6 +106,10 @@ export default function ReunionSemanal({
         grupoFijo={{ id: grupo.id, nombre: grupo.nombre }}
         onClose={() => setFormulario(null)}
         onGuardada={() => {
+          setFormulario(null);
+          onCambio();
+        }}
+        onQuitada={() => {
           setFormulario(null);
           onCambio();
         }}

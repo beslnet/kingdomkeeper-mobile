@@ -7,7 +7,10 @@ jest.mock('../api/api', () => ({ __esModule: true, default: {} }));
 const mockNavigate = jest.fn();
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
+  createNavigationContainerRef: () => ({ isReady: () => false }),
+  CommonActions: {},
 }));
+jest.mock('@react-native-firebase/messaging', () => ({}));
 jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
 jest.mock('../api/grupos', () => ({ listarGrupos: jest.fn(async () => ({ results: [] })) }));
 jest.mock('../api/asistencia', () => ({
@@ -98,5 +101,29 @@ describe('Reunión semanal en el grupo', () => {
     expect(tree.root.findAll((n) => n.props.testID === 'reunion-grupo-fijo').length).toBeGreaterThan(0);
     const vacio = await montar({ id: 3, nombre: 'Jóvenes', reuniones: [] }, false);
     expect(vacio.toJSON()).toBeNull();
+  });
+});
+
+describe('Aviso «¿Pasaste lista?»', () => {
+  const { esAvisoPasarLista } = jest.requireActual('../utils/notificationNavigation');
+  it('se reconoce por su payload', () => {
+    expect(esAvisoPasarLista({ modulo: 'asistencia', entity: 'reunion', entity_id: 7, action: 'pasar_lista' })).toBe(true);
+    expect(esAvisoPasarLista({ modulo: 'comunicaciones', entity: 'comunicacion', entity_id: 7 })).toBe(false);
+  });
+});
+
+describe('Reunión semanal pausada y tema', () => {
+  it('quien gestiona la ve pausada y sin «Pasar lista»; un integrante no la ve', async () => {
+    const pausada = { ...REUNION, activa: false };
+    const tree = await montar({ id: 3, nombre: 'Jóvenes', reuniones: [pausada] }, true);
+    expect(textos(tree)).toContain('REUNIÓN SEMANAL · PAUSADA');
+    expect(porId(tree, 'pasar-lista-7')).toBeUndefined();
+    const integrante = await montar({ id: 3, nombre: 'Jóvenes', reuniones: [pausada] }, false);
+    expect(integrante.toJSON()).toBeNull();
+  });
+
+  it('muestra el tema de la última vez', async () => {
+    const tree = await montar({ id: 3, nombre: 'Jóvenes', reuniones: [{ ...REUNION, ultima: { ...REUNION.ultima, tema: 'Efesios 5' } }] }, true);
+    expect(textos(tree)).toContain('Última vez que se pasó lista: 23-10-2026 · 13 de 15 · Efesios 5');
   });
 });

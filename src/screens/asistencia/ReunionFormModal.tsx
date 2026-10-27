@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -13,7 +14,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Icon } from 'react-native-paper';
-import { Reunion, ReunionPayload, crearReunion, editarReunion } from '../../api/asistencia';
+import { Reunion, ReunionPayload, crearReunion, editarReunion, eliminarReunion } from '../../api/asistencia';
 import { listarGrupos } from '../../api/grupos';
 import { horaComoDate, horaCorta } from '../../utils/asistencia';
 import { PANTONE_295C } from '../../theme/colors';
@@ -54,6 +55,7 @@ export default function ReunionFormModal({
   onGuardada,
   onClose,
   grupoFijo = null,
+  onQuitada,
 }: {
   visible: boolean;
   /** null = nueva. */
@@ -61,6 +63,8 @@ export default function ReunionFormModal({
   onGuardada: (r: Reunion, creada: boolean) => void;
   onClose: () => void;
   grupoFijo?: { id: number; nombre: string } | null;
+  /** Al editar: se quitó (solo se puede si todavía no tiene asistencia guardada). */
+  onQuitada?: (r: Reunion) => void;
 }) {
   const [form, setForm] = useState<ReunionPayload>(VACIO);
   const [grupos, setGrupos] = useState<GrupoOpcion[] | null>(null);
@@ -102,6 +106,47 @@ export default function ReunionFormModal({
     form.grupo === null
       ? 'No, es de toda la iglesia'
       : grupos?.find((g) => g.id === form.grupo)?.nombre ?? reunion?.grupo_nombre ?? 'Grupo';
+
+  // Al editar: pausar (deja de aparecer para pasar lista y conserva lo marcado), reactivar o quitar.
+  const pausar = async () => {
+    if (!reunion) return;
+    setEnviando(true);
+    setError(null);
+    try {
+      onGuardada(await editarReunion(reunion.id, { activa: reunion.activa === false }), false);
+    } catch (err) {
+      setError(mensajeDeError(err, 'No se pudo cambiar la reunión.'));
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const quitar = () => {
+    if (!reunion) return;
+    Alert.alert(
+      'Quitar reunión',
+      `¿Quitar «${reunion.nombre}»? Si ya tiene asistencia guardada no se puede: se pausa.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Quitar',
+          style: 'destructive',
+          onPress: async () => {
+            setEnviando(true);
+            setError(null);
+            try {
+              await eliminarReunion(reunion.id);
+              onQuitada?.(reunion);
+            } catch (err) {
+              setError(mensajeDeError(err, 'No se pudo quitar la reunión.'));
+            } finally {
+              setEnviando(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const guardar = async () => {
     if (!form.nombre.trim()) return;
@@ -259,6 +304,17 @@ export default function ReunionFormModal({
             )}
 
             {!!error && <Text style={styles.error}>{error}</Text>}
+
+            {reunion ? (
+              <View style={styles.extra}>
+                <TouchableOpacity onPress={pausar} disabled={enviando} testID="reunion-pausar">
+                  <Text style={styles.extraPausar}>{reunion.activa === false ? 'Reactivar reunión' : 'Pausar reunión'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={quitar} disabled={enviando} testID="reunion-quitar">
+                  <Text style={styles.extraQuitar}>Quitar</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </ScrollView>
 
           {/* Fuera del scroll: en un iPhone chico, Crear queda a la vista sin tener que bajar. */}
@@ -325,6 +381,9 @@ const styles = StyleSheet.create({
   opcionTexto: { flex: 1, fontSize: 15, color: '#222' },
   ayuda: { fontSize: 12, color: '#888', marginTop: 6, marginBottom: 14, lineHeight: 17 },
   error: { color: '#E53935', fontSize: 14, marginTop: 12, textAlign: 'center' },
+  extra: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, marginBottom: 8 },
+  extraPausar: { color: '#E65100', fontWeight: '600', fontSize: 15, paddingVertical: 6 },
+  extraQuitar: { color: '#C62828', fontWeight: '600', fontSize: 15, paddingVertical: 6 },
   botones: { flexDirection: 'row', gap: 10, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
   btnSecundario: {
     flex: 1, borderRadius: 8, borderWidth: 1, borderColor: '#CCC', paddingVertical: 12, alignItems: 'center',

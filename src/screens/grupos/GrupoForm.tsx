@@ -16,7 +16,8 @@ import {
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { crearGrupo, actualizarGrupo, listarLideresIglesia } from '../../api/grupos';
+import { crearGrupo, actualizarGrupo, listarLideresIglesia, listarMiembrosIglesia } from '../../api/grupos';
+import { usePermissionsStore } from '../../store/permissionsStore';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
 
 const TIPOS = [
@@ -25,6 +26,15 @@ const TIPOS = [
   { value: 'clase', label: 'Clase' },
   { value: 'comision', label: 'Comisión' },
   { value: 'especial', label: 'Especial' },
+];
+
+// Lo que hace un ministerio por la iglesia: SUMA permisos a su gente sin tocar sus roles (igual que la web;
+// la regla la resuelve el backend: iglesia/services/permisos_funcion.py).
+export const FUNCIONES = [
+  { value: '', label: 'Ninguna', ayuda: 'Un ministerio común' },
+  { value: 'bienvenida', label: 'Bienvenida', ayuda: 'Registra visitas y les hace el seguimiento' },
+  { value: 'intercesion', label: 'Intercesión', ayuda: 'Anota y lleva las peticiones de oración' },
+  { value: 'asistencia', label: 'Asistencia', ayuda: 'Marca quién vino y ve a quienes no han venido' },
 ];
 
 const ESTADOS = [
@@ -43,6 +53,10 @@ export default function GrupoFormScreen() {
   const [nombre, setNombre] = useState(grupo?.nombre ?? '');
   const [descripcion, setDescripcion] = useState(grupo?.descripcion ?? '');
   const [tipo, setTipo] = useState(grupo?.tipo ?? 'celula');
+  const [funcion, setFuncion] = useState<string>(grupo?.funcion ?? '');
+  // Darle una función a un ministerio es darle permisos a su gente: lo decide el pastor o la administración.
+  const puedeConfigurarFuncion = usePermissionsStore((s) => s.can('ministerios.configurar_funcion'));
+  const esMinisterio = tipo === 'ministerio';
   const [estado, setEstado] = useState(grupo?.estado ?? 'activo');
   const [liderId, setLiderId] = useState<number | null>(grupo?.lider_id ?? null);
   const [liderNombre, setLiderNombre] = useState(grupo?.lider_nombre ?? '');
@@ -59,14 +73,15 @@ export default function GrupoFormScreen() {
   const loadLideres = useCallback(async (query?: string) => {
     setLoadingLideres(true);
     try {
-      const result = await listarLideresIglesia(query);
+      // Un ministerio lo puede liderar cualquier hermano; una célula, quien tiene el rol «Líder» (igual que la web).
+      const result = esMinisterio ? await listarMiembrosIglesia(query) : await listarLideresIglesia(query);
       setLideres(result?.results ?? result ?? []);
     } catch {
       setLideres([]);
     } finally {
       setLoadingLideres(false);
     }
-  }, []);
+  }, [esMinisterio]);
 
   const openLiderModal = () => {
     setLiderSearch('');
@@ -102,6 +117,8 @@ export default function GrupoFormScreen() {
       tipo,
       lider_id: liderId,
       estado,
+      // Sin permiso no se manda: el backend lo rechazaría aunque no haya cambiado.
+      ...(puedeConfigurarFuncion ? { funcion: esMinisterio ? funcion : '' } : {}),
     };
 
     setSaving(true);
@@ -116,7 +133,7 @@ export default function GrupoFormScreen() {
     } catch (err: any) {
       const data = err?.response?.data;
       const msg =
-        data?.error ?? data?.detail ?? data?.nombre?.[0] ?? data?.lider_id?.[0] ??
+        data?.error ?? data?.detail ?? data?.nombre?.[0] ?? data?.lider_id?.[0] ?? data?.funcion?.[0] ??
         'Error al guardar el grupo.';
       setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
@@ -184,6 +201,31 @@ export default function GrupoFormScreen() {
           ))}
         </View>
 
+        {/* Función del ministerio */}
+        {esMinisterio ? (
+          <>
+            <Text style={styles.label}>Función del ministerio</Text>
+            <View style={styles.chipGroup}>
+              {FUNCIONES.map((f) => (
+                <TouchableOpacity
+                  key={f.value || 'ninguna'}
+                  style={[styles.chip, funcion === f.value && styles.chipSelected, !puedeConfigurarFuncion && styles.chipDisabled]}
+                  onPress={() => setFuncion(f.value)}
+                  disabled={saving || !puedeConfigurarFuncion}
+                  testID={`funcion-${f.value || 'ninguna'}`}
+                >
+                  <Text style={[styles.chipText, funcion === f.value && styles.chipTextSelected]}>{f.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.helperText}>
+              {puedeConfigurarFuncion
+                ? `${FUNCIONES.find((f) => f.value === funcion)?.ayuda}. Quienes están en el ministerio reciben los permisos de esa función; el líder y los co-líderes, todos.`
+                : 'La función la define el pastor o la administración de la iglesia.'}
+            </Text>
+          </>
+        ) : null}
+
         {/* Líder */}
         <Text style={styles.label}>Líder del Grupo *</Text>
         <TouchableOpacity
@@ -198,7 +240,11 @@ export default function GrupoFormScreen() {
           )}
           <Icon source="magnify" size={18} color="#888" />
         </TouchableOpacity>
-        <Text style={styles.helperText}>El líder de una célula tiene el rol «Líder». Sus co-líderes pueden ser cualquier hermano con cuenta.</Text>
+        <Text style={styles.helperText}>
+          {esMinisterio
+            ? 'Cualquier hermano activo puede liderar un ministerio.'
+            : 'El líder de una célula tiene el rol «Líder». Sus co-líderes pueden ser cualquier hermano con cuenta.'}
+        </Text>
 
         {/* Estado */}
         <Text style={styles.label}>Estado</Text>
@@ -333,6 +379,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   chipSelected: { borderColor: PANTONE_295C, backgroundColor: '#EAF2FF' },
+  chipDisabled: { opacity: 0.5 },
   chipText: { fontSize: 13, color: '#666', fontWeight: '500' },
   chipTextSelected: { color: PANTONE_295C, fontWeight: '700' },
   saveBtn: {

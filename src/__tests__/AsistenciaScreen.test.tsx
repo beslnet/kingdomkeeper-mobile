@@ -14,7 +14,7 @@ jest.mock('../api/asistencia', () => {
   const real = jest.requireActual('../api/asistencia');
   return {
     ...real,
-    listarReunionesActivas: jest.fn(async () => [
+    listarReuniones: jest.fn(async () => [
       { id: 7, nombre: 'Culto de domingo', tipo: 'culto', dia_semana: 6, dia_semana_display: 'Domingo', hora: '10:00:00', lugar: '', grupo: null, grupo_nombre: null, activa: true },
     ]),
     obtenerAsistenciaDelDia: jest.fn(async () => ({

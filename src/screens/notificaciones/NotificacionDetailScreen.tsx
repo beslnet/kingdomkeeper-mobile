@@ -14,6 +14,7 @@ import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
 import { Notificacion, marcarLeida } from '../../api/notificaciones';
 import { useBadgeStore } from '../../store/badgeStore';
 import { NotificacionesStackParamList } from '../../types/navigation';
+import { abrirPasarLista, esAvisoPasarLista } from '../../utils/notificationNavigation';
 
 type RouteProps = RouteProp<NotificacionesStackParamList, 'NotificacionDetail'>;
 
@@ -21,12 +22,14 @@ const TIPO_ICON: Record<string, string> = {
   exportacion_lista: 'download-circle-outline',
   sistema: 'information-outline',
   alerta: 'alert-circle-outline',
+  'asistencia.pasar_lista': 'clipboard-check-outline',
 };
 
 const TIPO_LABEL: Record<string, string> = {
   exportacion_lista: 'Exportación',
   sistema: 'Sistema',
   alerta: 'Alerta',
+  'asistencia.pasar_lista': 'Asistencia',
 };
 
 function formatFecha(dateStr: string): string {
@@ -98,6 +101,19 @@ export default function NotificacionDetailScreen() {
         <Text style={styles.titulo}>{notificacion.titulo}</Text>
         <Text style={styles.mensaje}>{notificacion.mensaje}</Text>
       </View>
+
+      {/* «¿Pasaste lista?»: directo a pasar lista de esa reunión */}
+      {esAvisoPasarLista(notificacion.payload) && (
+        <TouchableOpacity
+          style={styles.downloadBtn}
+          onPress={() => abrirPasarLista(notificacion.payload.entity_id, notificacion.payload.extra)}
+          activeOpacity={0.8}
+          testID="abrir-pasar-lista"
+        >
+          <Icon source="clipboard-check-outline" size={20} color="#FFF" />
+          <Text style={styles.downloadBtnText}>Pasar lista</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Acción descarga */}
       {isExport && (

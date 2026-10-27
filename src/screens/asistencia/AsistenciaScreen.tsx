@@ -20,8 +20,9 @@ import {
   AsistenciaDelDia,
   PersonaAsistencia,
   Reunion,
+  editarReunion,
   guardarAsistenciaDelDia,
-  listarReunionesActivas,
+  listarReuniones,
   obtenerAsistenciaDelDia,
 } from '../../api/asistencia';
 import {
@@ -45,6 +46,7 @@ import {
 import { PANTONE_295C } from '../../theme/colors';
 import { usePermissionsStore } from '../../store/permissionsStore';
 import AusentesTab from './AusentesTab';
+import InformeTab from './InformeTab';
 import ReunionFormModal from './ReunionFormModal';
 
 type Fila =
@@ -70,7 +72,7 @@ export default function AsistenciaScreen() {
   const puedeSeguimientoIglesia = usePermissionsStore((s) => s.can('asistencia.seguimiento'));
   // Crear reuniones de la iglesia: el pastor, la administración y quienes lideran la asistencia.
   const puedeConfigurar = usePermissionsStore((s) => s.can('asistencia.configurar'));
-  const [tab, setTab] = useState<'marcar' | 'ausentes'>('marcar');
+  const [tab, setTab] = useState<'marcar' | 'ausentes' | 'informe'>('marcar');
   const [reuniones, setReuniones] = useState<Reunion[] | null>(null);
   const [reunion, setReunion] = useState<Reunion | null>(null);
   const [fecha, setFecha] = useState<string>('');
@@ -79,6 +81,9 @@ export default function AsistenciaScreen() {
   const [presentes, setPresentes] = useState<Set<number>>(new Set());
   const [visitasSinFicha, setVisitasSinFicha] = useState('');
   const [visitasOriginal, setVisitasOriginal] = useState<number | null>(null);
+  // Qué se vio ese día ("Efesios 5"): opcional, como en la web.
+  const [tema, setTema] = useState('');
+  const [temaOriginal, setTemaOriginal] = useState('');
   const [buscar, setBuscar] = useState('');
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -97,18 +102,21 @@ export default function AsistenciaScreen() {
   const hoy = aIso(new Date());
   const sucio =
     !!datos &&
-    (!mismosPresentes(presentes, original) || visitasComoNumero(visitasSinFicha) !== visitasOriginal);
+    (!mismosPresentes(presentes, original) || visitasComoNumero(visitasSinFicha) !== visitasOriginal ||
+      tema.trim() !== temaOriginal);
 
   const cargarReuniones = useCallback(async () => {
     setError(null);
     try {
-      const lista = await listarReunionesActivas();
+      // Las pausadas solo las ve quien puede reactivarlas (igual que la web).
+      const lista = (await listarReuniones()).filter((r) => r.activa !== false || r.puedo_configurar);
       setReuniones(lista);
       const vigente = lista.find((r) => r.id === reunionRef.current?.id);
       if (vigente) {
         setReunion(vigente);
       } else {
-        const primera = lista.find((r) => r.id === reunionPedida) ?? reunionPorDefecto(lista);
+        const activas = lista.filter((r) => r.activa !== false);
+        const primera = lista.find((r) => r.id === reunionPedida) ?? reunionPorDefecto(activas) ?? lista[0] ?? null;
         setReunion(primera);
         if (primera) setFecha(ultimaFecha(primera.dia_semana));
       }
@@ -142,6 +150,8 @@ export default function AsistenciaScreen() {
       setPresentes(new Set(ya));
       setVisitasOriginal(d.visitas_sin_ficha);
       setVisitasSinFicha(d.visitas_sin_ficha === null ? '' : String(d.visitas_sin_ficha));
+      setTema(d.tema ?? '');
+      setTemaOriginal(d.tema ?? '');
     } catch (err) {
       if (mio !== pedido.current) return;
       setDatos(null);
@@ -246,6 +256,7 @@ export default function AsistenciaScreen() {
         fecha,
         presentes: [...presentes],
         ...visitasParaEnviar(visitasSinFicha, visitasOriginal),
+        tema: tema.trim(),
         ...(otroDia ? { confirmar_otro_dia: confirmarOtroDia } : {}),
       });
       const ya = new Set(d.personas.filter((p) => p.presente).map((p) => p.id));
@@ -254,6 +265,8 @@ export default function AsistenciaScreen() {
       setPresentes(new Set(ya));
       setVisitasOriginal(d.visitas_sin_ficha);
       setVisitasSinFicha(d.visitas_sin_ficha === null ? '' : String(d.visitas_sin_ficha));
+      setTema(d.tema ?? '');
+      setTemaOriginal(d.tema ?? '');
       setAviso(`Asistencia guardada: ${ya.size} presente${ya.size === 1 ? '' : 's'}`);
       setTimeout(() => setAviso(null), 3000);
     } catch (err) {
@@ -289,8 +302,23 @@ export default function AsistenciaScreen() {
     <ReunionFormModal
       visible={formulario !== null}
       reunion={formulario?.reunion ?? null}
+      // Quien solo lleva la reunión de su grupo (no configura las de la iglesia) la edita sin poder moverla a
+      // otro grupo ni volverla de toda la iglesia: el backend se lo negaría.
+      grupoFijo={
+        !puedeConfigurar && formulario?.reunion?.grupo
+          ? { id: formulario.reunion.grupo, nombre: formulario.reunion.grupo_nombre ?? 'el grupo' }
+          : null
+      }
       onGuardada={reunionGuardada}
       onClose={() => setFormulario(null)}
+      onQuitada={() => {
+        setFormulario(null);
+        setAviso('Reunión quitada');
+        setTimeout(() => setAviso(null), 3000);
+        reunionRef.current = null;
+        setReunion(null);
+        cargarReuniones();
+      }}
     />
   );
 
@@ -323,7 +351,27 @@ export default function AsistenciaScreen() {
   // backend anterior que no los manda, lo que diga el rol.
   const puedeSeguimiento = reunion?.puedo_seguimiento ?? puedeSeguimientoIglesia;
   const puedeEditar = (r: Reunion) => r.puedo_configurar ?? puedeConfigurar;
-  const verAusentes = puedeSeguimiento && tab === 'ausentes';
+  // El informe del mes es de toda la iglesia: el pastor, los líderes y quienes lideran la asistencia.
+  const puedeInforme = puedeSeguimientoIglesia;
+  const pausada = reunion?.activa === false;
+  const vista: 'pausada' | 'informe' | 'ausentes' | 'marcar' =
+    tab === 'informe' && puedeInforme ? 'informe' : pausada ? 'pausada' : puedeSeguimiento && tab === 'ausentes' ? 'ausentes' : 'marcar';
+  const verAusentes = vista !== 'marcar';
+  const pestanas = (['marcar', 'ausentes', 'informe'] as const).filter(
+    (t) => t === 'marcar' || (t === 'ausentes' && puedeSeguimiento) || (t === 'informe' && puedeInforme)
+  );
+  const reactivar = async () => {
+    if (!reunion) return;
+    try {
+      const r = await editarReunion(reunion.id, { activa: true });
+      setReunion(r);
+      setAviso('Reunión reactivada');
+      setTimeout(() => setAviso(null), 3000);
+      cargarReuniones();
+    } catch (err) {
+      Alert.alert('No se pudo reactivar', mensajeDeError(err, 'Inténtalo de nuevo.'));
+    }
+  };
   // Con una sola reunión no hay que elegir, pero quien configura entra por ahí a crear o editar.
   const abreSelector = reuniones.length > 1 || puedeConfigurar || (!!reunion && puedeEditar(reunion));
   const total = datos?.personas.length ?? 0;
@@ -371,9 +419,9 @@ export default function AsistenciaScreen() {
         )}
       </View>
 
-      {puedeSeguimiento && (
+      {pestanas.length > 1 && (
         <View style={styles.tabs} accessibilityRole="tablist">
-          {(['marcar', 'ausentes'] as const).map((t) => (
+          {pestanas.map((t) => (
             <TouchableOpacity
               key={t}
               style={[styles.tab, tab === t && styles.tabActiva]}
@@ -383,14 +431,27 @@ export default function AsistenciaScreen() {
               testID={`tab-${t}`}
             >
               <Text style={[styles.tabTexto, tab === t && styles.tabTextoActivo]}>
-                {t === 'marcar' ? 'Marcar' : 'No han venido'}
+                {t === 'marcar' ? 'Marcar' : t === 'ausentes' ? 'No han venido' : 'Informe'}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       )}
 
-      {verAusentes && reunion ? (
+      {vista === 'informe' ? (
+        <InformeTab />
+      ) : vista === 'pausada' && reunion ? (
+        <View style={styles.pausada} testID="reunion-pausada">
+          <Icon source="pause-circle-outline" size={40} color="#999" />
+          <Text style={styles.pausadaTexto}>
+            «{reunion.nombre}» está pausada: no aparece para pasar lista y conserva lo marcado.
+          </Text>
+          <TouchableOpacity style={[styles.saveBtn, styles.crearPrimera]} onPress={reactivar} testID="reactivar-reunion">
+            <Icon source="play" size={20} color="#fff" />
+            <Text style={styles.saveBtnText}>Reactivar</Text>
+          </TouchableOpacity>
+        </View>
+      ) : verAusentes && reunion ? (
         <AusentesTab
           reunion={reunion}
           onAviso={(m) => {
@@ -439,6 +500,21 @@ export default function AsistenciaScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Tema del día */}
+      <View style={styles.searchBar}>
+        <Icon source="book-open-variant" size={18} color="#888" />
+        <TextInput
+          style={styles.searchInput}
+          value={tema}
+          onChangeText={setTema}
+          placeholder="Tema (opcional): Efesios 5…"
+          placeholderTextColor="#AAA"
+          maxLength={200}
+          accessibilityLabel="Tema (opcional)"
+          testID="tema-del-dia"
+        />
+      </View>
 
       {/* Buscador y contador */}
       <View style={styles.searchBar}>
@@ -624,6 +700,7 @@ export default function AsistenciaScreen() {
                     <Text style={styles.modalItemSub}>
                       {r.dia_semana_display} {r.hora?.slice(0, 5)}
                       {r.grupo_nombre ? ` · ${r.grupo_nombre}` : ''}
+                      {r.activa === false ? ' · Pausada' : ''}
                     </Text>
                   </View>
                   {r.id === reunion?.id && <Icon source="check" size={20} color={PANTONE_295C} />}
@@ -688,6 +765,8 @@ const styles = StyleSheet.create({
     borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#E0E0E0', gap: 8,
   },
   searchInput: { flex: 1, fontSize: 14, color: '#333', paddingVertical: 2 },
+  pausada: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
+  pausadaTexto: { fontSize: 15, color: '#555', textAlign: 'center', lineHeight: 21 },
   contador: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 10, paddingBottom: 2, gap: 10 },
   contadorTexto: { fontSize: 14, color: '#555', flex: 1 },
   guardadaTag: { fontSize: 12, color: '#2E7D32', fontWeight: '600' },

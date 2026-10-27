@@ -35,7 +35,9 @@ export interface ReunionDelGrupo {
   lugar: string;
   /** Cuántos se marcan (los integrantes del grupo). */
   total: number;
-  ultima: { fecha: string; presentes: number } | null;
+  ultima: { fecha: string; presentes: number; tema?: string } | null;
+  /** false = pausada: no se pasa lista; quien gestiona el grupo la reactiva. Un backend anterior no lo manda. */
+  activa?: boolean;
 }
 
 export interface PersonaAsistencia {
@@ -70,6 +72,8 @@ export interface AsistenciaDelDia {
    * informe; aquí solo se muestran. Opcional: un backend anterior no lo manda.
    */
   tambien_vinieron?: { id: number; nombre: string }[];
+  /** Qué se vio ese día ("Efesios 5"). Opcional: un backend anterior no lo manda. */
+  tema?: string;
 }
 
 export interface GuardarAsistenciaPayload {
@@ -82,6 +86,8 @@ export interface GuardarAsistenciaPayload {
    * rechaza con `codigo: 'otro_dia'` salvo que venga confirmada: entra al promedio del informe.
    */
   confirmar_otro_dia?: boolean;
+  /** Qué se vio ese día. Omitido = no se toca; "" = borrarlo. */
+  tema?: string;
 }
 
 /** Lo que se manda al crear o editar una reunión (web: «Nueva reunión»). */
@@ -101,13 +107,46 @@ export const listarReunionesActivas = async (): Promise<Reunion[]> => {
   return Array.isArray(data) ? data : data.results ?? [];
 };
 
+/** Todas, también las pausadas (para quien puede reactivarlas: `puedo_configurar`). */
+export const listarReuniones = async (): Promise<Reunion[]> => {
+  const { data } = await api.get('/api/asistencia/reuniones/', { params: { page_size: 100 } });
+  return Array.isArray(data) ? data : data.results ?? [];
+};
+
+/** Quitar una reunión. Si ya tiene asistencia guardada el backend responde 400 y pide pausarla. */
+export const eliminarReunion = async (id: number): Promise<void> => {
+  await api.delete(`/api/asistencia/reuniones/${id}/`);
+};
+
+/** Una fila del informe del mes (backend: services/asistencia.informe_mes). */
+export interface InformeReunion {
+  reunion_id: number;
+  reunion: string;
+  veces: number;
+  promedio_total: number | null;
+  promedio_hermanos: number | null;
+  visitas_con_ficha: number;
+  visitas_sin_ficha: number;
+  maximo: number | null;
+}
+
+/** El informe del mes, `mes` = AAAA-MM. Lo ven el pastor, los líderes y quienes lideran la asistencia. */
+export const obtenerInforme = async (mes: string): Promise<{ mes: string; reuniones: InformeReunion[] }> => {
+  const { data } = await api.get('/api/asistencia/reuniones/informe/', { params: { mes } });
+  return data;
+};
+
 // Crear y editar: el pastor, la administración y quienes lideran la asistencia (`asistencia.configurar`).
 export const crearReunion = async (payload: ReunionPayload): Promise<Reunion> => {
   const { data } = await api.post('/api/asistencia/reuniones/', payload);
   return data;
 };
 
-export const editarReunion = async (id: number, payload: Partial<ReunionPayload>): Promise<Reunion> => {
+/** `activa: false` la pausa (deja de aparecer para pasar lista y conserva lo marcado); `true` la reactiva. */
+export const editarReunion = async (
+  id: number,
+  payload: Partial<ReunionPayload> & { activa?: boolean }
+): Promise<Reunion> => {
   const { data } = await api.patch(`/api/asistencia/reuniones/${id}/`, payload);
   return data;
 };

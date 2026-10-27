@@ -23,7 +23,7 @@ jest.mock('../api/asistencia', () => {
   const real = jest.requireActual('../api/asistencia');
   return {
     ...real,
-    listarReunionesActivas: jest.fn(),
+    listarReuniones: jest.fn(),
     obtenerAsistenciaDelDia: jest.fn(async (_id: number, fecha: string) => ({
       fecha, guardada: false, presentes: 0, visitas_sin_ficha: null, visitas: [],
       personas: [{ id: 1, nombre: 'Ana Pérez', presente: false, familia: null }],
@@ -35,20 +35,23 @@ jest.mock('../api/asistencia', () => {
     editarReunion: jest.fn(),
     obtenerAusentes: jest.fn(async () => ({ suficientes: false, marcadas: 0, personas: [] })),
     listarResponsablesSeguimiento: jest.fn(async () => []),
+    eliminarReunion: jest.fn(),
+    obtenerInforme: jest.fn(),
   };
 });
 
 import {
   crearReunion,
   editarReunion,
+  obtenerInforme,
   guardarAsistenciaDelDia,
   obtenerAsistenciaDelDia,
-  listarReunionesActivas,
+  listarReuniones,
 } from '../api/asistencia';
 import { usePermissionsStore } from '../store/permissionsStore';
 import AsistenciaScreen from '../screens/asistencia/AsistenciaScreen';
 
-const listar = listarReunionesActivas as jest.Mock;
+const listar = listarReuniones as jest.Mock;
 
 const esperar = async () => {
   await act(async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); });
@@ -274,5 +277,68 @@ describe('El líder de un grupo pasa lista de la reunión de su grupo', () => {
     await act(async () => { elegir.props.onPress(); });
     expect(porId(tree, 'editar-reunion-9')).toBeDefined();
     expect(porId(tree, 'nueva-reunion')).toBeUndefined();
+  });
+});
+
+describe('Tema del día, reuniones pausadas e informe del mes (fase 3, igual que la web)', () => {
+  const CON_PERMISOS = { ...CULTO, puedo_seguimiento: true, puedo_configurar: true };
+
+  it('el tema se guarda junto con la lista', async () => {
+    listar.mockResolvedValue([CON_PERMISOS]);
+    (guardarAsistenciaDelDia as jest.Mock).mockResolvedValue({
+      fecha: '2026-10-25', guardada: true, presentes: 0, visitas_sin_ficha: null, visitas: [], personas: [], tema: 'Efesios 5',
+    });
+    const tree = await montar(['asistencia.marcar']);
+    await act(async () => { porId(tree, 'tema-del-dia').props.onChangeText(' Efesios 5 '); });
+    const guardarBtn = tree.root.findAll((n) => typeof n.props.onPress === 'function' &&
+      textos({ root: n } as any).some((t) => t.startsWith('Guardar asistencia')))[0];
+    await act(async () => { guardarBtn.props.onPress(); });
+    expect((guardarAsistenciaDelDia as jest.Mock).mock.calls[0][1]).toMatchObject({ tema: 'Efesios 5' });
+  });
+
+  it('una pausada no se marca: se avisa y se reactiva desde ahí', async () => {
+    listar.mockResolvedValue([{ ...CON_PERMISOS, activa: false }]);
+    (editarReunion as jest.Mock).mockResolvedValue({ ...CON_PERMISOS, activa: true });
+    const tree = await montar(['asistencia.marcar', 'asistencia.configurar']);
+    expect(textos(tree).join(' ')).toMatch(/está pausada: no aparece para pasar lista/);
+    expect(porId(tree, 'tema-del-dia')).toBeUndefined();
+    await tocar(tree, 'reactivar-reunion');
+    expect(editarReunion).toHaveBeenCalledWith(7, { activa: true });
+  });
+
+  it('a quien no puede configurarla, una pausada no le aparece', async () => {
+    listar.mockResolvedValue([{ ...CULTO, activa: false, puedo_configurar: false }]);
+    const tree = await montar(['asistencia.marcar']);
+    expect(textos(tree)).toContain('Aún no hay reuniones');
+  });
+
+  it('el formulario de una reunión la pausa o la quita', async () => {
+    listar.mockResolvedValue([CON_PERMISOS]);
+    (editarReunion as jest.Mock).mockResolvedValue({ ...CON_PERMISOS, activa: false });
+    const tree = await montar(['asistencia.marcar', 'asistencia.configurar']);
+    const elegir = tree.root.findAll((n) => n.props.accessibilityLabel === 'Elegir reunión' && n.props.onPress)[0];
+    await act(async () => { elegir.props.onPress(); });
+    await tocar(tree, 'editar-reunion-7');
+    await tocar(tree, 'reunion-pausar');
+    expect(editarReunion).toHaveBeenCalledWith(7, { activa: false });
+  });
+
+  it('el informe del mes: una pestaña más para quien lleva el seguimiento', async () => {
+    listar.mockResolvedValue([CON_PERMISOS]);
+    (obtenerInforme as jest.Mock).mockResolvedValue({ mes: '2026-10', reuniones: [{
+      reunion_id: 7, reunion: 'Culto de domingo', veces: 4, promedio_total: 60, promedio_hermanos: 54,
+      visitas_con_ficha: 3, visitas_sin_ficha: 2, maximo: 70,
+    }] });
+    const tree = await montar(['asistencia.marcar', 'asistencia.seguimiento']);
+    await tocar(tree, 'tab-informe');
+    const t = textos(tree);
+    expect(t).toEqual(expect.arrayContaining(['Culto de domingo', '4', 'veces', '54', '3 de 5']));
+    expect(obtenerInforme).toHaveBeenCalled();
+  });
+
+  it('sin seguimiento no hay pestaña de informe', async () => {
+    listar.mockResolvedValue([CULTO]);
+    const tree = await montar(['asistencia.marcar']);
+    expect(porId(tree, 'tab-informe')).toBeUndefined();
   });
 });
