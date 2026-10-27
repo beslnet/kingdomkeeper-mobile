@@ -11,12 +11,11 @@ import {
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { usePermissionsStore } from '../../store/permissionsStore';
-import { useAuthStore } from '../../store/authStore';
 import { obtenerEvento, eliminarEvento } from '../../api/eventos';
 import { obtenerGrupo } from '../../api/grupos';
 import { contarDelGrupo } from '../../utils/eventos';
 import { PANTONE_295C } from '../../theme/colors';
+import { useGestionDelGrupo } from '../../hooks/useGestionDelGrupo';
 
 function formatDate(raw: string | null | undefined): string {
   if (!raw) return '—';
@@ -43,10 +42,8 @@ export default function GrupoEventoDetailScreen() {
   const route = useRoute<any>();
   const { eventoId, grupoId, grupo } = route.params ?? {};
 
-  const isSuperAdmin = usePermissionsStore((s) => s.isSuperAdmin);
-  const hasAnyRole = usePermissionsStore((s) => s.hasAnyRole);
-  const user = useAuthStore((s) => s.user);
 
+  const gestion = useGestionDelGrupo(grupo);
   const [evento, setEvento] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,9 +63,9 @@ export default function GrupoEventoDetailScreen() {
         }
       }
       setEvento(result);
-      navigation.setOptions({ title: result.titulo || 'Evento' });
+      navigation.setOptions({ title: result.titulo || 'Actividad' });
     } catch {
-      setError('No se pudo cargar el evento. Toca para reintentar.');
+      setError('No se pudo cargar la actividad. Toca para reintentar.');
     }
   }, [eventoId, grupoId, navigation]);
 
@@ -95,18 +92,13 @@ export default function GrupoEventoDetailScreen() {
     return (
       <TouchableOpacity style={styles.centered} onPress={() => { setLoading(true); load().finally(() => setLoading(false)); }}>
         <Icon source="alert-circle-outline" size={40} color="#E53935" />
-        <Text style={styles.errorText}>{error ?? 'Evento no encontrado'}</Text>
+        <Text style={styles.errorText}>{error ?? 'Actividad no encontrada'}</Text>
       </TouchableOpacity>
     );
   }
 
-  // Permission checks
-  const miembroId = user?.miembro_id;
-  const esLiderPrincipal = miembroId && grupo && Number(miembroId) === Number(grupo.lider_id);
-  const esCoLider = miembroId && grupo?.miembros?.some(
-    (m: any) => Number(m.miembro_id) === Number(miembroId) && m.rol_en_grupo === 'co_leader'
-  );
-  const isLeader = isSuperAdmin || hasAnyRole(['church_admin', 'pastor']) || esLiderPrincipal || esCoLider;
+  // Quienes gestionan el grupo (su líder, sus co-líderes, el pastor y la administración).
+  const isLeader = gestion.gestiona;
 
   const esPasado = evento.fecha_inicio ? new Date(evento.fecha_inicio) < new Date() : false;
   const canEdit = isLeader && !esPasado && evento.estado !== 'cancelado' && evento.estado !== 'finalizado';
@@ -116,7 +108,7 @@ export default function GrupoEventoDetailScreen() {
 
   const handleDelete = () => {
     Alert.alert(
-      'Eliminar evento',
+      'Eliminar actividad',
       `¿Estás seguro de eliminar "${evento.titulo}"? Esta acción no se puede deshacer.`,
       [
         { text: 'Cancelar', style: 'cancel' },
@@ -128,7 +120,7 @@ export default function GrupoEventoDetailScreen() {
               await eliminarEvento(evento.id);
               navigation.goBack();
             } catch (err: any) {
-              const msg = err?.response?.data?.detail ?? 'No se pudo eliminar el evento.';
+              const msg = err?.response?.data?.detail ?? 'No se pudo eliminar la actividad.';
               Alert.alert('Error', msg);
             }
           },
@@ -181,7 +173,7 @@ export default function GrupoEventoDetailScreen() {
           {evento.es_online ? (
             <View style={styles.metaRow}>
               <Icon source="video-outline" size={16} color="#666" />
-              <Text style={styles.metaValue}>Evento online</Text>
+              <Text style={styles.metaValue}>En línea</Text>
             </View>
           ) : evento.ubicacion ? (
             <View style={styles.metaRow}>
@@ -251,7 +243,7 @@ export default function GrupoEventoDetailScreen() {
             <View style={[styles.actionIcon, { backgroundColor: '#FFF8E1' }]}>
               <Icon source="pencil-outline" size={20} color="#F57F17" />
             </View>
-            <Text style={styles.actionLabel}>Editar evento</Text>
+            <Text style={styles.actionLabel}>Editar actividad</Text>
             <Icon source="chevron-right" size={20} color="#BBB" />
           </TouchableOpacity>
         ) : null}
@@ -265,7 +257,7 @@ export default function GrupoEventoDetailScreen() {
             <View style={[styles.actionIcon, { backgroundColor: '#FFEBEE' }]}>
               <Icon source="trash-can-outline" size={20} color="#C62828" />
             </View>
-            <Text style={[styles.actionLabel, { color: '#C62828' }]}>Eliminar evento</Text>
+            <Text style={[styles.actionLabel, { color: '#C62828' }]}>Eliminar actividad</Text>
             <Icon source="chevron-right" size={20} color="#BBB" />
           </TouchableOpacity>
         ) : null}

@@ -44,20 +44,23 @@ const mensajeDeError = (err: any, porDefecto: string): string => {
 
 /**
  * Crear una reunión (web: Asistencia → «Nueva reunión») o editar una que ya existe. Lo pueden hacer el
- * pastor, la administración y quienes lideran la asistencia (`asistencia.configurar`); el backend lo
- * vuelve a revisar.
+ * pastor, la administración y quienes lideran la asistencia (`asistencia.configurar`), y la de un grupo, su
+ * líder y sus co-líderes; el backend lo vuelve a revisar. Desde la página de un grupo llega `grupoFijo`: la
+ * reunión es de ese grupo y no se pregunta.
  */
 export default function ReunionFormModal({
   visible,
   reunion,
   onGuardada,
   onClose,
+  grupoFijo = null,
 }: {
   visible: boolean;
   /** null = nueva. */
   reunion: Reunion | null;
   onGuardada: (r: Reunion, creada: boolean) => void;
   onClose: () => void;
+  grupoFijo?: { id: number; nombre: string } | null;
 }) {
   const [form, setForm] = useState<ReunionPayload>(VACIO);
   const [grupos, setGrupos] = useState<GrupoOpcion[] | null>(null);
@@ -78,19 +81,22 @@ export default function ReunionFormModal({
             lugar: reunion.lugar ?? '',
             grupo: reunion.grupo,
           }
-        : VACIO
+        : grupoFijo
+          ? { ...VACIO, tipo: 'reunion', nombre: `Reunión de ${grupoFijo.nombre}`, grupo: grupoFijo.id }
+          : VACIO
     );
     setError(null);
     setVerGrupos(false);
     setVerHora(false);
     setGrupos(null);
+    if (grupoFijo) return;
     listarGrupos({ page_size: 100 })
       .then((d: any) => {
         const lista = Array.isArray(d) ? d : d?.results ?? [];
         setGrupos(lista.map((g: any) => ({ id: g.id, nombre: g.nombre })));
       })
       .catch(() => setGrupos([]));
-  }, [visible, reunion]);
+  }, [visible, reunion, grupoFijo]);
 
   const nombreGrupo =
     form.grupo === null
@@ -117,7 +123,9 @@ export default function ReunionFormModal({
       <KeyboardAvoidingView style={styles.fondo} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.card}>
           <ScrollView keyboardShouldPersistTaps="handled">
-            <Text style={styles.titulo}>{reunion ? 'Editar reunión' : 'Nueva reunión'}</Text>
+            <Text style={styles.titulo}>
+              {reunion ? 'Editar reunión' : grupoFijo ? `Reunión semanal de ${grupoFijo.nombre}` : 'Nueva reunión'}
+            </Text>
 
             <Text style={styles.label}>Nombre</Text>
             <TextInput
@@ -201,6 +209,12 @@ export default function ReunionFormModal({
               maxLength={200}
             />
 
+            {grupoFijo ? (
+              <Text style={styles.ayuda} testID="reunion-grupo-fijo">
+                Se pasa lista a los integrantes de {grupoFijo.nombre}, desde la página del grupo o desde Asistencia.
+              </Text>
+            ) : (
+            <>
             <Text style={styles.label}>¿Es de un grupo?</Text>
             <TouchableOpacity
               style={styles.selector}
@@ -237,8 +251,12 @@ export default function ReunionFormModal({
                 </View>
               ))}
             <Text style={styles.ayuda}>
-              Si es de un grupo, se marca a sus integrantes. Si no, a todos los hermanos activos.
+              Si es de un grupo, se pasa lista a sus integrantes y aparece en la página del grupo, donde su líder
+              también pasa lista. Si no, a todos los hermanos activos.
             </Text>
+
+            </>
+            )}
 
             {!!error && <Text style={styles.error}>{error}</Text>}
           </ScrollView>

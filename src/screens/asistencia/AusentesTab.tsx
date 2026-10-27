@@ -61,7 +61,8 @@ function AsignarModal({
       etiqueta="Quién lo acompaña"
       ayuda="Le llega un aviso al teléfono"
       confirmarLabel="Asignar"
-      cargar={listarResponsablesSeguimiento}
+      // De la reunión de un grupo también puede llevarlo su líder o un co-líder.
+      cargar={() => listarResponsablesSeguimiento(reunion.id)}
       onClose={onClose}
       onConfirm={async (elegido) => {
         if (!persona) return;

@@ -14,7 +14,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Icon } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { crearEvento, actualizarEvento, TIPOS_EVENTO, ESTADOS_EVENTO } from '../../api/eventos';
+import { crearEvento, actualizarEvento, tiposParaElegir, ESTADOS_EVENTO } from '../../api/eventos';
 import { PANTONE_295C } from '../../theme/colors';
 
 function formatDateDisplay(d: Date): string {
@@ -30,7 +30,8 @@ export default function GrupoEventoFormScreen() {
 
   const [titulo, setTitulo] = useState(evento?.titulo ?? '');
   const [descripcion, setDescripcion] = useState(evento?.descripcion ?? '');
-  const [tipo, setTipo] = useState(evento?.tipo ?? 'reunion');
+  const [tipo, setTipo] = useState(evento?.tipo ?? 'otro');
+  const tipos = tiposParaElegir(evento?.tipo);
   const [estado, setEstado] = useState(evento?.estado ?? 'planificado');
   const [esOnline, setEsOnline] = useState(evento?.es_online ?? false);
   const [linkOnline, setLinkOnline] = useState(evento?.link_online ?? '');
@@ -71,7 +72,7 @@ export default function GrupoEventoFormScreen() {
       return;
     }
     if (esOnline && !linkOnline.trim()) {
-      setError('El link es requerido para eventos online.');
+      setError('Falta el link de la reunión en línea.');
       return;
     }
     if (capacidadMaxima && isNaN(parseInt(capacidadMaxima, 10))) {
@@ -105,7 +106,7 @@ export default function GrupoEventoFormScreen() {
       const data = err?.response?.data;
       const msg =
         data?.detail ?? data?.titulo?.[0] ?? data?.fecha_inicio?.[0] ?? data?.non_field_errors?.[0] ??
-        'Error al guardar el evento.';
+        'No se pudo guardar la actividad.';
       setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setSaving(false);
@@ -123,13 +124,23 @@ export default function GrupoEventoFormScreen() {
           </View>
         ) : null}
 
+        {!isEdit ? (
+          <View style={styles.hint} testID="hint-reunion-semanal">
+            <Icon source="information-outline" size={18} color="#0D47A1" />
+            <Text style={styles.hintText}>
+              ¿Es la reunión de cada semana? Esa no se crea aquí: se configura una vez en «Reunión semanal», arriba
+              en el grupo, y desde ahí se pasa lista.
+            </Text>
+          </View>
+        ) : null}
+
         {/* Título */}
         <Text style={styles.label}>Título *</Text>
         <TextInput
           style={styles.input}
           value={titulo}
           onChangeText={setTitulo}
-          placeholder="Ej: Reunión semanal"
+          placeholder="Ej: Paseo al cerro, cena de fin de año"
           placeholderTextColor="#AAA"
           editable={!saving}
           autoFocus
@@ -141,7 +152,7 @@ export default function GrupoEventoFormScreen() {
           style={[styles.input, styles.textarea]}
           value={descripcion}
           onChangeText={setDescripcion}
-          placeholder="Describe el evento..."
+          placeholder="Qué harán, qué llevar…"
           placeholderTextColor="#AAA"
           multiline
           numberOfLines={3}
@@ -150,9 +161,9 @@ export default function GrupoEventoFormScreen() {
         />
 
         {/* Tipo */}
-        <Text style={styles.label}>Tipo de Evento</Text>
+        <Text style={styles.label}>Tipo</Text>
         <View style={styles.chipGroup}>
-          {TIPOS_EVENTO.map((t) => (
+          {tipos.map((t) => (
             <TouchableOpacity
               key={t.value}
               style={[styles.chip, tipo === t.value && styles.chipSelected]}
@@ -224,7 +235,7 @@ export default function GrupoEventoFormScreen() {
 
         {/* Es online */}
         <View style={styles.switchRow}>
-          <Text style={styles.label}>Evento online</Text>
+          <Text style={styles.label}>En línea</Text>
           <Switch
             value={esOnline}
             onValueChange={setEsOnline}
@@ -254,7 +265,7 @@ export default function GrupoEventoFormScreen() {
               style={styles.input}
               value={ubicacion}
               onChangeText={setUbicacion}
-              placeholder="Dirección o lugar del evento"
+              placeholder="Dirección o lugar"
               placeholderTextColor="#AAA"
               editable={!saving}
             />
@@ -298,7 +309,7 @@ export default function GrupoEventoFormScreen() {
           {saving ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.saveBtnText}>{isEdit ? 'Guardar cambios' : 'Crear evento'}</Text>
+            <Text style={styles.saveBtnText}>{isEdit ? 'Guardar cambios' : 'Crear actividad'}</Text>
           )}
         </TouchableOpacity>
 
@@ -320,6 +331,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   errorText: { color: '#B71C1C', fontSize: 13, flex: 1 },
+  hint: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#E3F2FD', borderRadius: 10, padding: 12,
+  },
+  hintText: { color: '#0D47A1', fontSize: 13, flex: 1, lineHeight: 18 },
   label: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6, marginTop: 16 },
   input: {
     backgroundColor: '#fff',

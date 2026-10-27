@@ -16,6 +16,7 @@ import { useIglesiaStore } from '../store/iglesiaStore';
 import { PANTONE_134C, PANTONE_295C } from '../theme/colors';
 import { getDashboard } from '../api/dashboard';
 import { useRefreshOnRestore } from '../hooks/useRefreshOnRestore';
+import { ETIQUETA_ROL, MiGrupo, ordenarMisGrupos, rolEnMiGrupo, textoMiembros } from '../utils/misGrupos';
 
 // --- helpers ---
 
@@ -131,19 +132,14 @@ export default function DashboardScreen() {
   const genero = usuarioInfo?.genero ?? user?.miembro_asociado?.genero;
   const greeting = genero === 'F' ? '¡Bienvenida' : '¡Bienvenido';
 
-  const misGrupos: any[] = data?.mis_grupos ?? [];
+  const misGrupos: MiGrupo[] = data?.mis_grupos ?? [];
   const ultimosMensajes: any[] = data?.ultimos_mensajes ?? [];
   const proximosEventos: any[] = data?.proximos_eventos ?? [];
   const articulosPrestados: any[] = data?.articulos_prestados_a_mi ?? [];
   const misCasos: any[] = data?.mis_casos_pastorales ?? [];
   const misRendiciones: any[] = data?.mis_rendiciones ?? [];
 
-  // Sort groups: leader first
-  const gruposOrdenados = [...misGrupos].sort((a, b) => {
-    if (a.mi_rol === 'lider' && b.mi_rol !== 'lider') return -1;
-    if (a.mi_rol !== 'lider' && b.mi_rol === 'lider') return 1;
-    return 0;
-  });
+  const gruposOrdenados = ordenarMisGrupos(misGrupos);
 
   const handleRetry = useCallback(() => {
     setLoading(true);
@@ -220,19 +216,33 @@ export default function DashboardScreen() {
       {gruposOrdenados.length > 0 && (
         <View style={styles.section}>
           <SectionTitle title="MIS GRUPOS" />
-          {gruposOrdenados.slice(0, 4).map((g: any, i: number) => (
-            <View key={g.id ?? i} style={styles.listItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemTitle}>{g.nombre}</Text>
-                <Text style={styles.itemSub}>{g.cantidad_miembros ?? ''} miembros</Text>
-              </View>
-              <StatusChip
-                label={g.mi_rol === 'lider' ? 'Líder' : 'Miembro'}
-                color={g.mi_rol === 'lider' ? PANTONE_295C : '#555'}
-                bg={g.mi_rol === 'lider' ? '#EAF0FB' : '#F0F0F0'}
-              />
-            </View>
-          ))}
+          {gruposOrdenados.slice(0, 4).map((g, i) => {
+            const lidera = rolEnMiGrupo(g) !== 'member';
+            return (
+              <TouchableOpacity
+                key={g.id ?? i}
+                style={styles.listItem}
+                testID={`mi-grupo-${g.id}`}
+                onPress={() =>
+                  navigation.getParent()?.navigate('GruposCelulas', {
+                    screen: 'GrupoDetail',
+                    params: { id: g.id, nombre: g.nombre },
+                    initial: false,
+                  })
+                }
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.itemTitle}>{g.nombre}</Text>
+                  <Text style={styles.itemSub}>{textoMiembros(g)}</Text>
+                </View>
+                <StatusChip
+                  label={ETIQUETA_ROL[rolEnMiGrupo(g)]}
+                  color={lidera ? PANTONE_295C : '#555'}
+                  bg={lidera ? '#EAF0FB' : '#F0F0F0'}
+                />
+              </TouchableOpacity>
+            );
+          })}
           {gruposOrdenados.length > 4 && (
             <TouchableOpacity onPress={() => navigation.getParent()?.navigate('GruposCelulas')}>
               <Text style={styles.linkText}>Ver todos →</Text>

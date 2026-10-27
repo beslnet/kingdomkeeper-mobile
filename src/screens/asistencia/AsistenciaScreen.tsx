@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Icon } from 'react-native-paper';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import {
   AsistenciaDelDia,
   PersonaAsistencia,
@@ -53,7 +53,7 @@ type Fila =
 
 const mensajeDeError = (err: any, porDefecto: string): string => {
   if (err?.response?.status === 403) {
-    return 'La asistencia la llevan el pastor, los líderes y la administración.';
+    return 'La asistencia la llevan el pastor, los líderes, la administración y el equipo de asistencia; la de un grupo, también su líder y co-líderes.';
   }
   const data = err?.response?.data;
   if (!data) return porDefecto;
@@ -63,10 +63,12 @@ const mensajeDeError = (err: any, porDefecto: string): string => {
 };
 
 export default function AsistenciaScreen() {
+  // Desde «Pasar lista» de un grupo se llega con la reunión de ese grupo ya elegida.
+  const reunionPedida: number | undefined = useRoute<any>().params?.reunionId;
   // Todo el equipo marca; ver a quienes no han venido y asignarles seguimiento es de quien lidera.
   // Lo resuelve el backend (rol + función del ministerio): la app solo lo pregunta, como la web.
-  const puedeSeguimiento = usePermissionsStore((s) => s.can('asistencia.seguimiento'));
-  // Crear y editar las reuniones: el pastor, la administración y quienes lideran la asistencia.
+  const puedeSeguimientoIglesia = usePermissionsStore((s) => s.can('asistencia.seguimiento'));
+  // Crear reuniones de la iglesia: el pastor, la administración y quienes lideran la asistencia.
   const puedeConfigurar = usePermissionsStore((s) => s.can('asistencia.configurar'));
   const [tab, setTab] = useState<'marcar' | 'ausentes'>('marcar');
   const [reuniones, setReuniones] = useState<Reunion[] | null>(null);
@@ -106,7 +108,7 @@ export default function AsistenciaScreen() {
       if (vigente) {
         setReunion(vigente);
       } else {
-        const primera = reunionPorDefecto(lista);
+        const primera = lista.find((r) => r.id === reunionPedida) ?? reunionPorDefecto(lista);
         setReunion(primera);
         if (primera) setFecha(ultimaFecha(primera.dia_semana));
       }
@@ -115,7 +117,7 @@ export default function AsistenciaScreen() {
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [reunionPedida]);
 
   useFocusEffect(
     useCallback(() => {
@@ -317,9 +319,13 @@ export default function AsistenciaScreen() {
     );
   }
 
+  // "No han venido" y editar vienen en cada reunión (el líder de un grupo los tiene en la de su grupo); con un
+  // backend anterior que no los manda, lo que diga el rol.
+  const puedeSeguimiento = reunion?.puedo_seguimiento ?? puedeSeguimientoIglesia;
+  const puedeEditar = (r: Reunion) => r.puedo_configurar ?? puedeConfigurar;
   const verAusentes = puedeSeguimiento && tab === 'ausentes';
   // Con una sola reunión no hay que elegir, pero quien configura entra por ahí a crear o editar.
-  const abreSelector = reuniones.length > 1 || puedeConfigurar;
+  const abreSelector = reuniones.length > 1 || puedeConfigurar || (!!reunion && puedeEditar(reunion));
   const total = datos?.personas.length ?? 0;
   const esHoyOFuturo = sumarDias(fecha || hoy, 7) > hoy;
 
@@ -621,7 +627,7 @@ export default function AsistenciaScreen() {
                     </Text>
                   </View>
                   {r.id === reunion?.id && <Icon source="check" size={20} color={PANTONE_295C} />}
-                  {puedeConfigurar && (
+                  {puedeEditar(r) && (
                     <TouchableOpacity
                       style={styles.editarBtn}
                       onPress={() => abrirFormulario(r)}

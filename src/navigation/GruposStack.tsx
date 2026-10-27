@@ -15,6 +15,7 @@ import GrupoEventoFormScreen from '../screens/grupos/GrupoEventoForm';
 import GrupoEventoDetailScreen from '../screens/grupos/GrupoEventoDetail';
 import RegistrarAsistenciaScreen from '../screens/grupos/RegistrarAsistencia';
 import VerAsistenciaScreen from '../screens/grupos/VerAsistencia';
+import AsistenciaScreen from '../screens/asistencia/AsistenciaScreen';
 import GrupoFinanzasScreen from '../screens/grupos/GrupoFinanzas';
 import TransaccionDetailScreen from '../screens/grupos/TransaccionDetail';
 import RendicionFormScreen from '../screens/grupos/RendicionForm';
@@ -64,18 +65,24 @@ export default function GruposStack() {
       />
       <Stack.Screen name="GrupoMiembros" component={GrupoMiembrosScreen} options={{ title: 'Miembros' }} />
       <Stack.Screen name="GrupoLiderazgo" component={GrupoLiderazgoScreen} options={{ title: 'Liderazgo' }} />
-      <Stack.Screen name="GrupoEventos" component={GrupoEventosScreen} options={{ title: 'Eventos' }} />
+      <Stack.Screen name="GrupoEventos" component={GrupoEventosScreen} options={{ title: 'Actividades' }} />
       <Stack.Screen
         name="GrupoEventoForm"
         component={GrupoEventoFormScreen}
-        options={({ route }: { route: any }) => ({ title: route.params?.evento ? 'Editar Evento' : 'Nuevo Evento' })}
+        options={({ route }: { route: any }) => ({ title: route.params?.evento ? 'Editar actividad' : 'Nueva actividad' })}
       />
       <Stack.Screen
         name="GrupoEventoDetail"
         component={GrupoEventoDetailScreen}
-        options={({ route }: { route: any }) => ({ title: route.params?.titulo || 'Detalle Evento' })}
+        options={({ route }: { route: any }) => ({ title: route.params?.titulo || 'Actividad' })}
       />
       <Stack.Screen name="RegistrarAsistencia" component={RegistrarAsistenciaScreen} options={{ title: 'Registrar Asistencia' }} />
+      {/* «Pasar lista» de la reunión semanal del grupo: la misma pantalla de Asistencia, ya en esa reunión. */}
+      <Stack.Screen
+        name="PasarLista"
+        component={AsistenciaScreen}
+        options={({ route }: { route: any }) => ({ title: route.params?.titulo || 'Pasar lista' })}
+      />
       <Stack.Screen
         name="VerAsistencia"
         component={VerAsistenciaScreen}

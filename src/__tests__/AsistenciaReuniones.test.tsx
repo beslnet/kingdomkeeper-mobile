@@ -2,9 +2,12 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 
 jest.mock('../api/api', () => ({ __esModule: true, default: {} }));
+// Con qué parámetros se abrió la pantalla (desde «Pasar lista» de un grupo llega la reunión).
+const mockRouteParams: { current: any } = { current: undefined };
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: (cb: any) => { require('react').useEffect(() => { cb(); }, [cb]); },
   useNavigation: () => ({ goBack: jest.fn(), navigate: jest.fn() }),
+  useRoute: () => ({ params: mockRouteParams.current }),
 }));
 jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
 jest.mock('../api/grupos', () => ({
@@ -243,5 +246,33 @@ describe('Marcar una fecha que no es el día de la reunión', () => {
     await esperar();
     const payload = (guardarAsistenciaDelDia as jest.Mock).mock.calls[0][1];
     expect(payload).not.toHaveProperty('confirmar_otro_dia');
+  });
+});
+
+describe('El líder de un grupo pasa lista de la reunión de su grupo', () => {
+  const DEL_GRUPO = {
+    id: 9, nombre: 'Reunión de jóvenes', tipo: 'reunion', dia_semana: 4, dia_semana_display: 'Viernes',
+    hora: '20:00:00', lugar: '', grupo: 3, grupo_nombre: 'Jóvenes', activa: true,
+    puedo_seguimiento: true, puedo_configurar: true,
+  };
+  afterEach(() => { mockRouteParams.current = undefined; });
+
+  it('desde «Pasar lista» del grupo abre esa reunión, no la primera', async () => {
+    listar.mockResolvedValue([{ ...CULTO, puedo_seguimiento: true, puedo_configurar: true }, DEL_GRUPO]);
+    mockRouteParams.current = { reunionId: 9 };
+    const tree = await montar(['asistencia.marcar']);
+    expect(textos(tree)).toContain('Reunión de jóvenes');
+    expect((obtenerAsistenciaDelDia as jest.Mock).mock.calls[0][0]).toBe(9);
+  });
+
+  it('sin rol de asistencia ve «No han venido» y edita la de su grupo, pero no crea reuniones de la iglesia', async () => {
+    listar.mockResolvedValue([DEL_GRUPO]);
+    const tree = await montar([]);
+    expect(porId(tree, 'tab-ausentes')).toBeDefined();
+    // Con una sola reunión, el selector se abre igual porque la puede editar.
+    const elegir = tree.root.findAll((n) => n.props.accessibilityLabel === 'Elegir reunión' && n.props.onPress)[0];
+    await act(async () => { elegir.props.onPress(); });
+    expect(porId(tree, 'editar-reunion-9')).toBeDefined();
+    expect(porId(tree, 'nueva-reunion')).toBeUndefined();
   });
 });

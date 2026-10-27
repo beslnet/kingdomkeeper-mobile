@@ -15,6 +15,27 @@ export interface Reunion {
   grupo: number | null;
   grupo_nombre: string | null;
   activa: boolean;
+  /**
+   * Qué puede hacer quien mira con ESTA reunión (backend: la misma regla que da el 403). El líder y los
+   * co-líderes de un grupo los tienen en la reunión de su grupo. Opcionales: un backend anterior no los manda.
+   */
+  puedo_seguimiento?: boolean;
+  puedo_configurar?: boolean;
+}
+
+/** La reunión semanal como la trae el detalle de un grupo (`reuniones`), con la última vez que se pasó lista. */
+export interface ReunionDelGrupo {
+  id: number;
+  nombre: string;
+  tipo: 'culto' | 'reunion';
+  dia_semana: number;
+  dia_semana_display: string;
+  /** HH:MM */
+  hora: string;
+  lugar: string;
+  /** Cuántos se marcan (los integrantes del grupo). */
+  total: number;
+  ultima: { fecha: string; presentes: number } | null;
 }
 
 export interface PersonaAsistencia {
@@ -155,9 +176,14 @@ export const obtenerAusentes = async (
   return data;
 };
 
-/** Quienes pueden llevar un seguimiento: pastor, líderes, administración y el equipo de asistencia. */
-export const listarResponsablesSeguimiento = async (): Promise<ResponsableSeguimiento[]> => {
-  const { data } = await api.get('/api/asistencia/reuniones/responsables/');
+/**
+ * Quienes pueden llevar un seguimiento: pastor, líderes, administración y el equipo de asistencia; de la reunión
+ * de un grupo, también su líder y sus co-líderes.
+ */
+export const listarResponsablesSeguimiento = async (reunionId?: number): Promise<ResponsableSeguimiento[]> => {
+  const { data } = await api.get('/api/asistencia/reuniones/responsables/', {
+    params: reunionId ? { reunion: reunionId } : undefined,
+  });
   return data;
 };
 

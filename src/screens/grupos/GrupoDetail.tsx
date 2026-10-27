@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,13 @@ import {
   Alert,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { usePermissionsStore } from '../../store/permissionsStore';
 import { useAuthStore } from '../../store/authStore';
 import { obtenerGrupo, eliminarGrupo, archivarGrupo, restaurarGrupo } from '../../api/grupos';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
+import { useGestionDelGrupo } from '../../hooks/useGestionDelGrupo';
+import ReunionSemanal from './ReunionSemanal';
 
 type SectionItem = {
   icon: string;
@@ -68,6 +70,8 @@ export default function GrupoDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Qué puede hacer quien mira: lo resuelve el backend (utils/gestionGrupo).
+  const { gestiona, administra } = useGestionDelGrupo(grupo);
 
   const load = useCallback(async () => {
     setError(null);
@@ -84,6 +88,18 @@ export default function GrupoDetailScreen() {
     setLoading(true);
     load().finally(() => setLoading(false));
   }, [load]);
+
+  // Al volver de «Pasar lista» (o de editar), la tarjeta de la reunión y lo demás se ponen al día.
+  const primeraVez = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (primeraVez.current) {
+        primeraVez.current = false;
+        return;
+      }
+      load();
+    }, [load])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -110,14 +126,14 @@ export default function GrupoDetailScreen() {
 
   const grupoNombre = grupo?.nombre ?? nombre ?? 'Grupo';
 
-  // puedeGestionar: replicates web frontend logic (ListadoGrupos.jsx)
+  // Editar: el líder, los co-líderes y la supervisión. Archivar o borrar: el líder principal y la supervisión.
+  const puedeGestionar = gestiona;
+  const puedeEliminar = administra;
   const miembroId = user?.miembro_id;
   const esLiderPrincipal = miembroId && grupo && Number(miembroId) === Number(grupo.lider_id);
   const esCoLider = miembroId && grupo?.miembros?.some(
     (m: any) => Number(m.miembro_id) === Number(miembroId) && m.rol_en_grupo === 'co_leader'
   );
-  const puedeGestionar = isSuperAdmin || hasAnyRole(['church_admin']) || esLiderPrincipal || esCoLider;
-  const puedeEliminar = isSuperAdmin || hasAnyRole(['church_admin']) || hasPermission('grupos', 'eliminar');
   const estaArchivado = grupo?.estado === 'archivado';
   const tieneRegistros = grupo?.tiene_registros === true;
 
@@ -202,7 +218,7 @@ export default function GrupoDetailScreen() {
   const sections: SectionItem[] = [
     { icon: 'account-multiple-outline', label: 'Miembros', screen: 'GrupoMiembros', badgeCount: grupo?.total_miembros },
     { icon: 'crown-outline', label: 'Liderazgo', screen: 'GrupoLiderazgo' },
-    { icon: 'calendar-outline', label: 'Eventos', screen: 'GrupoEventos' },
+    { icon: 'calendar-outline', label: 'Actividades', screen: 'GrupoEventos' },
     ...(canSeeFinanzas ? [{ icon: 'cash-multiple', label: 'Finanzas', screen: 'GrupoFinanzas' }] : []),
     { icon: 'folder-outline', label: 'Recursos', screen: 'GrupoRecursos' },
   ];
@@ -280,6 +296,9 @@ export default function GrupoDetailScreen() {
           </View>
         ) : null}
       </View>
+
+      {/* La reunión de cada semana, con «Pasar lista» */}
+      {!estaArchivado ? <ReunionSemanal grupo={grupo} gestiona={gestiona} onCambio={load} /> : null}
 
       {/* Section menu */}
       <View style={styles.sectionMenu}>

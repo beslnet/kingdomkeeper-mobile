@@ -198,7 +198,7 @@ export default function GrupoFormScreen() {
           )}
           <Icon source="magnify" size={18} color="#888" />
         </TouchableOpacity>
-        <Text style={styles.helperText}>Solo usuarios con rol Líder pueden gestionar grupos.</Text>
+        <Text style={styles.helperText}>El líder de una célula tiene el rol «Líder». Sus co-líderes pueden ser cualquier hermano con cuenta.</Text>
 
         {/* Estado */}
         <Text style={styles.label}>Estado</Text>

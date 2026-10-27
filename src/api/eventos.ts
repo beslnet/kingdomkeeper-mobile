@@ -37,16 +37,22 @@ export const obtenerAsistencia = async (eventoId: number) => {
   return data;
 };
 
-export const TIPOS_EVENTO = [
-  { value: 'reunion', label: 'Reunión' },
-  { value: 'culto', label: 'Culto' },
+// Las actividades de un grupo: lo que pasa una vez. La reunión de cada semana no es una actividad (se configura
+// una vez en «Reunión semanal» del grupo y ahí se pasa lista), por eso «Reunión» y «Culto» no se ofrecen; solo
+// se muestran al editar una actividad vieja que ya los tenga (`tiposParaElegir`).
+export const TIPOS_ACTIVIDAD = [
   { value: 'retiro', label: 'Retiro' },
   { value: 'taller', label: 'Taller' },
   { value: 'conferencia', label: 'Conferencia' },
   { value: 'evangelismo', label: 'Evangelismo' },
-  { value: 'servicio', label: 'Servicio Comunitario' },
-  { value: 'otro', label: 'Otro' },
+  { value: 'servicio', label: 'Servicio comunitario' },
+  { value: 'otro', label: 'Otra actividad' },
 ];
+
+const TIPOS_ANTIGUOS: Record<string, string> = { reunion: 'Reunión', culto: 'Culto' };
+
+export const tiposParaElegir = (actual?: string) =>
+  actual && TIPOS_ANTIGUOS[actual] ? [{ value: actual, label: TIPOS_ANTIGUOS[actual] }, ...TIPOS_ACTIVIDAD] : TIPOS_ACTIVIDAD;
 
 export const ESTADOS_EVENTO = [
   { value: 'planificado', label: 'Planificado' },

@@ -14,8 +14,6 @@ import {
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useRoute } from '@react-navigation/native';
-import { usePermissionsStore } from '../../store/permissionsStore';
-import { useAuthStore } from '../../store/authStore';
 import {
   obtenerGrupo,
   cambiarLider,
@@ -24,13 +22,11 @@ import {
   listarLideresIglesia,
 } from '../../api/grupos';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
+import { useGestionDelGrupo } from '../../hooks/useGestionDelGrupo';
 
 export default function GrupoLiderazgoScreen() {
   const route = useRoute<any>();
   const { grupoId } = route.params ?? {};
-  const hasAnyRole = usePermissionsStore((s) => s.hasAnyRole);
-  const isSuperAdmin = usePermissionsStore((s) => s.isSuperAdmin);
-  const user = useAuthStore((s) => s.user);
 
   const [grupo, setGrupo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -45,14 +41,8 @@ export default function GrupoLiderazgoScreen() {
   const [lideresIglesia, setLideresIglesia] = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const canManage = (() => {
-    const miembroId = user?.miembro_id;
-    const esLiderPrincipal = miembroId && grupo && Number(miembroId) === Number(grupo.lider_id);
-    const esCoLider = miembroId && grupo?.miembros?.some(
-      (m: any) => Number(m.miembro_id) === Number(miembroId) && m.rol_en_grupo === 'co_leader'
-    );
-    return isSuperAdmin || hasAnyRole(['church_admin', 'pastor']) || esLiderPrincipal || esCoLider;
-  })();
+  // Cambiar el líder y los co-líderes: el líder principal, el pastor o la administración (no los co-líderes).
+  const canManage = useGestionDelGrupo(grupo).administra;
 
   const load = useCallback(async () => {
     setError(null);

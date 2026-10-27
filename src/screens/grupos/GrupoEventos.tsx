@@ -10,11 +10,10 @@ import {
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { usePermissionsStore } from '../../store/permissionsStore';
-import { useAuthStore } from '../../store/authStore';
 import { listarEventos } from '../../api/eventos';
 import { obtenerGrupo } from '../../api/grupos';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
+import { useGestionDelGrupo } from '../../hooks/useGestionDelGrupo';
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return '';
@@ -41,9 +40,6 @@ export default function GrupoEventosScreen() {
   const route = useRoute<any>();
   const { grupoId } = route.params ?? {};
 
-  const isSuperAdmin = usePermissionsStore((s) => s.isSuperAdmin);
-  const hasAnyRole = usePermissionsStore((s) => s.hasAnyRole);
-  const user = useAuthStore((s) => s.user);
 
   const [tab, setTab] = useState<'futuros' | 'pasados'>('futuros');
   const [eventos, setEventos] = useState<any[]>([]);
@@ -52,25 +48,21 @@ export default function GrupoEventosScreen() {
   const [error, setError] = useState<string | null>(null);
   const [grupo, setGrupo] = useState<any>(null);
 
-  // Permission: isLeader = superAdmin | church_admin | pastor | lider principal | co-lider
-  const miembroId = user?.miembro_id;
-  const esLiderPrincipal = miembroId && grupo && Number(miembroId) === Number(grupo.lider_id);
-  const esCoLider = miembroId && grupo?.miembros?.some(
-    (m: any) => Number(m.miembro_id) === Number(miembroId) && m.rol_en_grupo === 'co_leader'
-  );
-  const canCreate = isSuperAdmin || hasAnyRole(['church_admin', 'pastor']) || esLiderPrincipal || esCoLider;
+  // Crean actividades quienes gestionan el grupo: su líder, sus co-líderes, el pastor y la administración.
+  const canCreate = useGestionDelGrupo(grupo).gestiona;
 
   const load = useCallback(async (filtro: 'futuros' | 'pasados' = 'futuros') => {
     setError(null);
     try {
       const [result, grupoData] = await Promise.all([
-        listarEventos({ grupo_id: grupoId, filtro_fecha: filtro }),
+        // Solo las actividades: las fechas de la reunión semanal viven en «Reunión semanal» del grupo.
+        listarEventos({ grupo_id: grupoId, filtro_fecha: filtro, actividades: 1 }),
         grupo ? Promise.resolve(grupo) : obtenerGrupo(grupoId),
       ]);
       setEventos(Array.isArray(result) ? result : result.results ?? []);
       if (!grupo) setGrupo(grupoData);
     } catch {
-      setError('No se pudo cargar los eventos. Toca para reintentar.');
+      setError('No se pudieron cargar las actividades. Toca para reintentar.');
     }
   }, [grupoId, grupo]);
 
@@ -119,7 +111,7 @@ export default function GrupoEventosScreen() {
             onPress={() => setTab(t)}
           >
             <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-              {t === 'futuros' ? 'Próximos' : 'Pasados'}
+              {t === 'futuros' ? 'Próximas' : 'Pasadas'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -134,7 +126,7 @@ export default function GrupoEventosScreen() {
           <View style={styles.centered}>
             <Icon source="calendar-outline" size={48} color="#CCC" />
             <Text style={styles.emptyText}>
-              {tab === 'futuros' ? 'No hay eventos próximos' : 'No hay eventos pasados'}
+              {tab === 'futuros' ? 'No hay actividades próximas' : 'No hay actividades pasadas'}
             </Text>
           </View>
         }

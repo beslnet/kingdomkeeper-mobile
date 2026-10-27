@@ -2,9 +2,12 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 
 jest.mock('../api/api', () => ({ __esModule: true, default: {} }));
+// Con qué parámetros se abrió la pantalla (desde «Pasar lista» de un grupo llega la reunión).
+const mockRouteParams: { current: any } = { current: undefined };
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: (cb: any) => { require('react').useEffect(() => { cb(); }, [cb]); },
   useNavigation: () => ({ goBack: jest.fn(), navigate: jest.fn() }),
+  useRoute: () => ({ params: mockRouteParams.current }),
 }));
 jest.mock('@react-native-community/datetimepicker', () => 'DateTimePicker');
 jest.mock('../api/asistencia', () => {
