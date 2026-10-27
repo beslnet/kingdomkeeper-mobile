@@ -39,6 +39,7 @@ import {
   crearReunion,
   editarReunion,
   guardarAsistenciaDelDia,
+  obtenerAsistenciaDelDia,
   listarReunionesActivas,
 } from '../api/asistencia';
 import { usePermissionsStore } from '../store/permissionsStore';
@@ -173,6 +174,33 @@ describe('Asistencia con reuniones: crear otra y editar', () => {
     expect(textos(tree)).toContain('Elegir reunión');
     expect(porId(tree, 'nueva-reunion')).toBeUndefined();
     expect(porId(tree, 'editar-reunion-7')).toBeUndefined();
+  });
+});
+
+describe('Invitados que el grupo marcó desde sus eventos', () => {
+  const GRUPAL = { ...CULTO, grupo: 3, grupo_nombre: 'Jóvenes' };
+  const original = (obtenerAsistenciaDelDia as jest.Mock).getMockImplementation();
+  afterEach(() => (obtenerAsistenciaDelDia as jest.Mock).mockImplementation(original));
+
+  it('se muestran aparte, sin casilla, y no entran en el conteo de la lista', async () => {
+    listar.mockResolvedValue([GRUPAL]);
+    (obtenerAsistenciaDelDia as jest.Mock).mockImplementation(async (_id: number, fecha: string) => ({
+      fecha, guardada: true, presentes: 2, visitas_sin_ficha: null, visitas: [],
+      personas: [{ id: 1, nombre: 'Ana Pérez', presente: true, familia: null }],
+      tambien_vinieron: [{ id: 9, nombre: 'Pedro Soto' }],
+    }));
+    const tree = await montar(['asistencia.marcar']);
+    const caja = tree.root.findAll((n) => n.props.testID === 'tambien-vinieron')[0];
+    expect(caja).toBeDefined();
+    expect(textos(tree)).toContain('Pedro Soto');
+    // El botón cuenta solo a los de la lista: guardar no toca a Pedro.
+    expect(textos(tree)).toContain('Guardar asistencia (1)');
+  });
+
+  it('sin invitados no aparece la caja', async () => {
+    listar.mockResolvedValue([GRUPAL]);
+    const tree = await montar(['asistencia.marcar']);
+    expect(tree.root.findAll((n) => n.props.testID === 'tambien-vinieron')).toHaveLength(0);
   });
 });
 

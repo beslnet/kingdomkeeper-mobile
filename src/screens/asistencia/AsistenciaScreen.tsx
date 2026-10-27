@@ -488,32 +488,48 @@ export default function AsistenciaScreen() {
             </View>
           }
           ListFooterComponent={
-            reunion?.grupo ? null : (
-              <View style={styles.visitasBox}>
-                {datos && datos.visitas.length > 0 && (
-                  <View style={styles.visitasFichas}>
-                    <Text style={styles.visitasLabel}>
-                      Visitas que dejaron ficha ({datos.visitas.length})
+            <>
+              {!!datos?.tambien_vinieron?.length && (
+                // Invitados que el grupo marcó desde sus eventos: cuentan en el informe y guardar aquí no
+                // los toca, así que se muestran sin casilla.
+                <View style={styles.visitasBox} testID="tambien-vinieron">
+                  <Text style={styles.visitasLabel}>
+                    También vinieron ({datos.tambien_vinieron.length}), marcados desde el grupo
+                  </Text>
+                  {datos.tambien_vinieron.map((p) => (
+                    <Text key={p.id} style={styles.visitaNombre}>
+                      {p.nombre}
                     </Text>
-                    {datos.visitas.map((v) => (
-                      <Text key={v.id} style={styles.visitaNombre}>
-                        {v.nombre}
+                  ))}
+                </View>
+              )}
+              {reunion?.grupo ? null : (
+                <View style={styles.visitasBox}>
+                  {datos && datos.visitas.length > 0 && (
+                    <View style={styles.visitasFichas}>
+                      <Text style={styles.visitasLabel}>
+                        Visitas que dejaron ficha ({datos.visitas.length})
                       </Text>
-                    ))}
-                  </View>
-                )}
-                <Text style={styles.visitasLabel}>Visitas que no dejaron ficha (opcional)</Text>
-                <TextInput
-                  style={styles.visitasInput}
-                  value={visitasSinFicha}
-                  onChangeText={(t) => setVisitasSinFicha(t.replace(/[^0-9]/g, ''))}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  maxLength={3}
-                  accessibilityLabel="Visitas que no dejaron ficha"
-                />
-              </View>
-            )
+                      {datos.visitas.map((v) => (
+                        <Text key={v.id} style={styles.visitaNombre}>
+                          {v.nombre}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+                  <Text style={styles.visitasLabel}>Visitas que no dejaron ficha (opcional)</Text>
+                  <TextInput
+                    style={styles.visitasInput}
+                    value={visitasSinFicha}
+                    onChangeText={(t) => setVisitasSinFicha(t.replace(/[^0-9]/g, ''))}
+                    keyboardType="number-pad"
+                    placeholder="0"
+                    maxLength={3}
+                    accessibilityLabel="Visitas que no dejaron ficha"
+                  />
+                </View>
+              )}
+            </>
           }
           renderItem={({ item }) => {
             if (item.tipo === 'familia') {

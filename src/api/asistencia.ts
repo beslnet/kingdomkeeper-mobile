@@ -44,6 +44,11 @@ export interface AsistenciaDelDia {
   /** Las que sí dejaron ficha ese día (las reuniones de grupo no las traen). */
   visitas: VisitaDelDia[];
   personas: PersonaAsistencia[];
+  /**
+   * Vinieron y no están en `personas`: invitados que el grupo marcó desde sus eventos. Cuentan en el
+   * informe; aquí solo se muestran. Opcional: un backend anterior no lo manda.
+   */
+  tambien_vinieron?: { id: number; nombre: string }[];
 }
 
 export interface GuardarAsistenciaPayload {
