@@ -1,5 +1,6 @@
 package com.kingdomkeeper.mobile
 
+import android.os.Bundle
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -12,6 +13,15 @@ class MainActivity : ReactActivity() {
    * rendering of the component.
    */
   override fun getMainComponentName(): String = "kingdomkeeperMobile"
+
+  /**
+   * null en vez del estado guardado: react-native-screens no puede restaurar sus pantallas. Si Android
+   * cerraba la app en segundo plano, volver a ella desde Recientes o desde un push la hacía caerse
+   * ("Screen fragments should never be restored"). La navegación vuelve a armarse desde JavaScript.
+   */
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(null)
+  }
 
   /**
    * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
