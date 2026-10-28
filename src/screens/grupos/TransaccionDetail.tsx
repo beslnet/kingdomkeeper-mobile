@@ -22,6 +22,7 @@ import {
 } from '../../api/finanzas';
 import { PANTONE_295C } from '../../theme/colors';
 import { usePermissionsStore } from '../../store/permissionsStore';
+import { cerrarSalvoTeclado } from '../../utils/teclado';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -472,7 +473,7 @@ export default function TransaccionDetailScreen() {
         visible={modalMode !== null}
         transparent
         animationType="slide"
-        onRequestClose={() => !actioning && setModalMode(null)}
+        onRequestClose={cerrarSalvoTeclado(() => !actioning && setModalMode(null))}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>

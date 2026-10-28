@@ -23,6 +23,7 @@ import {
   getMiembrosIglesia,
 } from '../api/relaciones';
 import { PANTONE_295C, PANTONE_134C } from '../theme/colors';
+import { cerrarSalvoTeclado } from '../utils/teclado';
 
 const NUCLEAR_TYPES = ['esposo', 'esposa', 'padre', 'madre', 'hijo', 'hija'];
 
@@ -284,7 +285,7 @@ export default function FamilyRelationshipsScreen() {
       )}
 
       {/* Add Relation Modal */}
-      <Modal visible={showModal} animationType="slide" onRequestClose={() => setShowModal(false)}>
+      <Modal visible={showModal} animationType="slide" onRequestClose={cerrarSalvoTeclado(() => setShowModal(false))}>
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Agregar familiar</Text>

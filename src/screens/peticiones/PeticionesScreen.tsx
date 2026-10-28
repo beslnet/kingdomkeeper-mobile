@@ -58,6 +58,7 @@ import {
 import { usePermissionsStore } from '../../store/permissionsStore';
 import { AcompanarModal, BorradorModal } from './AcompanarModal';
 import { useRefreshOnRestore } from '../../hooks/useRefreshOnRestore';
+import { cerrarSalvoTeclado } from '../../utils/teclado';
 
 const TABS: { key: EstadoPeticion; label: string }[] = [
   { key: 'orando', label: 'En oración' },
@@ -596,7 +597,7 @@ export default function PeticionesScreen() {
         </View>
       )}
 
-      <Modal visible={!!responder} animationType="slide" transparent onRequestClose={() => setResponder(null)}>
+      <Modal visible={!!responder} animationType="slide" transparent onRequestClose={cerrarSalvoTeclado(() => setResponder(null))}>
         <KeyboardAvoidingView
           style={styles.modalFondo}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}

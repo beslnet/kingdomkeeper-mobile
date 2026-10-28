@@ -27,6 +27,7 @@ import {
   filtrarRelacionesPorGenero,
 } from '../../api/miembros';
 import { PANTONE_295C } from '../../theme/colors';
+import { cerrarSalvoTeclado } from '../../utils/teclado';
 
 function RelacionItem({
   relacion,
@@ -268,7 +269,7 @@ export default function FamilyMiembroScreen() {
         visible={addModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setAddModalVisible(false)}
+        onRequestClose={cerrarSalvoTeclado(() => setAddModalVisible(false))}
       >
         <View style={styles.modalOverlay}>
           <ScrollView style={styles.modalSheet} keyboardShouldPersistTaps="handled">

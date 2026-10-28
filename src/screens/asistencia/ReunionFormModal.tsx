@@ -18,6 +18,7 @@ import { Reunion, ReunionPayload, crearReunion, editarReunion, eliminarReunion }
 import { listarGrupos } from '../../api/grupos';
 import { horaComoDate, horaCorta } from '../../utils/asistencia';
 import { PANTONE_295C } from '../../theme/colors';
+import { cerrarSalvoTeclado } from '../../utils/teclado';
 
 // 0 = lunes … 6 = domingo, como el backend.
 const DIAS = [
@@ -164,7 +165,7 @@ export default function ReunionFormModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={cerrarSalvoTeclado(onClose)}>
       <KeyboardAvoidingView style={styles.fondo} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.card}>
           <ScrollView keyboardShouldPersistTaps="handled">

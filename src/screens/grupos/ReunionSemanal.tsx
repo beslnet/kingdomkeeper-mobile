@@ -84,7 +84,7 @@ export default function ReunionSemanal({
                     <Text style={styles.pasarListaTexto}>Pasar lista</Text>
                   </TouchableOpacity>
                 ) : (
-                  <Text style={[styles.ultima, styles.flex1]}>Pausada: toca el lápiz para reactivarla.</Text>
+                  <Text style={[styles.ultima, styles.flex1, styles.pausada]}>Pausada: toca el lápiz para reactivarla.</Text>
                 )}
                 <TouchableOpacity
                   style={styles.editar}
@@ -129,18 +129,21 @@ const styles = StyleSheet.create({
   nombre: { fontSize: 18, fontWeight: '700', color: '#222', marginTop: 2 },
   cuando: { fontSize: 15, color: '#333', marginTop: 4 },
   ultima: { fontSize: 13, color: '#777', marginTop: 4 },
+  pausada: { alignSelf: 'center', marginTop: 0 },
   botones: { flexDirection: 'row', gap: 10, marginTop: 14 },
   pasarLista: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: PANTONE_295C, borderRadius: 24, paddingVertical: 12,
   },
   pasarListaTexto: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  // Alto propio: con la reunión pausada no está «Pasar lista» al lado para estirarlo, y quedaba aplastado.
   editar: {
-    width: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 24, borderWidth: 1.5,
+    width: 48, minHeight: 46, alignItems: 'center', justifyContent: 'center', borderRadius: 24, borderWidth: 1.5,
     borderColor: PANTONE_295C,
   },
   vacia: {
     flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#E8F0FB', borderRadius: 16, padding: 16,
+    marginBottom: 8,
   },
   vaciaTitulo: { fontSize: 15, fontWeight: '700', color: PANTONE_295C },
   vaciaTexto: { fontSize: 13, color: '#444', marginTop: 2 },

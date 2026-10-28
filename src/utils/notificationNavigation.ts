@@ -111,7 +111,8 @@ export function esAvisoPasarLista(payload: ParsedPayload | null | undefined): bo
  */
 export function abrirPasarLista(reunionId: number, extra?: Record<string, any>) {
   if (!navigationRef.isReady()) return;
-  const pasarLista = { reunionId, titulo: extra?.titulo || 'Pasar lista' };
+  // Con la fecha del aviso: abierto después de la reunión siguiente, no pasa lista en el día equivocado.
+  const pasarLista = { reunionId, titulo: extra?.titulo || 'Pasar lista', fecha: extra?.fecha };
   if (!extra?.grupo_id) {
     navigationRef.navigate('Main' as never, {
       screen: 'GruposCelulas', params: { screen: 'PasarLista', params: pasarLista, initial: false },

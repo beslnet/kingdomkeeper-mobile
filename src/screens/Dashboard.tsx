@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { DrawerActions } from '@react-navigation/native';
 import { useAuthStore } from '../store/authStore';
 import { useIglesiaStore } from '../store/iglesiaStore';
@@ -119,6 +119,16 @@ export default function DashboardScreen() {
     setLoading(true);
     load().finally(() => setLoading(false));
   }, [load]);
+
+  // Al volver al inicio (de cambiar la hora de una reunión, de pasar lista…) se recarga sin spinner: «Mis grupos»
+  // seguía mostrando lo de antes. La primera vez no, que ya la cubre la carga de arriba.
+  const yaEnfocada = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (yaEnfocada.current) load();
+      yaEnfocada.current = true;
+    }, [load])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

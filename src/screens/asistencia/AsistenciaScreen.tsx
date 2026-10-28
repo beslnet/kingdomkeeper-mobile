@@ -66,7 +66,10 @@ const mensajeDeError = (err: any, porDefecto: string): string => {
 
 export default function AsistenciaScreen() {
   // Desde «Pasar lista» de un grupo se llega con la reunión de ese grupo ya elegida.
-  const reunionPedida: number | undefined = useRoute<any>().params?.reunionId;
+  const params = useRoute<any>().params;
+  const reunionPedida: number | undefined = params?.reunionId;
+  // El aviso «¿Pasaste lista?» trae la fecha de la reunión que avisa: se pasa lista en ese día, no en el último.
+  const fechaPedida: string | undefined = /^\d{4}-\d{2}-\d{2}$/.test(params?.fecha ?? '') ? params.fecha : undefined;
   // Todo el equipo marca; ver a quienes no han venido y asignarles seguimiento es de quien lidera.
   // Lo resuelve el backend (rol + función del ministerio): la app solo lo pregunta, como la web.
   const puedeSeguimientoIglesia = usePermissionsStore((s) => s.can('asistencia.seguimiento'));
@@ -118,14 +121,16 @@ export default function AsistenciaScreen() {
         const activas = lista.filter((r) => r.activa !== false);
         const primera = lista.find((r) => r.id === reunionPedida) ?? reunionPorDefecto(activas) ?? lista[0] ?? null;
         setReunion(primera);
-        if (primera) setFecha(ultimaFecha(primera.dia_semana));
+        if (primera) {
+          setFecha(primera.id === reunionPedida && fechaPedida ? fechaPedida : ultimaFecha(primera.dia_semana));
+        }
       }
     } catch (err) {
       setError(mensajeDeError(err, 'No se pudieron cargar las reuniones.'));
     } finally {
       setCargando(false);
     }
-  }, [reunionPedida]);
+  }, [reunionPedida, fechaPedida]);
 
   useFocusEffect(
     useCallback(() => {

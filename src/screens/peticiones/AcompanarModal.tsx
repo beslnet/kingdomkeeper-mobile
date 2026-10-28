@@ -20,6 +20,7 @@ import {
 } from '../../api/pastoral';
 import { fraseAlcance, mensajeDeError, payloadAcompanar } from '../../utils/peticiones';
 import { PANTONE_295C } from '../../theme/colors';
+import { cerrarSalvoTeclado } from '../../utils/teclado';
 
 // «Necesita acompañamiento» y «Borrador listo»: los dos diálogos de la web (PeticionesPage) con sus
 // palabras. Quién los ve lo decide el backend (`peticiones.acompanar`); la pantalla solo los ofrece.
@@ -81,7 +82,7 @@ export function AcompanarModal({
   };
 
   return (
-    <Modal visible={!!peticion} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={!!peticion} animationType="slide" transparent onRequestClose={cerrarSalvoTeclado(onClose)}>
       <KeyboardAvoidingView style={styles.fondo} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.card}>
           <ScrollView keyboardShouldPersistTaps="handled">

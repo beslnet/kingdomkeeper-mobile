@@ -19,6 +19,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { crearGrupo, actualizarGrupo, listarLideresIglesia, listarMiembrosIglesia } from '../../api/grupos';
 import { usePermissionsStore } from '../../store/permissionsStore';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
+import { cerrarSalvoTeclado } from '../../utils/teclado';
 
 const TIPOS = [
   { value: 'celula', label: 'Célula' },
@@ -282,7 +283,7 @@ export default function GrupoFormScreen() {
       <Modal
         visible={liderModalVisible}
         animationType="slide"
-        onRequestClose={() => setLiderModalVisible(false)}
+        onRequestClose={cerrarSalvoTeclado(() => setLiderModalVisible(false))}
       >
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>

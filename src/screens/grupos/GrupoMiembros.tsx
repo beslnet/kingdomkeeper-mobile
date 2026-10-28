@@ -17,6 +17,7 @@ import { useRoute } from '@react-navigation/native';
 import { obtenerGrupo, agregarMiembros, removerMiembros, listarMiembrosIglesia } from '../../api/grupos';
 import { PANTONE_295C, PANTONE_134C } from '../../theme/colors';
 import { useGestionDelGrupo } from '../../hooks/useGestionDelGrupo';
+import { cerrarSalvoTeclado } from '../../utils/teclado';
 
 function getRolColor(rol: string): { bg: string; text: string } {
   switch (rol) {
@@ -214,7 +215,7 @@ export default function GrupoMiembrosScreen() {
       )}
 
       {/* Add member modal */}
-      <Modal visible={modalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
+      <Modal visible={modalVisible} animationType="slide" onRequestClose={cerrarSalvoTeclado(() => setModalVisible(false))}>
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Agregar miembro</Text>

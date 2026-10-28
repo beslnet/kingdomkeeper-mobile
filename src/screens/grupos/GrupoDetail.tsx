@@ -224,8 +224,11 @@ export default function GrupoDetailScreen() {
   ];
 
   return (
+    // "handled": el formulario de la reunión semanal es un Modal, pero para los toques de React este scroll es su
+    // ancestro; con el valor por defecto se tragaba el primer toque en «Guardar» solo para esconder el teclado.
     <ScrollView
       style={styles.container}
+      keyboardShouldPersistTaps="handled"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[PANTONE_295C]} />}
     >
       {/* Header card */}

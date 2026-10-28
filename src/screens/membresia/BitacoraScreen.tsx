@@ -25,6 +25,7 @@ import {
   TIPOS_BITACORA,
 } from '../../api/miembros';
 import { PANTONE_295C } from '../../theme/colors';
+import { cerrarSalvoTeclado } from '../../utils/teclado';
 
 function getBitacoraColor(tipo: string): { bg: string; text: string } {
   switch (tipo) {
@@ -233,7 +234,7 @@ export default function BitacoraScreen() {
       <Modal
         visible={modalVisible}
         animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={cerrarSalvoTeclado(() => setModalVisible(false))}
       >
         <SafeAreaView style={styles.modalContainer}>
           <KeyboardAvoidingView

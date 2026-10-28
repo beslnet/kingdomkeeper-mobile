@@ -268,6 +268,13 @@ describe('El líder de un grupo pasa lista de la reunión de su grupo', () => {
     expect((obtenerAsistenciaDelDia as jest.Mock).mock.calls[0][0]).toBe(9);
   });
 
+  it('desde el aviso «¿Pasaste lista?» abre la fecha del aviso, no el último viernes', async () => {
+    listar.mockResolvedValue([{ ...CULTO, puedo_seguimiento: true, puedo_configurar: true }, DEL_GRUPO]);
+    mockRouteParams.current = { reunionId: 9, fecha: '2026-10-02' };
+    await montar(['asistencia.marcar']);
+    expect((obtenerAsistenciaDelDia as jest.Mock).mock.calls.at(-1)).toEqual([9, '2026-10-02']);
+  });
+
   it('sin rol de asistencia ve «No han venido» y edita la de su grupo, pero no crea reuniones de la iglesia', async () => {
     listar.mockResolvedValue([DEL_GRUPO]);
     const tree = await montar([]);
